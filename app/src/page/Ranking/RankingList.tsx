@@ -8,7 +8,7 @@ import {
 } from 'react-icons/fa';
 
 // ─────────────────────────────────────────────
-// 최대 플레이어 수 (예제에서는 100명)
+// 최대 플레이어 수 (예제에서는 40명)
 const MAX_PLAYERS = 40;
 
 // ─────────────────────────────────────────────
@@ -20,53 +20,52 @@ const tierMapping: {
   bronze: {
     label: '브론즈',
     color: '#cd7f32',
-    description: '입문자 및 초보자 티어입니다.',
+    description: '전체 계정의 80% 초과에 해당합니다.',
   },
   silver: {
     label: '실버',
     color: '#c0c0c0',
-    description: '경험이 쌓여 안정적인 플레이를 보여주는 티어입니다.',
+    description: '전체 계정의 상위 55% 초과 ~ 80% 이내에 해당합니다.',
   },
   gold: {
     label: '골드',
     color: '#ffd700',
-    description: '높은 스킬을 보유한 플레이어가 속한 티어입니다.',
+    description: '전체 계정의 상위 20% 초과 ~ 35% 이내에 해당합니다.',
   },
   platinum: {
     label: '플레',
     color: '#e5e4e2',
-    description: '매우 높은 실력을 가진 상위권 플레이어입니다.',
+    description: '전체 계정의 상위 35% 초과 ~ 55% 이내에 해당합니다.',
   },
   diamond: {
     label: '다이아',
     color: '#b9f2ff',
-    description: '최상위 플레이어들이 모여있는 티어입니다.',
+    description: '전체 계정의 상위 10% 초과 ~ 20% 이내에 해당합니다.',
   },
   master: {
     label: '마스터',
     color: '#800080',
-    description: '게임에 정통하며 전략적인 플레이를 하는 티어입니다.',
+    description: '전체 계정의 상위 4% 초과 ~ 10% 이내에 해당합니다.',
   },
   grandmaster: {
     label: '그랜드마스터',
     color: '#ff4500',
-    description: '상위 1%의 실력을 가진 플레이어가 속한 티어입니다.',
+    description: '전체 계정의 상위 1% 초과 ~ 4% 이내에 해당합니다.',
   },
   challenger: {
     label: '챌린저',
     color: '#00ced1',
-    description: '최고의 기량을 갖춘 플레이어들이 경쟁하는 티어입니다.',
+    description: '전체 계정의 상위 1% 이내에 해당합니다.',
   },
 };
 
 // ─────────────────────────────────────────────
 // 순위에 따른 티어 결정 함수 (비율 기반)
-// ─────────────────────────────────────────────
+// totalPlayers(전체 플레이어 수)를 이용해 각 티어의 상한선을 계산합니다.
 const getTierByRank = (
   rank: number,
   totalPlayers: number = MAX_PLAYERS
 ): string => {
-  // 각 티어의 상한선을 계산 (올림 처리)
   const thresholds = {
     challenger: Math.ceil(totalPlayers * 0.01), // 상위 1%
     grandmaster: Math.ceil(totalPlayers * 0.04), // 상위 4%
@@ -75,7 +74,7 @@ const getTierByRank = (
     gold: Math.ceil(totalPlayers * 0.35), // 상위 35%
     platinum: Math.ceil(totalPlayers * 0.55), // 상위 55%
     silver: Math.ceil(totalPlayers * 0.8), // 상위 80%
-    bronze: totalPlayers, // 나머지
+    bronze: totalPlayers, // 그 외
   };
 
   if (rank <= thresholds.challenger) return 'challenger';
@@ -125,7 +124,7 @@ const TierInfoModal: React.FC<TierInfoModalProps> = ({ onClose }) => {
 };
 
 // ─────────────────────────────────────────────
-// RankingPage Component (무한스크롤 적용, 최대 100명)
+// RankingPage Component (무한스크롤 적용)
 // ─────────────────────────────────────────────
 type UserRank = {
   id: number;
@@ -179,19 +178,16 @@ const RankingPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // 가상의 API 호출 시뮬레이션 함수 (실제 구현시 API 호출)
+  // 가상의 API 호출 시뮬레이션 (실제 구현 시 API 호출)
   const fetchRankingData = (pageNumber: number): Promise<UserRank[]> => {
     return new Promise((resolve) => {
       setTimeout(() => {
-        // 현재 데이터 개수를 기준으로 새 데이터 생성
         const currentCount = rankingData.length;
-        // 최대 플레이어 수에 도달하면 빈 배열 반환
         if (currentCount >= MAX_PLAYERS) {
           resolve([]);
           return;
         }
         const newData: UserRank[] = [];
-        // 한 페이지당 5명씩 추가
         for (let i = 0; i < 5; i++) {
           const newRank = currentCount + i + 1;
           if (newRank > MAX_PLAYERS) break;
@@ -208,13 +204,11 @@ const RankingPage: React.FC = () => {
     });
   };
 
-  // 스크롤 이벤트: 하단 도달 시 새로운 데이터를 로드
   const handleScroll = useCallback(() => {
     const scrollTop =
       document.documentElement.scrollTop || document.body.scrollTop;
     const windowHeight = window.innerHeight;
     const fullHeight = document.documentElement.scrollHeight;
-
     if (fullHeight - (scrollTop + windowHeight) < 100 && !loading) {
       setLoading(true);
       fetchRankingData(page).then((newData) => {
@@ -255,7 +249,7 @@ const RankingPage: React.FC = () => {
           </thead>
           <tbody>
             {rankingData.map((user, index) => {
-              // 순위에 따른 티어 결정 (비율 기준)
+              // 티어 결정 (비율 기준, 총 플레이어수 MAX_PLAYERS)
               const tierKey = getTierByRank(user.rank, MAX_PLAYERS);
               const tierInfo = tierMapping[tierKey];
               return (
