@@ -2,10 +2,8 @@ import React, { forwardRef, InputHTMLAttributes } from 'react';
 
 export interface InputFieldProps extends InputHTMLAttributes<HTMLInputElement> {
   id: string;
-  // onChange 등은 이미 InputHTMLAttributes에 정의되어 있음
 }
 
-// 기본 스타일 (필요에 따라 수정 가능)
 const defaultInputStyle: React.CSSProperties = {
   width: '100%',
   boxSizing: 'border-box',

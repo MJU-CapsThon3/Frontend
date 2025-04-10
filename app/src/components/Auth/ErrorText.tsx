@@ -1,4 +1,3 @@
-// app/src/components/Auth/ErrorText.tsx
 import React from 'react';
 
 interface ErrorTextProps {
