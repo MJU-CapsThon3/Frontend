@@ -287,6 +287,7 @@ export default BattleList;
 
 const containerStyle: CSSProperties = {
   width: '1000px',
+  height: '80vh',
   margin: '0 auto',
   padding: '1rem',
   background: 'linear-gradient(to bottom, #3aa7f0, #63c8ff)',
