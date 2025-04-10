@@ -46,7 +46,6 @@ const Layout: React.FC = () => {
         <Main>
           <Outlet />
         </Main>
-        <Footer>My App Footer</Footer>
       </Container>
     </>
   );
@@ -56,18 +55,6 @@ export default Layout;
 
 const Container = styled.div`
   position: relative;
-`;
-
-const Footer = styled.footer`
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  background-color: #1c87c9;
-  color: #fff;
-  padding: 1rem;
-  text-align: center;
-  z-index: 1000;
 `;
 
 const Main = styled.main`
