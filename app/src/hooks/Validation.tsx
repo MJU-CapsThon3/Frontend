@@ -1,11 +1,6 @@
 import * as yup from 'yup';
 import { useCallback } from 'react';
 
-//////////////////////
-// 로그인 검증 (이메일 기반)
-// 기존 id 대신 email로 변경
-//////////////////////
-
 const EMAIL_REQUIRED = '이메일을 입력해주세요.';
 const EMAIL_INVALID = '유효한 이메일을 입력해주세요.';
 const EMAIL_MIN_ERROR = '이메일은 최소 6자 이상이어야 합니다.';
@@ -63,18 +58,14 @@ export const useLoginValidation = () => {
   return { validate };
 };
 
-//////////////////////
-// 회원가입 검증 (이메일 검증 강화)
-//////////////////////
-
 export interface SignupData {
   email: string;
   nickname: string;
   password: string;
   confirmPw: string;
   gender: string;
-  birthDate: string; // 'yyyy-mm-dd' 형식의 날짜 문자열
-  phone: string; // '010-1234-5678' 형식의 문자열
+  birthDate: string;
+  phone: string;
 }
 
 export const signupSchema = yup
@@ -137,10 +128,6 @@ export const useSignupValidation = () => {
   return { validate };
 };
 
-//////////////////////
-// 아이디 찾기 검증 (이름에 한글만, 2~10자 제한 적용)
-//////////////////////
-
 const findIdSchema = yup
   .object({
     name: yup
@@ -183,11 +170,6 @@ export const useFindIdValidation = () => {
   );
   return { validate };
 };
-
-//////////////////////
-// 비밀번호 찾기 검증 (이메일, 이름, 전화번호)
-// 기존 id 대신 이메일, 이름, 전화번호를 사용하도록 수정
-//////////////////////
 
 const findPwSchema = yup
   .object({

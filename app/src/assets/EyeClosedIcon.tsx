@@ -1,4 +1,3 @@
-// EyeClosedIcon.tsx
 import React from 'react';
 
 const EyeClosedIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
@@ -13,7 +12,6 @@ const EyeClosedIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     strokeLinejoin='round'
     {...props}
   >
-    {/* 눈 + slash 아이콘 */}
     <path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z' />
     <circle cx='12' cy='12' r='3' />
     <line x1='2' y1='2' x2='22' y2='22' />
