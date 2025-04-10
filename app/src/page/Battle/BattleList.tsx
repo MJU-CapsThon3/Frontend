@@ -2,15 +2,11 @@ import React, { useState, useEffect, CSSProperties } from 'react';
 import {
   FaSkullCrossbones,
   FaUserFriends,
-  FaRedo,
   FaChevronLeft,
   FaChevronRight,
-  FaTimes, // 닫기 아이콘
+  FaTimes,
 } from 'react-icons/fa';
 
-/** ─────────────────────────────
- *  1) 타입 및 더미 데이터
- * ───────────────────────────── */
 type RoomStatus = 'WAITING' | 'PLAYING' | 'FULL';
 
 type RoomData = {
@@ -19,7 +15,7 @@ type RoomData = {
   status: RoomStatus;
   current: number;
   max: number;
-  hasReturningUser?: boolean; // 복귀유저(2복귀)
+  hasReturningUser?: boolean;
 };
 
 const allRooms: RoomData[] = [
@@ -61,9 +57,6 @@ const allRooms: RoomData[] = [
 const ROOMS_PER_PAGE = 10;
 const totalPages = Math.ceil(allRooms.length / ROOMS_PER_PAGE);
 
-/** ─────────────────────────────
- *  2) getStatusBadgeStyle 함수 (기존)
- * ───────────────────────────── */
 const getStatusBadgeStyle = (status: RoomStatus): CSSProperties => {
   let bgColor = '#999';
   if (status === 'WAITING') bgColor = '#30d158';
@@ -83,9 +76,6 @@ const getStatusBadgeStyle = (status: RoomStatus): CSSProperties => {
   };
 };
 
-/** ─────────────────────────────
- *  3) 커스텀 버튼 컴포넌트 (기존)
- * ───────────────────────────── */
 type ButtonProps = {
   primary?: boolean;
   children: React.ReactNode;
@@ -107,9 +97,6 @@ const CustomButton: React.FC<ButtonProps> = ({
   );
 };
 
-/** ─────────────────────────────
- *  4) 메인 컴포넌트
- * ───────────────────────────── */
 const BattleList: React.FC = () => {
   const [page, setPage] = useState(1);
   const [rooms, setRooms] = useState<RoomData[]>(
@@ -118,14 +105,12 @@ const BattleList: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState<RoomData | null>(null);
 
-  // 모달 타이머 (초 단위)
   const [modalSeconds, setModalSeconds] = useState(0);
 
-  // 모달이 열릴 때 타이머 시작
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (showModal) {
-      setModalSeconds(0); // 모달 열릴 때 타이머 리셋
+      setModalSeconds(0);
       interval = setInterval(() => {
         setModalSeconds((prev) => prev + 1);
       }, 1000);
@@ -135,11 +120,10 @@ const BattleList: React.FC = () => {
     };
   }, [showModal]);
 
-  // ───────── [방 10개 고정 로직] ─────────
   const paddedRooms: RoomData[] = [...rooms];
   while (paddedRooms.length < 10) {
     paddedRooms.push({
-      id: 9999 + paddedRooms.length, // 임시 유니크 ID
+      id: 9999 + paddedRooms.length,
       name: '빈 방',
       status: 'WAITING',
       current: 0,
@@ -152,7 +136,6 @@ const BattleList: React.FC = () => {
     setShowModal(true);
   };
 
-  // 페이지네이션
   const handlePrevPage = () => {
     if (page > 1) {
       const newPage = page - 1;
@@ -171,7 +154,6 @@ const BattleList: React.FC = () => {
     }
   };
 
-  // 타이머 형식 변환: 초를 mm:ss 형식으로 변환
   const formatTime = (sec: number): string => {
     const minutes = Math.floor(sec / 60)
       .toString()
@@ -182,7 +164,6 @@ const BattleList: React.FC = () => {
 
   return (
     <div style={containerStyle}>
-      {/* 헤더 */}
       <header style={headerStyle}>
         <div style={headerLeftStyle}>
           <CustomButton>방만들기</CustomButton>
@@ -194,7 +175,6 @@ const BattleList: React.FC = () => {
         </div>
       </header>
 
-      {/* 방 목록 */}
       <main style={mainStyle}>
         {paddedRooms.map((room) => (
           <div
@@ -234,7 +214,6 @@ const BattleList: React.FC = () => {
           </div>
         ))}
 
-        {/* 페이지네이션 */}
         <div style={paginationStyle}>
           <div style={paginationButtonWrapperStyle} onClick={handlePrevPage}>
             <FaChevronLeft style={paginationIconStyle} />
@@ -248,11 +227,10 @@ const BattleList: React.FC = () => {
         </div>
       </main>
 
-      {/* 모달 */}
       {showModal && selectedRoom && (
         <div style={modalOverlayStyle} onClick={() => setShowModal(false)}>
           <div style={modalContentStyle} onClick={(e) => e.stopPropagation()}>
-            {/* 모달 헤더: 제목, 타이머(왼쪽은 제목, 오른쪽은 타이머와 닫기버튼을 row로 배치) */}
+            {/* 모달 헤더: 왼쪽 제목, 오른쪽 타이머와 닫기 아이콘 */}
             <div style={modalHeaderBarStyle}>
               <div style={{ display: 'flex', alignItems: 'center' }}>
                 <div style={modalHeaderTitleStyle}>방정보</div>
@@ -270,7 +248,6 @@ const BattleList: React.FC = () => {
               </div>
             </div>
 
-            {/* 모달 본문: 테이블 영역 */}
             <div style={modalBodyContainerStyle}>
               <table style={modalTableStyle}>
                 <thead>
@@ -307,12 +284,6 @@ const BattleList: React.FC = () => {
 };
 
 export default BattleList;
-
-/** ─────────────────────────────
- *  스타일 정의 + 애니메이션
- * ─────────────────────────────
- * @keyframes popIn, floatUpDown 는 전역 CSS에 추가 필요
- */
 
 const containerStyle: CSSProperties = {
   width: '1000px',
@@ -369,16 +340,12 @@ const roomCardStyle: CSSProperties = {
   animation: 'popIn 0.4s forwards',
   transition: 'transform 0.3s',
   cursor: 'pointer',
-  boxShadow: '0 4px 8px rgba(0, 0, 0, 0.3)', // 그림자 추가
-  ':hover': {
-    transform: 'scale(1.02)',
-  } as any,
+  boxShadow: '0 4px 8px rgba(0, 0, 0, 0.3)',
 };
 
-function getRoomCardBorderStyle(status: RoomStatus): CSSProperties {
-  let borderColor = '#0095f4';
+function getRoomCardBorderStyle(_: RoomStatus): CSSProperties {
   return {
-    border: `3px solid ${borderColor}`,
+    border: '3px solid #0095f4',
   };
 }
 
@@ -412,7 +379,7 @@ const roomTitleStyle: CSSProperties = {
   textShadow: '1px 1px #fff',
   fontSize: '1.0rem',
   textAlign: 'left',
-  backgroundColor: '#8da9fc',
+  backgroundColor: '#a4b4e6',
   padding: '5px',
   borderRadius: '4px',
   boxShadow: '0 2px 4px rgba(0, 0, 0, 0.3)',
@@ -486,9 +453,6 @@ const paginationButtonWrapperStyle: CSSProperties = {
   cursor: 'pointer',
   boxShadow: '0 2px 0 #ffc107',
   transition: 'transform 0.2s',
-  ':hover': {
-    transform: 'scale(1.1)',
-  } as any,
 };
 
 const pageIndicatorStyle: CSSProperties = {
@@ -503,7 +467,6 @@ const paginationIconStyle: CSSProperties = {
   color: '#444',
 };
 
-// ───────── 모달 관련 스타일 (수정) ─────────
 const modalOverlayStyle: CSSProperties = {
   position: 'fixed',
   top: 0,
@@ -564,21 +527,12 @@ const modalBodyContainerStyle: CSSProperties = {
   gap: '0.5rem',
 };
 
-// 모달 헤더 내부 우측의 타이머 (이제 row로 정렬)
-const modalHeaderRightStyle: CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: '0.5rem',
-};
-
-// 모달 타이머 (절대 위치 대신 display로 row에 포함)
 const modalTimerStyle: CSSProperties = {
   color: '#fffe77',
   fontWeight: 'bold',
   fontSize: '0.9rem',
 };
 
-// 모달 테이블 스타일
 const modalTableStyle: CSSProperties = {
   width: '100%',
   borderCollapse: 'collapse',
