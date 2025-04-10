@@ -6,6 +6,7 @@ export interface CustomButtonProps
 const defaultButtonStyle: React.CSSProperties = {
   width: '100%',
   padding: '0.75rem 1rem',
+  marginTop: '30px',
   fontSize: '1rem',
   backgroundColor: '#a1c5e6',
   color: '#fff',

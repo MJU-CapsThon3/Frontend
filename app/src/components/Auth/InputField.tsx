@@ -9,6 +9,7 @@ const defaultInputStyle: React.CSSProperties = {
   boxSizing: 'border-box',
   padding: '0.75rem 1rem',
   fontSize: '1rem',
+
   border: '1px solid #ddd',
   borderRadius: '6px',
   transition: 'border-color 0.3s ease',
