@@ -101,6 +101,7 @@ const LogoText = styled.span`
   font-size: 1.5rem;
   font-weight: bold;
   color: #1c87c9;
+  min-width: 130px;
 `;
 
 const Nav = styled.nav`
@@ -109,6 +110,7 @@ const Nav = styled.nav`
   justify-content: center;
   align-items: center;
   gap: 2rem;
+  min-width: 350px;
 `;
 
 const NavItem = styled.a`
@@ -159,7 +161,7 @@ const ActionButton = styled.button<{ primary?: boolean }>`
     transform 0.3s ease;
   display: flex;
   align-items: center;
-
+  min-width: 120px;
   &:hover {
     opacity: 0.9;
   }
