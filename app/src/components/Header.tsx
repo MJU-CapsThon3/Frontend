@@ -28,7 +28,7 @@ const Header: React.FC = () => {
             </IconWrapper>
             배틀
           </NavItem>
-          <NavItem href='/ranking'>
+          <NavItem href='/ranking-list'>
             <IconWrapper>
               <FaTrophy />
             </IconWrapper>
