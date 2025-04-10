@@ -4,7 +4,7 @@ import Layout from './page/Layout';
 import Login from './page/auth/Login';
 import Signup from './page/auth/Signup';
 import FindId from './page/auth/FindId';
-
+import FindPassword from './page/auth/FindPassword';
 import './App.css';
 
 function App() {
@@ -15,6 +15,7 @@ function App() {
           <Route index element={<Login />} />
           <Route path='signup' element={<Signup />} />
           <Route path='find-id' element={<FindId />} />
+          <Route path='find-password' element={<FindPassword />} />
         </Route>
       </Routes>
     </BrowserRouter>
