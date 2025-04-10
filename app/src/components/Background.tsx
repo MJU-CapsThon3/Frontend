@@ -153,7 +153,7 @@ const Background: React.FC = () => {
       text.setAttribute('x', cx);
       const offset = 10;
       text.setAttribute('y', String(parseFloat(cy) + planet.size + offset));
-      text.textContent = planet.name;
+
       text.setAttribute('text-anchor', 'middle');
       text.setAttribute('fill', '#fff');
       text.setAttribute('font-size', '12');
