@@ -22,12 +22,33 @@ import {
   dashStyle,
 } from '../../components/Auth/styles';
 
+import { useNavigate } from 'react-router-dom';
+import { FaArrowLeft } from 'react-icons/fa';
+
+const backButtonStyle: React.CSSProperties = {
+  position: 'absolute',
+  top: '16px',
+  left: '16px',
+  border: 'none',
+  background: 'transparent',
+  cursor: 'pointer',
+  padding: '8px',
+  transition: 'transform 0.2s ease, opacity 0.2s ease',
+};
+
+const backButtonHoverStyle: React.CSSProperties = {
+  transform: 'scale(1.1)',
+  opacity: 0.8,
+};
+
 const FindPassword: React.FC = () => {
   const responsiveWidth = useResponsiveWidth();
   const containerStyle = useMemo(
     () => ({ ...baseContainerStyle, width: responsiveWidth }),
     [responsiveWidth]
   );
+
+  const navigate = useNavigate();
 
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
@@ -36,6 +57,7 @@ const FindPassword: React.FC = () => {
   const [phone3, setPhone3] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [isHovering, setIsHovering] = useState(false);
 
   const { validate } = useFindPasswordValidation();
 
@@ -99,8 +121,24 @@ const FindPassword: React.FC = () => {
     [email, name, phone1, phone2, phone3, validate]
   );
 
+  // 호버 상태에 따른 뒤로가기 버튼 스타일 결정
+  const currentBackButtonStyle = isHovering
+    ? { ...backButtonStyle, ...backButtonHoverStyle }
+    : backButtonStyle;
+
   return (
     <div style={containerStyle}>
+      {/* 뒤로가기 버튼 클릭 시 /login 경로로 이동 */}
+      <button
+        onClick={() => navigate('/login')}
+        style={currentBackButtonStyle}
+        aria-label='뒤로가기'
+        onMouseEnter={() => setIsHovering(true)}
+        onMouseLeave={() => setIsHovering(false)}
+      >
+        <FaArrowLeft size={24} />
+      </button>
+
       <h1 style={titleStyle}>비밀번호 찾기</h1>
       <p style={subtitleStyle}>가입 시 사용하신 정보를 입력해주세요.</p>
       <form onSubmit={handleSubmit} style={formStyle}>
