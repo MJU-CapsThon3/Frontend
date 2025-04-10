@@ -110,7 +110,7 @@ const Login: React.FC = () => {
           <InputField
             id='loginPassword'
             type={showPassword ? 'text' : 'password'}
-            placeholder='Password'
+            placeholder='비밀번호'
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             onBlur={handleBlur('password')}
@@ -191,7 +191,7 @@ const Login: React.FC = () => {
           </Link>
           <span style={{ color: '#ccc' }}>|</span>
           <Link
-            to='/signup'
+            to='/sign-up'
             style={{ textDecoration: 'none', color: 'inherit' }}
           >
             회원가입

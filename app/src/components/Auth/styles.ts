@@ -3,13 +3,13 @@ export const baseContainerStyle: React.CSSProperties = {
   top: '50%',
   left: '50%',
   transform: 'translate(-50%, -50%)',
+  // 노랑-주황 그라디언트 배경
+  background: 'linear-gradient(to bottom, #ffdb4b, #ffa136)',
   textAlign: 'center',
-  backgroundColor: '#fff',
-  padding: '2rem',
+  padding: '1.5rem 2rem',
   borderRadius: '8px',
-  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-  animation: 'fadeInUp 0.7s ease-in-out',
-  opacity: 0.9,
+  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+  opacity: 0.95,
 };
 
 export const titleStyle: React.CSSProperties = {
