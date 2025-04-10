@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import styled, { keyframes } from 'styled-components';
 import {
   FaCrown,
@@ -6,6 +6,10 @@ import {
   FaArrowDown,
   FaQuestionCircle,
 } from 'react-icons/fa';
+
+// ─────────────────────────────────────────────
+// 최대 플레이어 수 (예제에서는 100명)
+const MAX_PLAYERS = 40;
 
 // ─────────────────────────────────────────────
 // 티어별 매핑 (티어명, 아이콘 색상, 설명)
@@ -56,6 +60,35 @@ const tierMapping: {
 };
 
 // ─────────────────────────────────────────────
+// 순위에 따른 티어 결정 함수 (비율 기반)
+// ─────────────────────────────────────────────
+const getTierByRank = (
+  rank: number,
+  totalPlayers: number = MAX_PLAYERS
+): string => {
+  // 각 티어의 상한선을 계산 (올림 처리)
+  const thresholds = {
+    challenger: Math.ceil(totalPlayers * 0.01), // 상위 1%
+    grandmaster: Math.ceil(totalPlayers * 0.04), // 상위 4%
+    master: Math.ceil(totalPlayers * 0.1), // 상위 10%
+    diamond: Math.ceil(totalPlayers * 0.2), // 상위 20%
+    gold: Math.ceil(totalPlayers * 0.35), // 상위 35%
+    platinum: Math.ceil(totalPlayers * 0.55), // 상위 55%
+    silver: Math.ceil(totalPlayers * 0.8), // 상위 80%
+    bronze: totalPlayers, // 나머지
+  };
+
+  if (rank <= thresholds.challenger) return 'challenger';
+  else if (rank <= thresholds.grandmaster) return 'grandmaster';
+  else if (rank <= thresholds.master) return 'master';
+  else if (rank <= thresholds.diamond) return 'diamond';
+  else if (rank <= thresholds.gold) return 'gold';
+  else if (rank <= thresholds.platinum) return 'platinum';
+  else if (rank <= thresholds.silver) return 'silver';
+  else return 'bronze';
+};
+
+// ─────────────────────────────────────────────
 // TierInfoModal Component (모달)
 // ─────────────────────────────────────────────
 type TierInfoModalProps = {
@@ -92,18 +125,23 @@ const TierInfoModal: React.FC<TierInfoModalProps> = ({ onClose }) => {
 };
 
 // ─────────────────────────────────────────────
-// RankingPage Component
+// RankingPage Component (무한스크롤 적용, 최대 100명)
 // ─────────────────────────────────────────────
-const RankingPage: React.FC = () => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
+type UserRank = {
+  id: number;
+  username: string;
+  score: number;
+  rank: number;
+  change: number;
+};
 
-  // 샘플 랭킹 데이터 (실제 구현 시 API 호출 등으로 받아올 수 있음)
-  const rankingData = [
+const RankingPage: React.FC = () => {
+  // 초기 랭킹 데이터 (페이지 1의 데이터 5명)
+  const [rankingData, setRankingData] = useState<UserRank[]>([
     {
       id: 1,
       username: '홍길동',
       score: 1500,
-      tier: 'challenger',
       rank: 1,
       change: 0,
     },
@@ -111,7 +149,6 @@ const RankingPage: React.FC = () => {
       id: 2,
       username: '김철수',
       score: 1400,
-      tier: 'grandmaster',
       rank: 2,
       change: 1,
     },
@@ -119,7 +156,6 @@ const RankingPage: React.FC = () => {
       id: 3,
       username: '이영희',
       score: 1300,
-      tier: 'master',
       rank: 3,
       change: -1,
     },
@@ -127,7 +163,6 @@ const RankingPage: React.FC = () => {
       id: 4,
       username: '박지민',
       score: 1200,
-      tier: 'diamond',
       rank: 4,
       change: 2,
     },
@@ -135,11 +170,67 @@ const RankingPage: React.FC = () => {
       id: 5,
       username: '최수정',
       score: 1100,
-      tier: 'gold',
       rank: 5,
       change: 0,
     },
-  ];
+  ]);
+
+  const [page, setPage] = useState(1);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  // 가상의 API 호출 시뮬레이션 함수 (실제 구현시 API 호출)
+  const fetchRankingData = (pageNumber: number): Promise<UserRank[]> => {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        // 현재 데이터 개수를 기준으로 새 데이터 생성
+        const currentCount = rankingData.length;
+        // 최대 플레이어 수에 도달하면 빈 배열 반환
+        if (currentCount >= MAX_PLAYERS) {
+          resolve([]);
+          return;
+        }
+        const newData: UserRank[] = [];
+        // 한 페이지당 5명씩 추가
+        for (let i = 0; i < 5; i++) {
+          const newRank = currentCount + i + 1;
+          if (newRank > MAX_PLAYERS) break;
+          newData.push({
+            id: newRank,
+            username: `유저 ${newRank}`,
+            score: 1500 - newRank * 10,
+            rank: newRank,
+            change: newRank % 3 === 0 ? -1 : newRank % 3 === 1 ? 1 : 0,
+          });
+        }
+        resolve(newData);
+      }, 1000);
+    });
+  };
+
+  // 스크롤 이벤트: 하단 도달 시 새로운 데이터를 로드
+  const handleScroll = useCallback(() => {
+    const scrollTop =
+      document.documentElement.scrollTop || document.body.scrollTop;
+    const windowHeight = window.innerHeight;
+    const fullHeight = document.documentElement.scrollHeight;
+
+    if (fullHeight - (scrollTop + windowHeight) < 100 && !loading) {
+      setLoading(true);
+      fetchRankingData(page).then((newData) => {
+        if (newData.length > 0) {
+          setRankingData((prevData) => [...prevData, ...newData]);
+          setPage((prevPage) => prevPage + 1);
+        }
+        setLoading(false);
+      });
+    }
+  }, [loading, page, rankingData]);
+
+  useEffect(() => {
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [handleScroll]);
 
   return (
     <RankingContainer>
@@ -164,7 +255,9 @@ const RankingPage: React.FC = () => {
           </thead>
           <tbody>
             {rankingData.map((user, index) => {
-              const tierInfo = tierMapping[user.tier];
+              // 순위에 따른 티어 결정 (비율 기준)
+              const tierKey = getTierByRank(user.rank, MAX_PLAYERS);
+              const tierInfo = tierMapping[tierKey];
               return (
                 <TableRow key={user.id} delay={index * 0.1}>
                   <TableCell>{user.rank}</TableCell>
@@ -202,6 +295,7 @@ const RankingPage: React.FC = () => {
             })}
           </tbody>
         </RankingTable>
+        {loading && <LoadingText>로딩 중...</LoadingText>}
       </TableWrapper>
       {isModalOpen && <TierInfoModal onClose={() => setIsModalOpen(false)} />}
     </RankingContainer>
@@ -227,8 +321,6 @@ const fadeIn = keyframes`
 // ─────────────────────────────────────────────
 // Styled Components (공통 스타일)
 // ─────────────────────────────────────────────
-
-// 전체 랭킹 페이지 컨테이너
 const RankingContainer = styled.div`
   min-width: 1000px;
   min-height: 80vh;
@@ -241,7 +333,6 @@ const RankingContainer = styled.div`
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 `;
 
-// 헤더 영역
 const RankingHeader = styled.div`
   background-color: #1c87c9;
   padding: 1.5rem 1rem;
@@ -275,20 +366,17 @@ const HelpIcon = styled.div`
   }
 `;
 
-// 테이블 래퍼
 const TableWrapper = styled.div`
   padding: 2rem;
   overflow-x: auto;
 `;
 
-// 랭킹 테이블
 const RankingTable = styled.table`
   width: 100%;
   border-collapse: separate;
   border-spacing: 0 10px;
 `;
 
-// 테이블 헤드 셀
 const TableHead = styled.th`
   background: linear-gradient(135deg, #ff9e80, #ff6e40);
   color: #fff;
@@ -300,7 +388,6 @@ const TableHead = styled.th`
   border-top-right-radius: 8px;
 `;
 
-// 테이블 행
 interface TableRowProps {
   delay: number;
 }
@@ -320,7 +407,6 @@ const TableRow = styled.tr<TableRowProps>`
   }
 `;
 
-// 테이블 셀
 const TableCell = styled.td`
   padding: 1rem;
   text-align: center;
@@ -328,7 +414,6 @@ const TableCell = styled.td`
   border-bottom: none;
 `;
 
-// 티어 셀
 const TierCell = styled.div`
   display: flex;
   align-items: center;
@@ -336,7 +421,6 @@ const TierCell = styled.div`
   font-weight: bold;
 `;
 
-// 티어 아이콘
 const TierIcon = styled.span<{ color: string }>`
   color: ${(props) => props.color};
   font-size: 1.8rem;
@@ -345,7 +429,6 @@ const TierIcon = styled.span<{ color: string }>`
   animation: ${fadeIn} 0.5s ease-in-out;
 `;
 
-// 순위 변동 정보
 const ChangeCell = styled.div`
   display: flex;
   align-items: center;
@@ -360,9 +443,13 @@ const ChangeText = styled.span<{ positive?: boolean; negative?: boolean }>`
     props.positive ? '#4caf50' : props.negative ? '#f44336' : '#999'};
 `;
 
-// ─────────────────────────────────────────────
-// Modal 관련 Styled Components
-// ─────────────────────────────────────────────
+const LoadingText = styled.p`
+  text-align: center;
+  font-size: 1.2rem;
+  color: #555;
+  margin-top: 1rem;
+`;
+
 const ModalOverlay = styled.div`
   position: fixed;
   top: 0;
