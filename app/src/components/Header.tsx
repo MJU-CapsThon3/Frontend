@@ -21,7 +21,7 @@ const Header: React.FC = () => {
           <LogoText>이거냥저거냥</LogoText>
         </LogoSection>
         <Nav>
-          <NavItem href='#'>
+          <NavItem href='/battle-list'>
             <IconWrapper>
               <FaFistRaised />
             </IconWrapper>

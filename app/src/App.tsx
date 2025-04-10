@@ -4,6 +4,7 @@ import Login from './page/auth/Login';
 import Signup from './page/auth/Signup';
 import FindId from './page/auth/FindId';
 import FindPassword from './page/auth/FindPassword';
+import BattleList from './page/Battle/BattleList';
 import './App.css';
 
 function App() {
@@ -16,6 +17,7 @@ function App() {
           <Route path='signup' element={<Signup />} />
           <Route path='find-id' element={<FindId />} />
           <Route path='find-password' element={<FindPassword />} />
+          <Route path='battle-list' element={<BattleList />} />
         </Route>
       </Routes>
     </BrowserRouter>
