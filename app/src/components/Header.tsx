@@ -47,13 +47,16 @@ const Header: React.FC = () => {
           </NavItem>
         </Nav>
         <Actions>
-          <ActionButton>
+          <ActionButton onClick={() => (window.location.href = '/login')}>
             <ButtonIcon>
               <FaSignInAlt />
             </ButtonIcon>
             로그인
           </ActionButton>
-          <ActionButton primary>
+          <ActionButton
+            primary
+            onClick={() => (window.location.href = '/sign-up')}
+          >
             <ButtonIcon>
               <FaUserPlus />
             </ButtonIcon>
@@ -162,6 +165,7 @@ const ActionButton = styled.button<{ primary?: boolean }>`
   display: flex;
   align-items: center;
   min-width: 120px;
+
   &:hover {
     opacity: 0.9;
   }

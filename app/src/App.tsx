@@ -14,7 +14,7 @@ function App() {
         <Route path='/' element={<Layout />}>
           <Route index element={<Navigate to='/login' replace />} />
           <Route path='login' element={<Login />} />
-          <Route path='signup' element={<Signup />} />
+          <Route path='sign-up' element={<Signup />} />
           <Route path='find-id' element={<FindId />} />
           <Route path='find-password' element={<FindPassword />} />
           <Route path='battle-list' element={<BattleList />} />
