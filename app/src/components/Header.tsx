@@ -2,12 +2,13 @@ import React from 'react';
 import styled from 'styled-components';
 import {
   FaFistRaised,
-  FaPoll,
+  FaTrophy,
   FaStore,
   FaUser,
   FaCat,
   FaSignInAlt,
   FaUserPlus,
+  FaTasks,
 } from 'react-icons/fa';
 
 const Header: React.FC = () => {
@@ -27,11 +28,17 @@ const Header: React.FC = () => {
             </IconWrapper>
             배틀
           </NavItem>
-          <NavItem href='#'>
+          <NavItem href='/ranking'>
             <IconWrapper>
-              <FaPoll />
+              <FaTrophy />
             </IconWrapper>
-            투표
+            랭킹
+          </NavItem>
+          <NavItem href='/quest'>
+            <IconWrapper>
+              <FaTasks />
+            </IconWrapper>
+            퀘스트
           </NavItem>
           <NavItem href='#'>
             <IconWrapper>
