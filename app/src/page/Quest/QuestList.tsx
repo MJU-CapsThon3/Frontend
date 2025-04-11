@@ -251,8 +251,8 @@ const modalFadeIn = keyframes`
 // Container와 기본 테마 (블루 계열)는 그대로 유지
 const Container = styled.div`
   min-width: 1000px;
+  margin: 0 auto;
   min-height: 80vh;
-  margin: 2rem auto;
   padding: 1.5rem;
   background: #3aa7f0;
   border: 3px solid #2e8bc0;
