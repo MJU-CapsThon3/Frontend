@@ -1,67 +1,84 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled, { keyframes } from 'styled-components';
-import {
-  FaCrown,
-  FaArrowUp,
-  FaArrowDown,
-  FaQuestionCircle,
-} from 'react-icons/fa';
+import { FaArrowUp, FaArrowDown, FaQuestionCircle } from 'react-icons/fa';
+
+// ─────────────────────────────────────────────
+// 아이콘 임포트 (각 파일 경로는 프로젝트 구조에 맞게 수정)
+import BronzeIcon from '../../assets/Bronze.svg';
+import SilverIcon from '../../assets/Silver.svg';
+import GoldIcon from '../../assets/Gold.svg';
+import PlatinumIcon from '../../assets/Platinum.svg';
+import DiamondIcon from '../../assets/Diamond.svg';
+import MasterIcon from '../../assets/Master.svg';
+import GrandMasterIcon from '../../assets/GrandMaster.svg';
+import ChallengerIcon from '../../assets/Challenger.svg';
 
 // ─────────────────────────────────────────────
 // 최대 플레이어 수 (예제에서는 40명)
 const MAX_PLAYERS = 40;
 
 // ─────────────────────────────────────────────
-// 티어별 매핑 (티어명, 아이콘 색상, 설명)
-// ─────────────────────────────────────────────
+// 티어별 매핑 (티어명, 아이콘, 색상, 설명)
 const tierMapping: {
-  [key: string]: { label: string; color: string; description: string };
+  [key: string]: {
+    label: string;
+    color: string;
+    description: string;
+    icon: string;
+  };
 } = {
   bronze: {
     label: '브론즈',
     color: '#cd7f32',
     description: '전체 계정의 80% 초과에 해당합니다.',
+    icon: BronzeIcon,
   },
   silver: {
     label: '실버',
     color: '#c0c0c0',
     description: '전체 계정의 상위 55% 초과 ~ 80% 이내에 해당합니다.',
+    icon: SilverIcon,
   },
   gold: {
     label: '골드',
     color: '#ffd700',
     description: '전체 계정의 상위 20% 초과 ~ 35% 이내에 해당합니다.',
+    icon: GoldIcon,
   },
   platinum: {
     label: '플레',
     color: '#e5e4e2',
     description: '전체 계정의 상위 35% 초과 ~ 55% 이내에 해당합니다.',
+    icon: PlatinumIcon,
   },
   diamond: {
     label: '다이아',
     color: '#b9f2ff',
     description: '전체 계정의 상위 10% 초과 ~ 20% 이내에 해당합니다.',
+    icon: DiamondIcon,
   },
   master: {
     label: '마스터',
     color: '#800080',
     description: '전체 계정의 상위 4% 초과 ~ 10% 이내에 해당합니다.',
+    icon: MasterIcon,
   },
   grandmaster: {
     label: '그랜드마스터',
     color: '#ff4500',
     description: '전체 계정의 상위 1% 초과 ~ 4% 이내에 해당합니다.',
+    icon: GrandMasterIcon,
   },
   challenger: {
     label: '챌린저',
     color: '#00ced1',
     description: '전체 계정의 상위 1% 이내에 해당합니다.',
+    icon: ChallengerIcon,
   },
 };
 
 // ─────────────────────────────────────────────
 // 순위에 따른 티어 결정 함수 (비율 기반)
-// totalPlayers(전체 플레이어 수)를 이용해 각 티어의 상한선을 계산합니다.
 const getTierByRank = (
   rank: number,
   totalPlayers: number = MAX_PLAYERS
@@ -89,7 +106,6 @@ const getTierByRank = (
 
 // ─────────────────────────────────────────────
 // TierInfoModal Component (모달)
-// ─────────────────────────────────────────────
 type TierInfoModalProps = {
   onClose: () => void;
 };
@@ -107,8 +123,13 @@ const TierInfoModal: React.FC<TierInfoModalProps> = ({ onClose }) => {
             const tier = tierMapping[key];
             return (
               <TierInfo key={key}>
-                <TierIcon color={tier.color}>
-                  <FaCrown />
+                <TierIcon>
+                  <img
+                    src={tier.icon}
+                    alt={tier.label}
+                    width='24'
+                    height='24'
+                  />
                 </TierIcon>
                 <TierDetail>
                   <TierLabel>{tier.label}</TierLabel>
@@ -125,7 +146,6 @@ const TierInfoModal: React.FC<TierInfoModalProps> = ({ onClose }) => {
 
 // ─────────────────────────────────────────────
 // RankingPage Component (무한스크롤 적용)
-// ─────────────────────────────────────────────
 type UserRank = {
   id: number;
   username: string;
@@ -135,50 +155,18 @@ type UserRank = {
 };
 
 const RankingPage: React.FC = () => {
-  // 초기 랭킹 데이터 (페이지 1의 데이터 5명)
   const [rankingData, setRankingData] = useState<UserRank[]>([
-    {
-      id: 1,
-      username: '홍길동',
-      score: 1500,
-      rank: 1,
-      change: 0,
-    },
-    {
-      id: 2,
-      username: '김철수',
-      score: 1400,
-      rank: 2,
-      change: 1,
-    },
-    {
-      id: 3,
-      username: '이영희',
-      score: 1300,
-      rank: 3,
-      change: -1,
-    },
-    {
-      id: 4,
-      username: '박지민',
-      score: 1200,
-      rank: 4,
-      change: 2,
-    },
-    {
-      id: 5,
-      username: '최수정',
-      score: 1100,
-      rank: 5,
-      change: 0,
-    },
+    { id: 1, username: '홍길동', score: 1500, rank: 1, change: 0 },
+    { id: 2, username: '김철수', score: 1400, rank: 2, change: 1 },
+    { id: 3, username: '이영희', score: 1300, rank: 3, change: -1 },
+    { id: 4, username: '박지민', score: 1200, rank: 4, change: 2 },
+    { id: 5, username: '최수정', score: 1100, rank: 5, change: 0 },
   ]);
 
   const [page, setPage] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // 가상의 API 호출 시뮬레이션 (실제 구현 시 API 호출)
   const fetchRankingData = (_: number): Promise<UserRank[]> => {
     return new Promise((resolve) => {
       setTimeout(() => {
@@ -249,7 +237,6 @@ const RankingPage: React.FC = () => {
           </thead>
           <tbody>
             {rankingData.map((user, index) => {
-              // 티어 결정 (비율 기준, 총 플레이어수 MAX_PLAYERS)
               const tierKey = getTierByRank(user.rank, MAX_PLAYERS);
               const tierInfo = tierMapping[tierKey];
               return (
@@ -276,8 +263,14 @@ const RankingPage: React.FC = () => {
                   </TableCell>
                   <TableCell>
                     <TierCell>
-                      <TierIcon color={tierInfo.color}>
-                        <FaCrown />
+                      <TierIcon>
+                        <img
+                          src={tierInfo.icon}
+                          alt={tierInfo.label}
+                          width='24'
+                          height='24'
+                          style={{ marginRight: '0.5rem' }}
+                        />
                       </TierIcon>
                       {tierInfo.label}
                     </TierCell>
@@ -300,7 +293,6 @@ export default RankingPage;
 
 // ─────────────────────────────────────────────
 // 애니메이션 keyframes
-// ─────────────────────────────────────────────
 const fadeIn = keyframes`
   from {
     opacity: 0;
@@ -314,7 +306,6 @@ const fadeIn = keyframes`
 
 // ─────────────────────────────────────────────
 // Styled Components (공통 스타일)
-// ─────────────────────────────────────────────
 const RankingContainer = styled.div`
   min-width: 1000px;
   min-height: 80vh;
@@ -405,7 +396,6 @@ const TableCell = styled.td`
   padding: 1rem;
   text-align: center;
   font-size: 1rem;
-  border-bottom: none;
 `;
 
 const TierCell = styled.div`
@@ -415,12 +405,9 @@ const TierCell = styled.div`
   font-weight: bold;
 `;
 
-const TierIcon = styled.span<{ color: string }>`
-  color: ${(props) => props.color};
-  font-size: 1.8rem;
-  margin-right: 0.5rem;
+const TierIcon = styled.span`
   display: inline-flex;
-  animation: ${fadeIn} 0.5s ease-in-out;
+  /* 추가적인 스타일 조정 가능 */
 `;
 
 const ChangeCell = styled.div`
