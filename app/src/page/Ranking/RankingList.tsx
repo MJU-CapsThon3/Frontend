@@ -127,8 +127,8 @@ const TierInfoModal: React.FC<TierInfoModalProps> = ({ onClose }) => {
                   <img
                     src={tier.icon}
                     alt={tier.label}
-                    width='24'
-                    height='24'
+                    width='40'
+                    height='40'
                   />
                 </TierIcon>
                 <TierDetail>
@@ -267,8 +267,8 @@ const RankingPage: React.FC = () => {
                         <img
                           src={tierInfo.icon}
                           alt={tierInfo.label}
-                          width='24'
-                          height='24'
+                          width='40'
+                          height='40'
                           style={{ marginRight: '0.5rem' }}
                         />
                       </TierIcon>
@@ -407,6 +407,7 @@ const TierCell = styled.div`
 
 const TierIcon = styled.span`
   display: inline-flex;
+
   /* 추가적인 스타일 조정 가능 */
 `;
 
