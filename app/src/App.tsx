@@ -8,6 +8,7 @@ import BattleList from './page/Battle/BattleList';
 import BattleDetail from './page/Battle/BattleDetail';
 import RankingList from './page/Ranking/RankingList';
 import QuestList from './page/Quest/QuestList';
+import ShopList from './page/Shop/ShopList';
 
 import './App.css';
 
@@ -25,6 +26,7 @@ function App() {
           <Route path='/battle/:roomId' element={<BattleDetail />} />
           <Route path='ranking-list' element={<RankingList />} />
           <Route path='quest-list' element={<QuestList />} />
+          <Route path='shop-list' element={<ShopList />} />
         </Route>
       </Routes>
     </BrowserRouter>
