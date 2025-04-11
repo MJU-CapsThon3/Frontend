@@ -5,6 +5,16 @@ import Background from '../components/Background';
 import Header from '../components/Header';
 
 const GlobalStyle = createGlobalStyle`
+  /* 모든 엘리먼트의 기본 margin/padding 제거 및 스크롤 막기 */
+  * {
+    box-sizing: border-box;
+  }
+  html, body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+  
   .star {
     fill: white;
     opacity: 0.8;
@@ -12,12 +22,8 @@ const GlobalStyle = createGlobalStyle`
   }
   
   @keyframes twinkle {
-    from {
-      opacity: 0.5;
-    }
-    to {
-      opacity: 1;
-    }
+    from { opacity: 0.5; }
+    to { opacity: 1; }
   }
   
   .planet {
@@ -27,12 +33,8 @@ const GlobalStyle = createGlobalStyle`
   }
   
   @keyframes float {
-    from {
-      transform: translate(0, 0);
-    }
-    to {
-      transform: translate(5px, 5px);
-    }
+    from { transform: translate(0, 0); }
+    to { transform: translate(5px, 5px); }
   }
 `;
 
@@ -55,11 +57,13 @@ export default Layout;
 
 const Container = styled.div`
   position: relative;
+  height: 100vh;
+  overflow: hidden;
 `;
 
 const Main = styled.main`
-  margin-top: 70px;
-  margin-bottom: 70px;
+  /* 헤더 높이가 70px라고 가정(헤더의 높이에 맞게 조정하세요) */
+  height: calc(100vh);
   display: flex;
   flex-direction: column;
   justify-content: center;
