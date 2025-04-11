@@ -5,8 +5,10 @@ import Signup from './page/auth/Signup';
 import FindId from './page/auth/FindId';
 import FindPassword from './page/auth/FindPassword';
 import BattleList from './page/Battle/BattleList';
+import BattleDetail from './page/Battle/BattleDetail';
 import RankingList from './page/Ranking/RankingList';
 import QuestList from './page/Quest/QuestList';
+
 import './App.css';
 
 function App() {
@@ -20,6 +22,7 @@ function App() {
           <Route path='find-id' element={<FindId />} />
           <Route path='find-password' element={<FindPassword />} />
           <Route path='battle-list' element={<BattleList />} />
+          <Route path='/battle/:roomId' element={<BattleDetail />} />
           <Route path='ranking-list' element={<RankingList />} />
           <Route path='quest-list' element={<QuestList />} />
         </Route>
