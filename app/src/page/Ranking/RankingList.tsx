@@ -218,7 +218,7 @@ const RankingPage: React.FC = () => {
     <RankingContainer>
       <RankingHeader>
         <HeaderTitleWrapper>
-          <HeaderTitle>랭킹 페이지</HeaderTitle>
+          <HeaderTitle>랭킹</HeaderTitle>
           <HelpIcon onClick={() => setIsModalOpen(true)}>
             <FaQuestionCircle />
           </HelpIcon>
@@ -363,14 +363,20 @@ const RankingTable = styled.table`
 `;
 
 const TableHead = styled.th`
-  background: linear-gradient(135deg, #ff9e80, #ff6e40);
+  background: #ff6e40; /* 눈에 띄는 단색 배경 */
   color: #fff;
-  padding: 1rem;
+  padding: 1.2rem 1.5rem;
   text-align: center;
-  font-size: 1.1rem;
+  font-size: 1.2rem;
+  font-weight: bold;
   border-bottom: 2px solid #ffa136;
-  border-top-left-radius: 8px;
-  border-top-right-radius: 8px;
+  /* 좌우 모서리 둥글게 (첫 번째, 마지막 셀에 적용) */
+  &:first-child {
+    border-top-left-radius: 8px;
+  }
+  &:last-child {
+    border-top-right-radius: 8px;
+  }
 `;
 
 interface TableRowProps {
