@@ -40,7 +40,7 @@ const Header: React.FC = () => {
             </IconWrapper>
             퀘스트
           </NavItem>
-          <NavItem href='#'>
+          <NavItem href='/shop-list'>
             <IconWrapper>
               <FaStore />
             </IconWrapper>
