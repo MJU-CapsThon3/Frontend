@@ -89,6 +89,7 @@ const HeaderContainer = styled.header`
 
 const HeaderWrapper = styled.div`
   max-width: 1280px;
+
   margin: 0 auto;
   padding: 0.5rem 2rem;
   display: flex;
@@ -120,7 +121,7 @@ const Nav = styled.nav`
   justify-content: center;
   align-items: center;
   gap: 2rem;
-  min-width: 350px;
+  min-width: 450px;
 `;
 
 const NavItem = styled.a`
