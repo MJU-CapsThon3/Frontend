@@ -34,7 +34,7 @@ const Header: React.FC = () => {
             </IconWrapper>
             랭킹
           </NavItem>
-          <NavItem href='/quest'>
+          <NavItem href='/quest-list'>
             <IconWrapper>
               <FaTasks />
             </IconWrapper>

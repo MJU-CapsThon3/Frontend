@@ -179,7 +179,7 @@ const RankingPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   // 가상의 API 호출 시뮬레이션 (실제 구현 시 API 호출)
-  const fetchRankingData = (pageNumber: number): Promise<UserRank[]> => {
+  const fetchRankingData = (_: number): Promise<UserRank[]> => {
     return new Promise((resolve) => {
       setTimeout(() => {
         const currentCount = rankingData.length;
