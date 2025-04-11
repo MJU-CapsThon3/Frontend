@@ -20,31 +20,37 @@ import MasterIcon from '../../assets/Master.svg';
 import GrandMasterIcon from '../../assets/GrandMaster.svg';
 import ChallengerIcon from '../../assets/Challenger.svg';
 
-// 플레이어 타입 정의
+// 플레이어 타입 정의 (팀은 'blue' | 'red'로 변경)
 type PlayerData = {
   id: number;
   nickname: string;
   avatarUrl?: string;
   isReady?: boolean;
-  team?: 'owl' | 'bird';
+  team?: 'blue' | 'red';
 };
 
-// 예시 플레이어 데이터 (8명, 2행×4열)
+// 예시 플레이어 데이터 (방장은 team 없이, 나머지는 임의로 'blue'로 선택)
 const dummyPlayers: PlayerData[] = [
   { id: 1, nickname: '승민이의세상', avatarUrl: '', isReady: true },
-  { id: 2, nickname: '수민이의세상', avatarUrl: '', isReady: true },
-  { id: 3, nickname: '플레이어3', avatarUrl: '', isReady: false },
-  { id: 4, nickname: '플레이어4', avatarUrl: '', isReady: false },
-  { id: 5, nickname: '플레이어5', avatarUrl: '', isReady: true },
-  { id: 6, nickname: '플레이어6', avatarUrl: '', isReady: false },
-  { id: 7, nickname: '플레이어7', avatarUrl: '', isReady: false },
-  { id: 8, nickname: '플레이어8', avatarUrl: '', isReady: false },
+  {
+    id: 2,
+    nickname: '수민이의세상',
+    avatarUrl: '',
+    isReady: true,
+    team: 'blue',
+  },
+  { id: 3, nickname: '플레이어3', avatarUrl: '', isReady: true, team: 'blue' },
+  { id: 4, nickname: '플레이어4', avatarUrl: '', isReady: true, team: 'red' },
+  { id: 5, nickname: '플레이어5', avatarUrl: '', isReady: true, team: 'blue' },
+  { id: 6, nickname: '플레이어6', avatarUrl: '', isReady: true, team: 'blue' },
+  { id: 7, nickname: '플레이어7', avatarUrl: '', isReady: true, team: 'red' },
+  { id: 8, nickname: '플레이어8', avatarUrl: '', isReady: true, team: 'red' },
 ];
 
 // 키워드 풀: 랜덤 주제 생성에 사용할 키워드 목록
 const keywordPool: string[] = [
-  '올빼미',
-  '얼리버드',
+  '블루팀',
+  '레드팀',
   '호랑이',
   '사자',
   '펭귄',
@@ -100,13 +106,13 @@ const BattleDetail: React.FC = () => {
     '[공지] 환영합니다',
   ]);
   // 초기 주제는 기본값으로 설정
-  const [subject, setSubject] = useState<string>('올빼미 vs 얼리버드');
+  const [subject, setSubject] = useState<string>('블루팀 vs 레드팀');
   const [teamNames, setTeamNames] = useState<{
     teamOne: string;
     teamTwo: string;
   }>({
-    teamOne: '올빼미',
-    teamTwo: '얼리버드',
+    teamOne: '블루팀',
+    teamTwo: '레드팀',
   });
   const [modalVisible, setModalVisible] = useState<boolean>(false);
   const [keywordOne, setKeywordOne] = useState<string>('');
@@ -119,9 +125,7 @@ const BattleDetail: React.FC = () => {
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerData | null>(null);
 
   // 모든 플레이어 준비 상태 확인
-  const allPlayersReady = players.every(
-    (p) => p.id === OWNER_ID || (p.team && p.isReady)
-  );
+  const allPlayersReady = players.every((p) => p.team && p.isReady);
 
   // 랜덤 키워드 생성 함수 (두 키워드를 무작위로 선택)
   const getRandomKeywords = (): [string, string] => {
@@ -173,16 +177,23 @@ const BattleDetail: React.FC = () => {
     setChatInput('');
   };
 
-  const handleOwlClick = () => {
+  // 방장이 팀 선택 시 -> 'blue' 할당
+  const handleBlueClick = () => {
     setPlayers((prev) =>
-      prev.map((p) => (p.id === OWNER_ID ? { ...p, team: 'owl' } : p))
+      prev.map((p) => (p.id === OWNER_ID ? { ...p, team: 'blue' } : p))
     );
   };
 
-  const handleEarlyClick = () => {
+  // 방장이 팀 선택 시 -> 'red' 할당
+  const handleRedClick = () => {
     setPlayers((prev) =>
-      prev.map((p) => (p.id === OWNER_ID ? { ...p, team: 'bird' } : p))
+      prev.map((p) => (p.id === OWNER_ID ? { ...p, team: 'red' } : p))
     );
+  };
+
+  // 나가기 버튼 클릭 시 이전 페이지로 이동
+  const handleExit = () => {
+    navigate(-1);
   };
 
   const handleStartGame = () => {
@@ -203,8 +214,8 @@ const BattleDetail: React.FC = () => {
 
   const isOwner = (id: number) => id === OWNER_ID;
   const getPlayerSlotBgColor = (player: PlayerData): string => {
-    if (player.team === 'owl') return '#33bfff';
-    if (player.team === 'bird') return '#ff6b6b';
+    if (player.team === 'blue') return '#33bfff';
+    if (player.team === 'red') return '#ff6b6b';
     return '#fff';
   };
 
@@ -237,7 +248,7 @@ const BattleDetail: React.FC = () => {
         <button
           className='animated-button'
           style={exitButtonStyle}
-          // onClick={handleExit}
+          onClick={handleExit}
         >
           <FaSignOutAlt style={{ marginRight: '0.3rem' }} />
           나가기
@@ -286,7 +297,7 @@ const BattleDetail: React.FC = () => {
               >
                 {player.team && (
                   <div style={teamIconContainerStyle}>
-                    {player.team === 'owl' ? (
+                    {player.team === 'blue' ? (
                       <FaChessKnight
                         style={{ fontSize: '1.5rem', color: '#33bfff' }}
                       />
@@ -368,23 +379,23 @@ const BattleDetail: React.FC = () => {
                 <div style={teamButtonsColumnStyle}>
                   <button
                     className='animated-button'
-                    onClick={handleOwlClick}
+                    onClick={handleBlueClick}
                     style={{
                       ...teamButtonStyle,
-                      backgroundColor: ownerTeam === 'owl' ? '#33bfff' : '#eee',
-                      color: ownerTeam === 'owl' ? '#fff' : '#333',
+                      backgroundColor:
+                        ownerTeam === 'blue' ? '#33bfff' : '#eee',
+                      color: ownerTeam === 'blue' ? '#fff' : '#333',
                     }}
                   >
                     {teamNames.teamOne}
                   </button>
                   <button
                     className='animated-button'
-                    onClick={handleEarlyClick}
+                    onClick={handleRedClick}
                     style={{
                       ...teamButtonStyle,
-                      backgroundColor:
-                        ownerTeam === 'bird' ? '#ff6b6b' : '#eee',
-                      color: ownerTeam === 'bird' ? '#fff' : '#333',
+                      backgroundColor: ownerTeam === 'red' ? '#ff6b6b' : '#eee',
+                      color: ownerTeam === 'red' ? '#fff' : '#333',
                     }}
                   >
                     {teamNames.teamTwo}
@@ -408,23 +419,23 @@ const BattleDetail: React.FC = () => {
                 <div style={teamButtonsColumnStyle}>
                   <button
                     className='animated-button'
-                    onClick={handleOwlClick}
+                    onClick={handleBlueClick}
                     style={{
                       ...teamButtonStyle,
-                      backgroundColor: ownerTeam === 'owl' ? '#33bfff' : '#eee',
-                      color: ownerTeam === 'owl' ? '#fff' : '#333',
+                      backgroundColor:
+                        ownerTeam === 'blue' ? '#33bfff' : '#eee',
+                      color: ownerTeam === 'blue' ? '#fff' : '#333',
                     }}
                   >
                     {teamNames.teamOne}
                   </button>
                   <button
                     className='animated-button'
-                    onClick={handleEarlyClick}
+                    onClick={handleRedClick}
                     style={{
                       ...teamButtonStyle,
-                      backgroundColor:
-                        ownerTeam === 'bird' ? '#ff6b6b' : '#eee',
-                      color: ownerTeam === 'bird' ? '#fff' : '#333',
+                      backgroundColor: ownerTeam === 'red' ? '#ff6b6b' : '#eee',
+                      color: ownerTeam === 'red' ? '#fff' : '#333',
                     }}
                   >
                     {teamNames.teamTwo}
@@ -816,7 +827,6 @@ const teamButtonStyle: CSSProperties = {
   fontWeight: 'bold',
   width: '100%',
   padding: '0.4rem 0',
-  // 텍스트가 영역 넘어가면 "..." 처리
   overflow: 'hidden',
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap',
