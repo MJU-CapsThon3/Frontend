@@ -410,7 +410,7 @@ const CategoryButton = styled.button<{ active?: boolean }>`
 
 const ShopItemsContainer = styled.div`
   flex: 1;
-  max-height: 600px;
+  max-height: 500px;
   overflow-y: auto;
 `;
 
@@ -588,9 +588,10 @@ const ActionButton = styled.button`
 
 const MyItemsSection = styled.div`
   padding-top: 0.5rem;
-  border-top: 1px solid #ccc;
+  border: 1px solid #ccc;
+  border-radius: 4px;
   background-color: #f7f7f7;
-  height: 400px;
+  height: 270px;
   overflow-y: auto;
 `;
 
