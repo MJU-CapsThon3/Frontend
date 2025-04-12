@@ -9,14 +9,7 @@ import {
   FaBorderStyle,
 } from 'react-icons/fa';
 
-/* 애니메이션: 마우스 오버 시 살짝 떠오르는 효과 */
-const floatUpDown = keyframes`
-  0% { transform: translateY(0); }
-  50% { transform: translateY(-5px); }
-  100% { transform: translateY(0); }
-`;
-
-/* -------- 타입 정의 -------- */
+/* ------------------- 타입 정의 ------------------- */
 type CategoryType = '전체' | '팀 아이콘' | '효과음' | '테두리';
 
 interface ShopItem {
@@ -37,7 +30,7 @@ interface MyBoxState {
   avatarUrl?: string;
 }
 
-/* -------- 더미 아이템 데이터 -------- */
+/* ------------------- 더미 아이템 데이터 ------------------- */
 const dummyShopItems: ShopItem[] = [
   {
     id: 1,
@@ -123,9 +116,43 @@ const dummyShopItems: ShopItem[] = [
     icon: <FaChessKnight size={32} color='#888888' />,
     category: '팀 아이콘',
   },
+  // 추가 아이템 예시
+  {
+    id: 13,
+    name: '실버 팀 아이콘',
+    price: 9500,
+    icon: <FaUserAlt size={32} color='#C0C0C0' />,
+    category: '팀 아이콘',
+  },
+  {
+    id: 14,
+    name: '럭셔리 테두리',
+    price: 3000,
+    icon: <FaBorderStyle size={32} color='#FFD700' />,
+    category: '테두리',
+  },
+  {
+    id: 15,
+    name: '모던 효과',
+    price: 1700,
+    icon: <FaSmileBeam size={32} color='#00CC99' />,
+    category: '효과음',
+  },
 ];
 
-/* -------- 상점 메인 컴포넌트 -------- */
+/* ------------------- 애니메이션 ------------------- */
+const floatUpDown = keyframes`
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+  100% { transform: translateY(0); }
+`;
+
+const fadeIn = keyframes`
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+`;
+
+/* ------------------- 상점 메인 컴포넌트 ------------------- */
 const ShopWithPreview: React.FC = () => {
   const [myBox, setMyBox] = useState<MyBoxState>({
     nickname: '내 닉네임',
@@ -149,37 +176,43 @@ const ShopWithPreview: React.FC = () => {
     );
   };
 
-  const handleApplyItem = (item: ShopItem) => {
+  // 미리보기 버튼 - 팀 아이콘과 테두리는 적용, 효과음은 미리보기가 지원되지 않음
+  const handlePreviewItem = (item: ShopItem) => {
     if (item.category === '팀 아이콘') {
       setMyBox((prev) => ({ ...prev, appliedTeamIcon: item }));
     } else if (item.category === '테두리') {
       setMyBox((prev) => ({ ...prev, appliedBorder: item }));
     } else {
-      alert('효과음 아이템은 아직 기능이 없습니다.');
+      alert('효과음 아이템은 미리보기가 지원되지 않습니다.');
     }
   };
 
-  const handleSelectTeam = (team: TeamType) => {
-    if (!myBox.appliedTeamIcon) return;
-    const updatedTeamIcon: ShopItem = {
-      ...myBox.appliedTeamIcon,
-      icon: React.cloneElement(
-        myBox.appliedTeamIcon.icon as React.ReactElement,
-        { color: team === 'red' ? '#ff0000' : '#0000ff' }
-      ),
-    };
-    setMyBox((prev) => ({ ...prev, appliedTeamIcon: updatedTeamIcon }));
+  // 원래대로(초기화) 버튼 핸들러
+  const handleResetPreview = () => {
+    setMyBox({
+      nickname: '내 닉네임',
+      isReady: false,
+      appliedTeamIcon: null,
+      appliedBorder: null,
+      avatarUrl: '',
+    });
   };
 
-  const toggleReady = () => {
-    setMyBox((prev) => ({ ...prev, isReady: !prev.isReady }));
-  };
-
-  const filteredItems = dummyShopItems
-    .filter((item) =>
-      selectedCategory === '전체' ? true : item.category === selectedCategory
-    )
-    .slice(0, 8);
+  // "전체"를 선택하면 전체 아이템, 아니라면 최대 8개만 보여주도록 처리
+  const filteredItems =
+    selectedCategory === '전체'
+      ? dummyShopItems.filter((item) =>
+          selectedCategory === '전체'
+            ? true
+            : item.category === selectedCategory
+        )
+      : dummyShopItems
+          .filter((item) =>
+            selectedCategory === '전체'
+              ? true
+              : item.category === selectedCategory
+          )
+          .slice(0, 8);
 
   const getBoxBorderStyle = () => {
     if (!myBox.appliedBorder) return '2px solid #999';
@@ -206,30 +239,38 @@ const ShopWithPreview: React.FC = () => {
             )
           )}
         </CategoryContainer>
-        <ItemGrid>
-          {filteredItems.map((item) => (
-            <ItemCard key={item.id}>
-              <ItemRow>
-                <IconWrapper>{item.icon}</IconWrapper>
-                <ItemText>
-                  <ItemName>{item.name}</ItemName>
-                  <ItemPrice>가격: {item.price}원</ItemPrice>
-                </ItemText>
-              </ItemRow>
-              <BuyButton onClick={() => handleBuyItem(item)}>구매</BuyButton>
-            </ItemCard>
-          ))}
-        </ItemGrid>
+        <ShopItemsContainer>
+          <ItemGrid>
+            {filteredItems.map((item) => (
+              <ItemCard key={item.id}>
+                <ItemRow>
+                  <IconWrapper>{item.icon}</IconWrapper>
+                  <ItemText>
+                    <ItemName>{item.name}</ItemName>
+                    <ItemPrice>가격: {item.price}원</ItemPrice>
+                  </ItemText>
+                </ItemRow>
+                <ButtonRow>
+                  <PreviewButton onClick={() => handlePreviewItem(item)}>
+                    미리보기
+                  </PreviewButton>
+                  <BuyButton onClick={() => handleBuyItem(item)}>
+                    구매
+                  </BuyButton>
+                </ButtonRow>
+              </ItemCard>
+            ))}
+          </ItemGrid>
+        </ShopItemsContainer>
       </ShopSection>
 
       <PreviewSection>
         <SectionTitle>내 박스 미리보기</SectionTitle>
         <BattleBox customBorder={getBoxBorderStyle()}>
-          {myBox.appliedTeamIcon && (
-            <AppliedIcon>{myBox.appliedTeamIcon.icon}</AppliedIcon>
-          )}
           <Nickname>{myBox.nickname}</Nickname>
-          {myBox.avatarUrl ? (
+          {myBox.appliedTeamIcon ? (
+            <AvatarContainer>{myBox.appliedTeamIcon.icon}</AvatarContainer>
+          ) : myBox.avatarUrl ? (
             <Avatar src={myBox.avatarUrl} alt='avatar' />
           ) : (
             <DefaultAvatar>
@@ -244,23 +285,12 @@ const ShopWithPreview: React.FC = () => {
             )}
           </ReadyIndicator>
         </BattleBox>
-        <ButtonGroup>
-          <ActionButton onClick={() => handleSelectTeam('red')}>
-            빨간팀
-          </ActionButton>
-          <ActionButton onClick={() => handleSelectTeam('blue')}>
-            파란팀
-          </ActionButton>
-          <ActionButton onClick={toggleReady}>
-            {myBox.isReady ? '준비 해제' : '준비'}
-          </ActionButton>
-        </ButtonGroup>
-
+        <ActionButton onClick={handleResetPreview}>원래대로</ActionButton>
         <MyItemsSection>
           <SectionTitle>내 아이템</SectionTitle>
           <MyItemsGrid>
             {myItems.map((item) => (
-              <MyItemCard key={item.id} onClick={() => handleApplyItem(item)}>
+              <MyItemCard key={item.id} onClick={() => handlePreviewItem(item)}>
                 <MyItemIcon>{item.icon}</MyItemIcon>
                 <MyItemName>{item.name}</MyItemName>
               </MyItemCard>
@@ -274,9 +304,8 @@ const ShopWithPreview: React.FC = () => {
 
 export default ShopWithPreview;
 
-/* -------- Styled Components -------- */
+/* ------------------- Styled Components ------------------- */
 
-/* 공통 컨테이너 */
 const PageContainer = styled.div`
   width: 1000px;
   margin: 2rem auto;
@@ -288,7 +317,6 @@ const PageContainer = styled.div`
   border-radius: 10px;
 `;
 
-/* 상점 영역 */
 const ShopSection = styled.div`
   flex: 2;
   background: #f0f8ff;
@@ -303,6 +331,8 @@ const SectionTitle = styled.h2`
   margin: 0 0 1rem 0;
   text-align: center;
   color: #333;
+  font-size: 1.2rem;
+  font-weight: bold;
 `;
 
 const CategoryContainer = styled.div`
@@ -325,12 +355,17 @@ const CategoryButton = styled.button<{ active?: boolean }>`
   }
 `;
 
+const ShopItemsContainer = styled.div`
+  flex: 1;
+  max-height: 600px;
+  overflow-y: auto;
+`;
+
 const ItemGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  grid-template-rows: repeat(4, 1fr);
+  grid-template-rows: repeat(auto-fit, auto);
   gap: 1rem;
-  flex: 1;
   background-color: #d8ebff;
   border: 1px solid #99cfff;
   border-radius: 4px;
@@ -342,21 +377,24 @@ const ItemCard = styled.div`
   border: 2px solid #1d2a68;
   border-radius: 6px;
   padding: 0.5rem;
-  color: #fff;
+  color: #eef;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   cursor: pointer;
-  transition: transform 0.3s;
+  transition:
+    transform 0.3s,
+    box-shadow 0.3s;
+  animation: ${fadeIn} 0.5s ease-out;
   &:hover {
-    animation: ${floatUpDown} 0.8s ease-in-out;
+    transform: scale(1.03);
+    box-shadow: 0 5px 12px rgba(255, 255, 255, 0.3);
   }
 `;
 
 const ItemRow = styled.div`
   display: flex;
   gap: 0.5rem;
-  height: 100%;
   align-items: center;
 `;
 
@@ -365,7 +403,7 @@ const IconWrapper = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: aliceblue;
+  background-color: #eef;
   padding: 10px;
   border-radius: 8px;
 `;
@@ -378,7 +416,7 @@ const ItemText = styled.div`
 const ItemName = styled.span`
   font-size: 0.9rem;
   font-weight: bold;
-  color: #ff66ff;
+  color: #ffccff;
   margin-bottom: 0.2rem;
 `;
 
@@ -387,24 +425,44 @@ const ItemPrice = styled.span`
   color: #ddd;
 `;
 
-const BuyButton = styled.button`
+const ButtonRow = styled.div`
   margin-top: 0.5rem;
-  width: 100%;
-  align-self: center;
-  background-color: #4460ff;
+  display: flex;
+  gap: 0.5rem;
+`;
+
+const PreviewButton = styled.button`
+  flex: 1;
+  background-color: #5599ff;
   border: none;
   border-radius: 4px;
-  padding: 0.3rem 0.6rem;
+  padding: 0.3rem;
   color: #fff;
   font-size: 0.8rem;
   font-weight: bold;
   cursor: pointer;
+  transition: opacity 0.2s;
   &:hover {
     opacity: 0.9;
   }
 `;
 
-/* 미리보기 영역 */
+const BuyButton = styled.button`
+  flex: 1;
+  background-color: #4460ff;
+  border: none;
+  border-radius: 4px;
+  padding: 0.3rem;
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  &:hover {
+    opacity: 0.9;
+  }
+`;
+
 const PreviewSection = styled.div`
   flex: 1;
   background: #fffdd0;
@@ -425,15 +483,6 @@ const BattleBox = styled.div<{ customBorder?: string }>`
   border-radius: 6px;
   overflow: hidden;
   background-color: #ccc;
-`;
-
-const AppliedIcon = styled.div`
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  z-index: 5;
-  font-size: 28px;
-  color: #888888;
 `;
 
 const Nickname = styled.div`
@@ -462,6 +511,16 @@ const DefaultAvatar = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
+`;
+
+/* AvatarContainer: 팀 아이콘이 적용되었을 경우, 아바타 자리로 대체 */
+const AvatarContainer = styled.div`
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
 `;
 
 const ReadyIndicator = styled.div`
@@ -497,12 +556,6 @@ const NotReadyBadge = styled.div`
   text-align: center;
 `;
 
-const ButtonGroup = styled.div`
-  display: flex;
-  justify-content: center;
-  gap: 0.5rem;
-`;
-
 const ActionButton = styled.button`
   background-color: #eee;
   border: 1px solid #999;
@@ -515,46 +568,51 @@ const ActionButton = styled.button`
   }
 `;
 
-/* 내 아이템 영역 */
 const MyItemsSection = styled.div`
   padding-top: 0.5rem;
   border-top: 1px solid #ccc;
+  background-color: #f7f7f7;
+  height: 400px;
+  overflow-y: auto;
 `;
 
 const MyItemsGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-  gap: 1px;
-  /* 3행 고정 높이, 넘으면 세로 스크롤 */
-  max-height: calc(3 * 100px + 2 * 0.5rem);
-  overflow-y: auto;
-  padding: 0.5rem 0;
+  grid-template-columns: repeat(3, 1fr); /* 3열 고정 */
+  gap: 10px;
+  padding: 10px;
 `;
 
 const MyItemCard = styled.div`
-  width: 85px;
-  height: 85px;
+  width: 80px;
+  height: 80px;
   background-color: #fff;
   border: 2px solid #ffa000;
   border-radius: 6px;
   padding: 0.3rem;
   text-align: center;
   cursor: pointer;
-  transition: transform 0.3s;
+  transition:
+    transform 0.3s,
+    background-color 0.3s;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  animation: ${fadeIn} 0.5s ease-out;
   &:hover {
     transform: scale(1.05);
+    background-color: #fffae6;
   }
 `;
 
 const MyItemIcon = styled.div`
-  font-size: 28px;
+  font-size: 20px;
+  margin-bottom: 0.3rem;
 `;
 
 const MyItemName = styled.span`
   font-size: 0.8rem;
   color: #333;
+  font-weight: 500;
 `;
