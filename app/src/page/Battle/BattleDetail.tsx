@@ -1,16 +1,15 @@
-import React, { useState, CSSProperties } from 'react';
+import React, { useState, CSSProperties, useEffect, useRef } from 'react';
+import styled from 'styled-components';
 import {
   FaCommentDots,
   FaUserAlt,
-  FaChessKnight,
-  FaChessRook,
   FaSignOutAlt,
   FaRandom,
   FaEdit,
 } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 
-// 티어 아이콘 임포트
+// ───── 아이콘 임포트 ──────────────────────────────
 import BronzeIcon from '../../assets/Bronze.svg';
 import SilverIcon from '../../assets/Silver.svg';
 import GoldIcon from '../../assets/Gold.svg';
@@ -20,37 +19,98 @@ import MasterIcon from '../../assets/Master.svg';
 import GrandMasterIcon from '../../assets/GrandMaster.svg';
 import ChallengerIcon from '../../assets/Challenger.svg';
 
-// 플레이어 타입 정의 (팀은 'blue' | 'red'로 변경)
+// ───── 타입 및 테스트 데이터 ──────────────────────────────
+type Tier =
+  | 'bronze'
+  | 'silver'
+  | 'gold'
+  | 'platinum'
+  | 'diamond'
+  | 'master'
+  | 'grandmaster'
+  | 'challenger';
+
+type Role = 'participant' | 'spectator';
 type PlayerData = {
   id: number;
   nickname: string;
   avatarUrl?: string;
   isReady?: boolean;
   team?: 'blue' | 'red';
+  role: Role;
+  tier: Tier;
 };
 
-// 예시 플레이어 데이터 (방장은 team 없이, 나머지는 임의로 'blue'로 선택)
-const dummyPlayers: PlayerData[] = [
-  { id: 1, nickname: '승민이의세상', avatarUrl: '', isReady: true },
+const initialPlayers: PlayerData[] = [
   {
-    id: 2,
-    nickname: '수민이의세상',
+    id: 1,
+    nickname: '테스트1',
     avatarUrl: '',
     isReady: true,
-    team: 'blue',
+    role: 'participant',
+    tier: 'challenger',
   },
-  { id: 3, nickname: '플레이어3', avatarUrl: '', isReady: true, team: 'blue' },
-  { id: 4, nickname: '플레이어4', avatarUrl: '', isReady: true, team: 'red' },
-  { id: 5, nickname: '플레이어5', avatarUrl: '', isReady: true, team: 'blue' },
-  { id: 6, nickname: '플레이어6', avatarUrl: '', isReady: true, team: 'blue' },
-  { id: 7, nickname: '플레이어7', avatarUrl: '', isReady: true, team: 'red' },
-  { id: 8, nickname: '플레이어8', avatarUrl: '', isReady: true, team: 'red' },
+  {
+    id: 2,
+    nickname: '플레이어2',
+    avatarUrl: '',
+    isReady: true,
+    role: 'spectator',
+    tier: 'gold',
+  },
+  {
+    id: 3,
+    nickname: '플레이어3',
+    avatarUrl: '',
+    isReady: true,
+    role: 'spectator',
+    tier: 'silver',
+  },
+  {
+    id: 4,
+    nickname: '플레이어4',
+    avatarUrl: '',
+    isReady: true,
+    role: 'spectator',
+    tier: 'platinum',
+  },
+  {
+    id: 5,
+    nickname: '플레이어5',
+    avatarUrl: '',
+    isReady: true,
+    role: 'spectator',
+    tier: 'bronze',
+  },
+  {
+    id: 6,
+    nickname: '플레이어6',
+    avatarUrl: '',
+    isReady: true,
+    role: 'spectator',
+    tier: 'diamond',
+  },
+  {
+    id: 7,
+    nickname: '플레이어7',
+    avatarUrl: '',
+    isReady: true,
+    role: 'spectator',
+    tier: 'master',
+  },
+  {
+    id: 8,
+    nickname: '플레이어8',
+    avatarUrl: '',
+    isReady: true,
+    role: 'spectator',
+    tier: 'grandmaster',
+  },
 ];
 
-// 키워드 풀: 랜덤 주제 생성에 사용할 키워드 목록
 const keywordPool: string[] = [
-  '블루팀',
-  '레드팀',
+  '기린',
+  '코끼리',
   '호랑이',
   '사자',
   '펭귄',
@@ -59,98 +119,207 @@ const keywordPool: string[] = [
   '거북이',
 ];
 
-// 순위에 따른 티어 결정 함수
-const getTierByRank = (
-  rank: number,
-  totalPlayers: number = dummyPlayers.length
-): string => {
-  const thresholds = {
-    challenger: Math.ceil(totalPlayers * 0.01),
-    grandmaster: Math.ceil(totalPlayers * 0.04),
-    master: Math.ceil(totalPlayers * 0.1),
-    diamond: Math.ceil(totalPlayers * 0.2),
-    gold: Math.ceil(totalPlayers * 0.35),
-    platinum: Math.ceil(totalPlayers * 0.55),
-    silver: Math.ceil(totalPlayers * 0.8),
-    bronze: totalPlayers,
-  };
-  if (rank <= thresholds.challenger) return '챌린저';
-  else if (rank <= thresholds.grandmaster) return '그랜드마스터';
-  else if (rank <= thresholds.master) return '마스터';
-  else if (rank <= thresholds.diamond) return '다이아몬드';
-  else if (rank <= thresholds.gold) return '골드';
-  else if (rank <= thresholds.platinum) return '플래티넘';
-  else if (rank <= thresholds.silver) return '실버';
-  else return '브론즈';
+// ───── 상수 정의 ──────────────────────────────
+const OWNER_ID = 1;
+const TOTAL_SLOTS = 8; // 관전자 영역 총 8칸
+const BOX_SIZE = '150px'; // 참가자/관전자 박스 동일 크기
+
+// 이동할 대상 슬롯 타입
+type TargetSlot = { area: 'participant' | 'spectator'; index: number };
+
+// ───── 티어 아이콘 매핑 ──────────────────────────────
+const tierIcons: { [key in Tier]: string } = {
+  bronze: BronzeIcon,
+  silver: SilverIcon,
+  gold: GoldIcon,
+  platinum: PlatinumIcon,
+  diamond: DiamondIcon,
+  master: MasterIcon,
+  grandmaster: GrandMasterIcon,
+  challenger: ChallengerIcon,
 };
 
-// 티어별 아이콘 매핑 객체
-const tierIconMapping: { [key: string]: string } = {
-  챌린저: ChallengerIcon,
-  그랜드마스터: GrandMasterIcon,
-  마스터: MasterIcon,
-  다이아몬드: DiamondIcon,
-  골드: GoldIcon,
-  플래티넘: PlatinumIcon,
-  실버: SilverIcon,
-  브론즈: BronzeIcon,
+// ───── 추가로 누락된 스타일 객체들 ──────────────────────────────
+const tierIconStyle: CSSProperties = {
+  position: 'absolute',
+  top: '0.3rem',
+  right: '0.3rem',
+  width: '40px',
+  height: '40px',
+  zIndex: 3,
 };
 
+const emptySlotTextStyle: CSSProperties = {
+  color: '#aaa',
+  textAlign: 'center',
+  lineHeight: BOX_SIZE,
+};
+
+// ───── styled-components ──────────────────────────────
+
+const CommonCard = styled.div`
+  width: ${BOX_SIZE};
+  height: ${BOX_SIZE};
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background-color: #fff;
+  position: relative;
+  padding: 0.5rem;
+  box-sizing: border-box;
+  text-align: center;
+  transition:
+    transform 0.3s,
+    box-shadow 0.3s;
+  cursor: pointer;
+
+  &:hover {
+    transform: scale(1.03);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  }
+`;
+
+const ExitButton = styled.button`
+  background-color: #fff;
+  color: #333;
+  border: 2px solid #ccc;
+  border-radius: 4px;
+  padding: 0.3rem 0.8rem;
+  cursor: pointer;
+  font-weight: bold;
+  box-shadow: 0 2px 0 #aaa;
+  transition: transform 0.2s;
+
+  &:hover {
+    transform: translateY(-2px);
+  }
+`;
+
+const SubjectButton = styled.button`
+  background-color: #f06292;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.4rem 0.8rem;
+  cursor: pointer;
+  font-weight: bold;
+  box-shadow: 0 2px 0 #c7436f;
+  transition: transform 0.2s;
+
+  &:hover {
+    transform: translateY(-2px);
+  }
+`;
+
+const StartButton = styled.button`
+  position: absolute;
+  top: 3.5rem;
+  right: 0.5rem;
+  padding: 0.5rem 1.5rem;
+  border-radius: 6px;
+  background-color: #f06292;
+  color: #fff;
+  border: none;
+  font-weight: bold;
+  box-shadow: 0 3px 0 #c7436f;
+  cursor: pointer;
+  transition: transform 0.2s;
+
+  &:hover {
+    transform: translateY(-2px);
+  }
+`;
+
+const ModalSubmitButton = styled.button`
+  background-color: #4caf50;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 0.4rem 0.8rem;
+  cursor: pointer;
+  width: 100%;
+  transition: transform 0.2s;
+
+  &:hover {
+    transform: translateY(-2px);
+  }
+`;
+
+const ModalCancelButton = styled.button`
+  background-color: #f06292;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 0.4rem 0.8rem;
+  cursor: pointer;
+  width: 100%;
+  transition: transform 0.2s;
+
+  &:hover {
+    transform: translateY(-2px);
+  }
+`;
+
+// ───── BattleDetail 컴포넌트 ──────────────────────────────
 const BattleDetail: React.FC = () => {
   const navigate = useNavigate();
-  const OWNER_ID = 1; // 방장은 id===1
+  const chatContainerRef = useRef<HTMLDivElement>(null);
 
-  const [players, setPlayers] = useState<PlayerData[]>(dummyPlayers);
+  const [ownerSide, setOwnerSide] = useState<'left' | 'right'>('left');
+  const [ownerSpectatorSlot, setOwnerSpectatorSlot] = useState<number | null>(
+    null
+  );
+  const [pendingMoveSlot, setPendingMoveSlot] = useState<TargetSlot | null>(
+    null
+  );
+  const [players, setPlayers] = useState<PlayerData[]>(initialPlayers);
   const [chatInput, setChatInput] = useState('');
   const [chatMessages, setChatMessages] = useState<string[]>([
     '[공지] 환영합니다',
   ]);
-  // 초기 주제는 기본값으로 설정
-  const [subject, setSubject] = useState<string>('블루팀 vs 레드팀');
-  const [teamNames, setTeamNames] = useState<{
-    teamOne: string;
-    teamTwo: string;
-  }>({
-    teamOne: '블루팀',
-    teamTwo: '레드팀',
-  });
+  const [subject, setSubject] = useState<string>('사자 vs 코끼리');
   const [modalVisible, setModalVisible] = useState<boolean>(false);
   const [keywordOne, setKeywordOne] = useState<string>('');
   const [keywordTwo, setKeywordTwo] = useState<string>('');
-
-  // 추가 모달 상태들
   const [startModalVisible, setStartModalVisible] = useState(false);
   const [warningModalVisible, setWarningModalVisible] = useState(false);
   const [kickModalVisible, setKickModalVisible] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerData | null>(null);
 
-  // 모든 플레이어 준비 상태 확인
-  const allPlayersReady = players.every((p) => p.team && p.isReady);
+  const [leftKeyword, rightKeyword] = subject.split(' vs ');
 
-  // 랜덤 키워드 생성 함수 (두 키워드를 무작위로 선택)
+  const ownerData = players.find((p) => p.id === OWNER_ID);
+  const nonOwnerParticipants = players.filter(
+    (p) => p.role === 'participant' && p.id !== OWNER_ID
+  );
+  const nonOwnerSpectators = players.filter(
+    (p) => p.role === 'spectator' && p.id !== OWNER_ID
+  );
+
+  const canStartGame =
+    ownerData &&
+    ownerData.role === 'participant' &&
+    ownerData.isReady &&
+    nonOwnerParticipants.length >= 1 &&
+    nonOwnerParticipants[0].isReady;
+
   const getRandomKeywords = (): [string, string] => {
     const shuffled = [...keywordPool].sort(() => 0.5 - Math.random());
     return [shuffled[0], shuffled[1]];
   };
 
-  // 랜덤 주제 생성: 두 키워드를 랜덤 생성하여 주제 및 팀 이름 업데이트, 전체 주제는 채팅창에 표시
   const handleRandomSubject = () => {
-    const [firstKeyword, secondKeyword] = getRandomKeywords();
-    const newSubject = `${firstKeyword} vs ${secondKeyword}`;
+    const [first, second] = getRandomKeywords();
+    const newSubject = `${first} vs ${second}`;
     setSubject(newSubject);
-    setTeamNames({ teamOne: firstKeyword, teamTwo: secondKeyword });
-    // 바뀐 타이틀 전체 텍스트를 채팅창에 추가
     setChatMessages((prev) => [...prev, `[타이틀 변경] ${newSubject}`]);
   };
 
-  // 직접 주제 생성 모달 열기
   const handleDirectSubject = () => {
     setModalVisible(true);
     setKeywordOne('');
     setKeywordTwo('');
   };
 
-  // 모달 제출: 입력한 두 키워드로 주제 생성 및 채팅창에 전체 주제 표시
   const handleModalSubmit = () => {
     if (!keywordOne.trim() || !keywordTwo.trim()) {
       alert('두 개의 키워드를 모두 입력해주세요.');
@@ -158,16 +327,8 @@ const BattleDetail: React.FC = () => {
     }
     const newSubject = `${keywordOne.trim()} vs ${keywordTwo.trim()}`;
     setSubject(newSubject);
-    setTeamNames({ teamOne: keywordOne.trim(), teamTwo: keywordTwo.trim() });
     setModalVisible(false);
-    // 전체 주제 텍스트를 채팅창에 추가
     setChatMessages((prev) => [...prev, `[타이틀 변경] ${newSubject}`]);
-  };
-
-  const handleToggleReady = () => {
-    setPlayers((prev) =>
-      prev.map((p) => (p.id !== OWNER_ID ? { ...p, isReady: !p.isReady } : p))
-    );
   };
 
   const handleChatSubmit = (e: React.FormEvent) => {
@@ -177,31 +338,24 @@ const BattleDetail: React.FC = () => {
     setChatInput('');
   };
 
-  // 방장이 팀 선택 시 -> 'blue' 할당
-  const handleBlueClick = () => {
-    setPlayers((prev) =>
-      prev.map((p) => (p.id === OWNER_ID ? { ...p, team: 'blue' } : p))
-    );
-  };
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop =
+        chatContainerRef.current.scrollHeight;
+    }
+  }, [chatMessages]);
 
-  // 방장이 팀 선택 시 -> 'red' 할당
-  const handleRedClick = () => {
-    setPlayers((prev) =>
-      prev.map((p) => (p.id === OWNER_ID ? { ...p, team: 'red' } : p))
-    );
-  };
-
-  // 나가기 버튼 클릭 시 이전 페이지로 이동
-  const handleExit = () => {
-    navigate(-1);
-  };
+  const handleExit = () => navigate(-1);
 
   const handleStartGame = () => {
-    if (allPlayersReady) {
-      setStartModalVisible(true);
-    } else {
-      setWarningModalVisible(true);
-    }
+    if (canStartGame) setStartModalVisible(true);
+    else setWarningModalVisible(true);
+  };
+
+  const handleReadyToggle = () => {
+    setPlayers((prev) =>
+      prev.map((p) => (p.id === OWNER_ID ? { ...p, isReady: !p.isReady } : p))
+    );
   };
 
   const handleKickPlayer = () => {
@@ -212,372 +366,357 @@ const BattleDetail: React.FC = () => {
     }
   };
 
-  const isOwner = (id: number) => id === OWNER_ID;
-  const getPlayerSlotBgColor = (player: PlayerData): string => {
-    if (player.team === 'blue') return '#33bfff';
-    if (player.team === 'red') return '#ff6b6b';
-    return '#fff';
+  const handleConfirmMove = () => {
+    if (!pendingMoveSlot || !ownerData) return;
+    const { area, index } = pendingMoveSlot;
+    if (area === 'spectator') {
+      if (ownerData.role === 'participant') {
+        setPlayers((prev) =>
+          prev.map((p) => (p.id === OWNER_ID ? { ...p, role: 'spectator' } : p))
+        );
+      }
+      setOwnerSpectatorSlot(index);
+    } else if (area === 'participant') {
+      if (ownerData.role === 'spectator') {
+        setPlayers((prev) =>
+          prev.map((p) =>
+            p.id === OWNER_ID ? { ...p, role: 'participant' } : p
+          )
+        );
+      }
+      setOwnerSide(index === 0 ? 'left' : 'right');
+    }
+    setPendingMoveSlot(null);
   };
 
-  // 현재 방장 팀 상태
-  const ownerTeam = players.find((p) => p.id === OWNER_ID)?.team;
+  const handleCancelMove = () => {
+    setPendingMoveSlot(null);
+  };
 
-  // 플레이어 순위 및 티어 정보 (더미 데이터)
-  const playerRankings = players.map((player, index) => ({
-    id: player.id,
-    nickname: player.nickname,
-    rank: index + 1,
-    score: 1000 - index * 50,
-    tier: getTierByRank(index + 1, players.length),
-  }));
+  const PlayerCard: React.FC<{
+    player: PlayerData;
+    isOwner?: boolean;
+    isSpectator?: boolean;
+  }> = ({ player, isOwner = false, isSpectator = false }) => {
+    const bgColor =
+      player.team === 'blue'
+        ? '#33bfff'
+        : player.team === 'red'
+          ? '#ff6b6b'
+          : '#fff';
+    return (
+      <CommonCard style={{ backgroundColor: bgColor }}>
+        <div style={nicknameStyle}>
+          {player.nickname} {isOwner && '(나)'}
+        </div>
+        <img
+          src={tierIcons[player.tier]}
+          alt={player.tier}
+          style={tierIconStyle}
+        />
+        {player.avatarUrl && player.avatarUrl.trim() !== '' ? (
+          <img
+            src={player.avatarUrl}
+            alt='avatar'
+            style={isSpectator ? spectatorImageStyle : playerImageStyle}
+          />
+        ) : (
+          <div style={defaultAvatarStyle}>
+            <FaUserAlt
+              style={{ fontSize: isSpectator ? '2rem' : '3rem', color: '#888' }}
+            />
+          </div>
+        )}
+        <div style={rankAreaStyle}>
+          {isOwner && <div style={ownerBadgeStyle}>방 장</div>}
+          {!isOwner && player.isReady && (
+            <div style={readyBadgeStyle}>준 비</div>
+          )}
+        </div>
+      </CommonCard>
+    );
+  };
+
+  const renderLeftSlot = () => {
+    return (
+      <div style={{ textAlign: 'center' }}>
+        <div style={participantKeywordStyle}>{leftKeyword}</div>
+        {ownerData &&
+        ownerData.id === OWNER_ID &&
+        ownerData.role === 'participant' &&
+        ownerSide === 'left' ? (
+          <PlayerCard player={ownerData} isOwner />
+        ) : (
+          <CommonCard
+            onClick={() =>
+              setPendingMoveSlot({ area: 'participant', index: 0 })
+            }
+          >
+            <div style={emptySlotTextStyle}>플레이어 대기중</div>
+          </CommonCard>
+        )}
+      </div>
+    );
+  };
+
+  const renderRightSlot = () => {
+    return (
+      <div style={{ textAlign: 'center' }}>
+        <div style={participantKeywordStyle}>{rightKeyword}</div>
+        {ownerData &&
+        ownerData.id === OWNER_ID &&
+        ownerData.role === 'participant' &&
+        ownerSide === 'right' ? (
+          <PlayerCard player={ownerData} isOwner />
+        ) : nonOwnerParticipants[0] ? (
+          <PlayerCard player={nonOwnerParticipants[0]} />
+        ) : (
+          <CommonCard
+            onClick={() =>
+              setPendingMoveSlot({ area: 'participant', index: 1 })
+            }
+          >
+            <div style={emptySlotTextStyle}>플레이어 대기중</div>
+          </CommonCard>
+        )}
+      </div>
+    );
+  };
+
+  const renderSpectatorGrid = () => {
+    const cells = [];
+    for (let i = 0; i < TOTAL_SLOTS; i++) {
+      let occupant: PlayerData | null = null;
+      if (
+        ownerData &&
+        ownerData.role === 'spectator' &&
+        ownerSpectatorSlot === i
+      ) {
+        occupant = ownerData;
+      } else if (i < nonOwnerSpectators.length) {
+        occupant = nonOwnerSpectators[i];
+      }
+      cells.push(
+        <div
+          key={`spectator-slot-${i}`}
+          style={{
+            ...spectatorSlotStyle,
+            cursor: occupant ? 'default' : 'pointer',
+          }}
+          onClick={
+            !occupant
+              ? () => setPendingMoveSlot({ area: 'spectator', index: i })
+              : undefined
+          }
+        >
+          {occupant ? (
+            occupant.id === OWNER_ID ? (
+              <PlayerCard player={occupant} isOwner isSpectator />
+            ) : (
+              <PlayerCard player={occupant} isSpectator />
+            )
+          ) : (
+            <div style={emptyBoxStyle} />
+          )}
+        </div>
+      );
+    }
+    return cells;
+  };
+
+  const ChatBubble: React.FC<{ msg: string }> = ({ msg }) => {
+    const isOwnerMsg = msg.startsWith(`유저${OWNER_ID}:`);
+    const isNotice = msg.startsWith('[공지]');
+    const bubbleStyle: CSSProperties = {
+      maxWidth: '70%',
+      padding: '8px 12px',
+      borderRadius: '16px',
+      margin: '4px 0',
+      backgroundColor: isNotice ? '#ffe6e6' : isOwnerMsg ? '#dcf8c6' : '#fff',
+      alignSelf: isOwnerMsg ? 'flex-end' : 'flex-start',
+      boxShadow: '0 1px 1px rgba(0,0,0,0.1)',
+      wordBreak: 'break-word',
+    };
+    const textStyle: CSSProperties = {
+      fontSize: '0.9rem',
+      color: isNotice ? 'red' : '#000',
+      margin: 0,
+    };
+    return (
+      <div style={bubbleStyle}>
+        <p style={textStyle}>{msg}</p>
+      </div>
+    );
+  };
+
+  const Modal: React.FC<{ title: string; children: React.ReactNode }> = ({
+    title,
+    children,
+  }) => (
+    <div style={modalOverlayStyle}>
+      <div style={modalContentStyle}>
+        <h3 style={{ marginBottom: '1rem' }}>{title}</h3>
+        {children}
+      </div>
+    </div>
+  );
 
   return (
     <div style={containerStyle}>
-      {/* 버튼 애니메이션 및 스크롤 스타일 */}
-      <style>{`
-        .animated-button { transition: all 0.3s ease; }
-        .animated-button:hover { transform: scale(1.05); box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
-        .chatMessages::-webkit-scrollbar { width: 8px; }
-        .chatMessages::-webkit-scrollbar-track { background: #f1f1f1; }
-        .chatMessages::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
-        .chatMessages::-webkit-scrollbar-thumb:hover { background: #555; }
-      `}</style>
-
-      {/* 헤더 영역 */}
       <header style={headerStyle}>
-        <button
-          className='animated-button'
-          style={exitButtonStyle}
-          onClick={handleExit}
-        >
+        <ExitButton onClick={handleExit}>
           <FaSignOutAlt style={{ marginRight: '0.3rem' }} />
           나가기
-        </button>
+        </ExitButton>
         <div style={titleStyle}>{subject}</div>
-        <div style={subjectButtonsContainerStyle}>
-          <button
-            className='animated-button'
-            style={subjectButtonStyle}
-            onClick={handleRandomSubject}
-          >
+        <div style={headerButtonsStyle}>
+          <SubjectButton onClick={handleRandomSubject}>
             <FaRandom style={{ marginRight: '0.3rem' }} />
             랜덤 주제생성기
-          </button>
-          <button
-            className='animated-button'
-            style={subjectButtonStyle}
-            onClick={handleDirectSubject}
-          >
+          </SubjectButton>
+          <SubjectButton onClick={handleDirectSubject}>
             <FaEdit style={{ marginRight: '0.3rem' }} />
             직접 주제 생성하기
-          </button>
+          </SubjectButton>
         </div>
+        {ownerData && ownerData.id === OWNER_ID ? (
+          <StartButton onClick={handleStartGame}>시작</StartButton>
+        ) : (
+          <StartButton onClick={handleReadyToggle}>준비</StartButton>
+        )}
       </header>
 
-      {/* 메인 레이아웃 */}
-      <div style={mainContentStyle}>
-        <div style={leftSideStyle}>
-          {/* 플레이어 그리드 */}
-          <div style={playersGridStyle}>
-            {players.map((player) => (
-              <div
-                key={player.id}
-                style={{
-                  ...playerSlotStyle,
-                  backgroundColor: getPlayerSlotBgColor(player),
-                }}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  if (isOwner(player.id)) return;
-                  if (players.find((p) => p.id === OWNER_ID)) {
-                    setSelectedPlayer(player);
-                    setKickModalVisible(true);
-                  }
-                }}
-              >
-                {player.team && (
-                  <div style={teamIconContainerStyle}>
-                    {player.team === 'blue' ? (
-                      <FaChessKnight
-                        style={{ fontSize: '1.5rem', color: '#33bfff' }}
-                      />
-                    ) : (
-                      <FaChessRook
-                        style={{ fontSize: '1.5rem', color: '#ff6b6b' }}
-                      />
-                    )}
-                  </div>
-                )}
-                <div style={nicknameStyle}>{player.nickname}</div>
-                {player.avatarUrl && player.avatarUrl.trim() !== '' ? (
-                  <img
-                    src={player.avatarUrl}
-                    alt='user'
-                    style={playerImageStyle}
-                  />
-                ) : (
-                  <div style={defaultAvatarStyle}>
-                    <FaUserAlt style={{ fontSize: '3rem', color: '#888' }} />
-                  </div>
-                )}
-                <div style={rankAreaStyle}>
-                  {isOwner(player.id) ? (
-                    <div style={ownerBadgeStyle}>방 장</div>
-                  ) : player.isReady ? (
-                    <div style={readyBadgeStyle}>준 비</div>
-                  ) : null}
-                </div>
-              </div>
+      <div style={topSectionStyle}>
+        <div style={participantContainerStyle}>{renderLeftSlot()}</div>
+        <div style={chatSectionStyle}>
+          <div
+            ref={chatContainerRef}
+            style={{
+              ...chatMessagesStyle,
+              display: 'flex',
+              flexDirection: 'column',
+              padding: '10px',
+              backgroundColor: '#f0f0f0',
+              borderRadius: '10px',
+            }}
+          >
+            {chatMessages.map((msg, idx) => (
+              <ChatBubble key={idx} msg={msg} />
             ))}
           </div>
-
-          {/* 채팅 영역 */}
-          <div style={chatBoxStyle}>
-            <div className='chatMessages' style={chatMessagesStyle}>
-              {chatMessages.map((msg, idx) => (
-                <p key={idx} style={{ margin: '0.3rem 0' }}>
-                  {msg}
-                </p>
-              ))}
-            </div>
-            <form onSubmit={handleChatSubmit} style={chatFormStyle}>
-              <FaCommentDots
-                style={{ fontSize: '1.2rem', marginRight: '0.5rem' }}
-              />
-              <input
-                style={chatInputStyle}
-                type='text'
-                placeholder='메시지 입력...'
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-              />
-            </form>
-          </div>
+          <form onSubmit={handleChatSubmit} style={chatFormStyle}>
+            <FaCommentDots
+              style={{ fontSize: '1.2rem', marginRight: '0.5rem' }}
+            />
+            <input
+              type='text'
+              placeholder='메시지 입력...'
+              style={chatInputStyle}
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+            />
+          </form>
         </div>
-
-        {/* 오른쪽 영역: 컨트롤 패널 */}
-        <div style={rightSideStyle}>
-          <div style={rankingContainerStyle}>
-            {playerRankings.map((p) => (
-              <div key={p.id} style={rankingItemStyle}>
-                <img
-                  src={tierIconMapping[p.tier]}
-                  alt={p.tier}
-                  style={{ width: '32px', height: '32px' }}
-                />
-                <span style={rankingNicknameStyle}>{p.nickname}</span>
-                <span style={rankingScoreStyle}>{p.score} 점</span>
-              </div>
-            ))}
-          </div>
-
-          {/* 팀 선택 및 시작 버튼 영역 */}
-          {isOwner(OWNER_ID) ? (
-            <div style={buttonsBottomContainerStyle}>
-              <div style={teamSelectionRowStyle}>
-                <div style={questionStyle}>팀</div>
-                <div style={teamButtonsColumnStyle}>
-                  <button
-                    className='animated-button'
-                    onClick={handleBlueClick}
-                    style={{
-                      ...teamButtonStyle,
-                      backgroundColor:
-                        ownerTeam === 'blue' ? '#33bfff' : '#eee',
-                      color: ownerTeam === 'blue' ? '#fff' : '#333',
-                    }}
-                  >
-                    {teamNames.teamOne}
-                  </button>
-                  <button
-                    className='animated-button'
-                    onClick={handleRedClick}
-                    style={{
-                      ...teamButtonStyle,
-                      backgroundColor: ownerTeam === 'red' ? '#ff6b6b' : '#eee',
-                      color: ownerTeam === 'red' ? '#fff' : '#333',
-                    }}
-                  >
-                    {teamNames.teamTwo}
-                  </button>
-                </div>
-              </div>
-              <div style={buttonsFlexRowStyle}>
-                <button
-                  className='animated-button'
-                  style={startButtonStyle}
-                  onClick={handleStartGame}
-                >
-                  시작
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div style={buttonsBottomContainerStyle}>
-              <div style={teamSelectionRowStyle}>
-                <div style={questionStyle}>뭐가 더 효율이 좋나요?</div>
-                <div style={teamButtonsColumnStyle}>
-                  <button
-                    className='animated-button'
-                    onClick={handleBlueClick}
-                    style={{
-                      ...teamButtonStyle,
-                      backgroundColor:
-                        ownerTeam === 'blue' ? '#33bfff' : '#eee',
-                      color: ownerTeam === 'blue' ? '#fff' : '#333',
-                    }}
-                  >
-                    {teamNames.teamOne}
-                  </button>
-                  <button
-                    className='animated-button'
-                    onClick={handleRedClick}
-                    style={{
-                      ...teamButtonStyle,
-                      backgroundColor: ownerTeam === 'red' ? '#ff6b6b' : '#eee',
-                      color: ownerTeam === 'red' ? '#fff' : '#333',
-                    }}
-                  >
-                    {teamNames.teamTwo}
-                  </button>
-                </div>
-              </div>
-              <div style={buttonsFlexRowStyle}>
-                <button
-                  className='animated-button'
-                  style={readyButtonStyle}
-                  onClick={handleToggleReady}
-                >
-                  준비
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
+        <div style={participantContainerStyle}>{renderRightSlot()}</div>
       </div>
 
-      {/* 모달 영역 */}
+      <div style={spectatorsSectionStyle}>
+        <div style={spectatorsGridStyle}>{renderSpectatorGrid()}</div>
+      </div>
+
+      {pendingMoveSlot !== null && (
+        <Modal title='이동 확인'>
+          <p>해당 슬롯으로 이동하시겠습니까?</p>
+          <div style={modalButtonsStyle}>
+            <ModalSubmitButton onClick={handleConfirmMove}>
+              네
+            </ModalSubmitButton>
+            <ModalCancelButton onClick={handleCancelMove}>
+              아니요
+            </ModalCancelButton>
+          </div>
+        </Modal>
+      )}
+
       {modalVisible && (
-        <div style={modalOverlayStyle}>
-          <div style={modalContentStyle}>
-            <h3 style={{ marginBottom: '1rem' }}>직접 주제 생성하기</h3>
-            <input
-              type='text'
-              placeholder='첫번째 키워드'
-              value={keywordOne}
-              onChange={(e) => setKeywordOne(e.target.value)}
-              style={modalInputStyle}
-            />
-            <input
-              type='text'
-              placeholder='두번째 키워드'
-              value={keywordTwo}
-              onChange={(e) => setKeywordTwo(e.target.value)}
-              style={modalInputStyle}
-            />
-            <div style={modalButtonsStyle}>
-              <button
-                className='animated-button'
-                onClick={handleModalSubmit}
-                style={modalSubmitButtonStyle}
-              >
-                생성
-              </button>
-              <button
-                className='animated-button'
-                onClick={() => setModalVisible(false)}
-                style={modalCancelButtonStyle}
-              >
-                취소
-              </button>
-            </div>
+        <Modal title='직접 주제 생성하기'>
+          <input
+            type='text'
+            placeholder='첫번째 키워드'
+            value={keywordOne}
+            onChange={(e) => setKeywordOne(e.target.value)}
+            style={modalInputStyle}
+          />
+          <input
+            type='text'
+            placeholder='두번째 키워드'
+            value={keywordTwo}
+            onChange={(e) => setKeywordTwo(e.target.value)}
+            style={modalInputStyle}
+          />
+          <div style={modalButtonsStyle}>
+            <ModalSubmitButton onClick={handleModalSubmit}>
+              생성
+            </ModalSubmitButton>
+            <ModalCancelButton onClick={() => setModalVisible(false)}>
+              취소
+            </ModalCancelButton>
           </div>
-        </div>
+        </Modal>
       )}
 
-      {/* 시작 컨펌 모달 */}
       {startModalVisible && (
-        <div style={modalOverlayStyle}>
-          <div style={modalContentStyle}>
-            <h3 style={{ marginBottom: '1rem' }}>게임 시작 확인</h3>
-            <p>
-              모든 플레이어의 팀 선택과 준비가 완료되었습니다.
-              <br />
-              게임을 시작하시겠습니까?
-            </p>
-            <div style={modalButtonsStyle}>
-              <button
-                className='animated-button'
-                onClick={() => {
-                  setStartModalVisible(false);
-                  alert('게임 시작!');
-                }}
-                style={modalSubmitButtonStyle}
-              >
-                네
-              </button>
-              <button
-                className='animated-button'
-                onClick={() => setStartModalVisible(false)}
-                style={modalCancelButtonStyle}
-              >
-                아니요
-              </button>
-            </div>
+        <Modal title='게임 시작 확인'>
+          <p>
+            모든 플레이어가 준비되었습니다.
+            <br />
+            게임을 시작하시겠습니까?
+          </p>
+          <div style={modalButtonsStyle}>
+            <ModalSubmitButton
+              onClick={() => {
+                setStartModalVisible(false);
+                alert('게임 시작!');
+              }}
+            >
+              네
+            </ModalSubmitButton>
+            <ModalCancelButton onClick={() => setStartModalVisible(false)}>
+              아니요
+            </ModalCancelButton>
           </div>
-        </div>
+        </Modal>
       )}
 
-      {/* 경고 모달 */}
       {warningModalVisible && (
-        <div style={modalOverlayStyle}>
-          <div style={modalContentStyle}>
-            <h3 style={{ marginBottom: '1rem' }}>경고</h3>
-            <p>
-              모든 플레이어가 팀 선택 및 준비완료 상태가 아닙니다.
-              <br />
-              모든 플레이어가 준비된 후에 게임을 시작할 수 있습니다.
-            </p>
-            <div style={modalButtonsStyle}>
-              <button
-                className='animated-button'
-                onClick={() => setWarningModalVisible(false)}
-                style={modalSubmitButtonStyle}
-              >
-                확인
-              </button>
-            </div>
+        <Modal title='경고'>
+          <p>
+            참가자 2명이 모두 있고 준비 완료된 상태여야 게임을 시작할 수
+            있습니다.
+          </p>
+          <div style={modalButtonsStyle}>
+            <ModalSubmitButton onClick={() => setWarningModalVisible(false)}>
+              확인
+            </ModalSubmitButton>
           </div>
-        </div>
+        </Modal>
       )}
 
-      {/* 플레이어 강퇴 모달 */}
       {kickModalVisible && selectedPlayer && (
-        <div style={modalOverlayStyle}>
-          <div style={modalContentStyle}>
-            <h3 style={{ marginBottom: '1rem' }}>플레이어 강퇴 확인</h3>
-            <p>{selectedPlayer.nickname} 플레이어를 강퇴하시겠습니까?</p>
-            <div style={modalButtonsStyle}>
-              <button
-                className='animated-button'
-                onClick={handleKickPlayer}
-                style={modalSubmitButtonStyle}
-              >
-                네
-              </button>
-              <button
-                className='animated-button'
-                onClick={() => {
-                  setKickModalVisible(false);
-                  setSelectedPlayer(null);
-                }}
-                style={modalCancelButtonStyle}
-              >
-                아니요
-              </button>
-            </div>
+        <Modal title='플레이어 강퇴 확인'>
+          <p>{selectedPlayer.nickname} 플레이어를 강퇴하시겠습니까?</p>
+          <div style={modalButtonsStyle}>
+            <ModalSubmitButton onClick={handleKickPlayer}>네</ModalSubmitButton>
+            <ModalCancelButton
+              onClick={() => {
+                setKickModalVisible(false);
+                setSelectedPlayer(null);
+              }}
+            >
+              아니요
+            </ModalCancelButton>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );
@@ -585,7 +724,9 @@ const BattleDetail: React.FC = () => {
 
 export default BattleDetail;
 
-/* 스타일 정의 */
+// ───── 기본 인라인 스타일 ──────────────────────────────
+
+const fadeInAnimation = 'fadeIn 0.5s ease-in-out forwards';
 
 const containerStyle: CSSProperties = {
   width: '1000px',
@@ -596,26 +737,28 @@ const containerStyle: CSSProperties = {
   fontFamily: 'sans-serif',
   overflow: 'hidden',
   position: 'relative',
-  animation: 'fadeIn 0.5s ease-in-out',
+  animation: fadeInAnimation,
 };
 
+const fadeInKeyframes = `
+@keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+`;
+document.head.insertAdjacentHTML(
+  'beforeend',
+  `<style>${fadeInKeyframes}</style>`
+);
+
 const headerStyle: CSSProperties = {
+  position: 'relative',
   display: 'flex',
   alignItems: 'center',
+  justifyContent: 'space-between',
   backgroundColor: '#3b83c0',
   color: '#fff',
   padding: '0.5rem 1rem',
-};
-
-const exitButtonStyle: CSSProperties = {
-  backgroundColor: '#fff',
-  color: '#333',
-  border: '2px solid #ccc',
-  borderRadius: '4px',
-  padding: '0.3rem 0.8rem',
-  cursor: 'pointer',
-  fontWeight: 'bold',
-  boxShadow: '0 2px 0 #aaa',
 };
 
 const titleStyle: CSSProperties = {
@@ -629,65 +772,95 @@ const titleStyle: CSSProperties = {
   margin: '0 1rem',
 };
 
-const subjectButtonsContainerStyle: CSSProperties = {
+const headerButtonsStyle: CSSProperties = {
   display: 'flex',
+  flexDirection: 'row',
   gap: '0.5rem',
 };
 
-const subjectButtonStyle: CSSProperties = {
-  backgroundColor: '#f06292',
-  color: '#fff',
-  border: 'none',
-  borderRadius: '6px',
-  padding: '0.4rem 0.8rem',
-  cursor: 'pointer',
+const topSectionStyle: CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  padding: '1rem',
+  gap: '1rem',
+};
+
+const participantContainerStyle: CSSProperties = {
+  flex: '1 1 200px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+};
+
+const participantKeywordStyle: CSSProperties = {
   fontWeight: 'bold',
-  boxShadow: '0 2px 0 #c7436f',
+  marginBottom: '0.5rem',
 };
 
-const mainContentStyle: CSSProperties = {
-  display: 'flex',
-  flex: 1,
-  gap: '0.5rem',
-  padding: '0.5rem',
-};
-
-const leftSideStyle: CSSProperties = {
+const chatSectionStyle: CSSProperties = {
+  flex: '2 1 400px',
   display: 'flex',
   flexDirection: 'column',
-  gap: '0.5rem',
-  flex: 2,
-};
-
-const playersGridStyle: CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(4, 1fr)',
-  gridTemplateRows: 'repeat(2, 150px)',
-  gap: '0.5rem',
-  flex: '0 0 auto',
-};
-
-const playerSlotStyle: CSSProperties = {
-  position: 'relative',
   border: '1px solid #ddd',
   borderRadius: '6px',
   backgroundColor: '#fff',
-  overflow: 'hidden',
-  animation: 'popIn 0.3s forwards',
-  transition: 'transform 0.2s, box-shadow 0.2s',
 };
 
-const nicknameStyle: CSSProperties = {
-  position: 'absolute',
-  top: 0,
-  left: 0,
-  backgroundColor: 'rgba(0,0,0,0.6)',
-  color: '#fff',
-  fontWeight: 'bold',
-  fontSize: '0.8rem',
-  padding: '0.3rem 0.6rem',
-  borderBottomRightRadius: '6px',
-  zIndex: 2,
+const chatMessagesStyle: CSSProperties = {
+  height: '200px',
+  overflowY: 'scroll',
+  padding: '0.5rem',
+  fontSize: '0.85rem',
+};
+
+const chatFormStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  borderTop: '1px solid #ddd',
+  padding: '0.5rem',
+};
+
+const chatInputStyle: CSSProperties = {
+  flex: 1,
+  border: '1px solid #ccc',
+  borderRadius: '4px',
+  padding: '0.3rem',
+  outline: 'none',
+};
+
+const spectatorsSectionStyle: CSSProperties = {
+  borderTop: '2px solid #48b0ff',
+  padding: '1rem',
+  backgroundColor: '#f9f9f9',
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+};
+
+const spectatorsGridStyle: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(4, 1fr)',
+  gridTemplateRows: 'repeat(2, 1fr)',
+  gap: '10px',
+  width: 'calc(4 * 150px + 3 * 10px)',
+};
+
+const spectatorSlotStyle: CSSProperties = {
+  width: BOX_SIZE,
+  height: BOX_SIZE,
+  border: '1px solid #ddd',
+  borderRadius: '6px',
+  backgroundColor: '#fff',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+};
+
+const emptyBoxStyle: CSSProperties = {
+  width: '100%',
+  height: '100%',
+  backgroundColor: '#fff',
 };
 
 const playerImageStyle: CSSProperties = {
@@ -705,18 +878,31 @@ const defaultAvatarStyle: CSSProperties = {
   backgroundColor: '#eee',
 };
 
+const nicknameStyle: CSSProperties = {
+  position: 'absolute',
+  top: '0.3rem',
+  left: '0.3rem',
+  backgroundColor: 'rgba(0,0,0,0.6)',
+  color: '#fff',
+  fontWeight: 'bold',
+  fontSize: '0.8rem',
+  padding: '0.3rem 0.6rem',
+  borderBottomRightRadius: '6px',
+  zIndex: 2,
+};
+
 const rankAreaStyle: CSSProperties = {
   position: 'absolute',
-  bottom: 0,
+  bottom: '0.3rem',
   left: '50%',
   transform: 'translateX(-50%)',
-  width: '100%',
+  width: '90%',
   textAlign: 'center',
   height: '20px',
+  backgroundColor: 'rgba(0,0,0,0.4)',
   display: 'flex',
   justifyContent: 'center',
   alignItems: 'center',
-  backgroundColor: 'rgba(0,0,0,0.4)',
 };
 
 const ownerBadgeStyle: CSSProperties = {
@@ -737,129 +923,11 @@ const readyBadgeStyle: CSSProperties = {
   width: '100%',
 };
 
-const chatBoxStyle: CSSProperties = {
-  flex: 1,
-  display: 'flex',
-  flexDirection: 'column',
-  border: '1px solid #ddd',
-  borderRadius: '6px',
-  backgroundColor: '#fff',
-  animation: 'popIn 0.4s forwards',
-};
-
-const chatMessagesStyle: CSSProperties = {
-  height: '200px',
-  overflowY: 'scroll',
-  padding: '0.5rem',
-  fontSize: '0.85rem',
-  textAlign: 'left',
-};
-
-const chatFormStyle: CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  borderTop: '1px solid #ddd',
-  padding: '0.5rem',
-};
-
-const chatInputStyle: CSSProperties = {
-  flex: 1,
-  border: '1px solid #ccc',
+const spectatorImageStyle: CSSProperties = {
+  width: '100%',
+  height: '60px',
+  objectFit: 'cover',
   borderRadius: '4px',
-  padding: '0.3rem',
-  outline: 'none',
-};
-
-const rightSideStyle: CSSProperties = {
-  flex: 1,
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '0.5rem',
-  position: 'relative',
-};
-
-const buttonsBottomContainerStyle: CSSProperties = {
-  position: 'absolute',
-  bottom: 0,
-  left: 0,
-  right: 0,
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '0.5rem',
-  padding: '0.5rem',
-  boxSizing: 'border-box',
-};
-
-const teamSelectionRowStyle: CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: '0.5rem',
-};
-
-const teamButtonsColumnStyle: CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '0.5rem',
-  width: '100%',
-};
-
-const questionStyle: CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  fontWeight: 'bold',
-  color: '#333',
-  backgroundColor: '#fff',
-  border: '1px solid #ccc',
-  borderRadius: '6px',
-  padding: '0.3rem 0.5rem',
-  textAlign: 'center',
-  fontSize: '0.9rem',
-  minWidth: '40px',
-  minHeight: '60px',
-};
-
-const teamButtonStyle: CSSProperties = {
-  backgroundColor: '#eee',
-  border: '1px solid #ccc',
-  borderRadius: '6px',
-  cursor: 'pointer',
-  fontWeight: 'bold',
-  width: '100%',
-  padding: '0.4rem 0',
-  overflow: 'hidden',
-  textOverflow: 'ellipsis',
-  whiteSpace: 'nowrap',
-};
-
-const readyButtonStyle: CSSProperties = {
-  backgroundColor: '#ff9800',
-  color: '#fff',
-  border: 'none',
-  borderRadius: '6px',
-  padding: '0.4rem 0.8rem',
-  cursor: 'pointer',
-  fontWeight: 'bold',
-  boxShadow: '0 2px 0 #c77700',
-  width: '100%',
-};
-
-const startButtonStyle: CSSProperties = {
-  backgroundColor: '#4caf50',
-  color: '#fff',
-  border: 'none',
-  borderRadius: '6px',
-  padding: '0.4rem 0.8rem',
-  cursor: 'pointer',
-  fontWeight: 'bold',
-  boxShadow: '0 2px 0 #388e3c',
-  width: '100%',
-};
-
-const buttonsFlexRowStyle: CSSProperties = {
-  display: 'flex',
-  gap: '0.5rem',
-  justifyContent: 'center',
 };
 
 const modalOverlayStyle: CSSProperties = {
@@ -883,7 +951,19 @@ const modalContentStyle: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: '1rem',
+  animation: 'scaleUp 0.3s ease-in-out',
 };
+
+const scaleUpKeyframes = `
+@keyframes scaleUp {
+  0% { transform: scale(0.8); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+`;
+document.head.insertAdjacentHTML(
+  'beforeend',
+  `<style>${scaleUpKeyframes}</style>`
+);
 
 const modalInputStyle: CSSProperties = {
   padding: '0.5rem',
@@ -896,59 +976,4 @@ const modalButtonsStyle: CSSProperties = {
   display: 'flex',
   justifyContent: 'flex-end',
   gap: '0.5rem',
-};
-
-const modalSubmitButtonStyle: CSSProperties = {
-  backgroundColor: '#4caf50',
-  color: '#fff',
-  border: 'none',
-  borderRadius: '4px',
-  padding: '0.4rem 0.8rem',
-  cursor: 'pointer',
-  width: '100%',
-};
-
-const modalCancelButtonStyle: CSSProperties = {
-  backgroundColor: '#f06292',
-  color: '#fff',
-  border: 'none',
-  borderRadius: '4px',
-  padding: '0.4rem 0.8rem',
-  cursor: 'pointer',
-  width: '100%',
-};
-
-const rankingContainerStyle: CSSProperties = {
-  marginBottom: '1rem',
-  padding: '0.5rem',
-  backgroundColor: '#f9f9f9',
-  borderRadius: '6px',
-};
-
-const rankingItemStyle: CSSProperties = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  padding: '0.3rem 0.5rem',
-  marginBottom: '0.3rem',
-  backgroundColor: '#fff',
-  border: '1px solid #ddd',
-  borderRadius: '4px',
-};
-
-const rankingNicknameStyle: CSSProperties = {
-  flex: 1,
-  textAlign: 'center',
-};
-
-const rankingScoreStyle: CSSProperties = {
-  fontStyle: 'italic',
-  color: '#666',
-};
-
-const teamIconContainerStyle: CSSProperties = {
-  position: 'absolute',
-  bottom: '30px',
-  right: '4px',
-  zIndex: 10,
 };
