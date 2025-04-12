@@ -1,3 +1,4 @@
+// app/src/page/Shop/ShopList.tsx
 import React, { useState } from 'react';
 import styled, { keyframes } from 'styled-components';
 import {
@@ -8,6 +9,8 @@ import {
   FaBomb,
   FaBorderStyle,
 } from 'react-icons/fa';
+// Modal 컴포넌트를 분리된 파일에서 import (경로는 프로젝트 구조에 맞게 수정)
+import Modal from '../../components/Modal';
 
 /* ------------------- 타입 정의 ------------------- */
 type CategoryType = '전체' | '팀 아이콘' | '효과음' | '테두리';
@@ -114,7 +117,6 @@ const dummyShopItems: ShopItem[] = [
     icon: <FaChessKnight size={32} color='#888888' />,
     category: '팀 아이콘',
   },
-  // 추가 아이템 예시
   {
     id: 13,
     name: '실버 팀 아이콘',
@@ -168,20 +170,22 @@ const ShopWithPreview: React.FC = () => {
   const [purchaseModalVisible, setPurchaseModalVisible] = useState(false);
   const [selectedPurchaseItem, setSelectedPurchaseItem] =
     useState<ShopItem | null>(null);
+  // 구매 완료(모달) 상태: 모든 아이템에 대해 사용
+  const [purchaseSuccessItem, setPurchaseSuccessItem] =
+    useState<ShopItem | null>(null);
 
   const handleCategoryClick = (cat: CategoryType) => {
     setSelectedCategory(cat);
   };
 
-  // 실제 구매 로직 (중복 구매 방지 처리 포함)
+  // 실제 구매 로직 (중복 구매 방지 포함)
   const handleBuyItemConfirm = (item: ShopItem) => {
-    alert(`'${item.name}' 아이템을 구매했습니다!`);
     setMyItems((prev) =>
       prev.find((x) => x.id === item.id) ? prev : [...prev, item]
     );
   };
 
-  // 구매 버튼 클릭 시 모달 열기
+  // 구매 버튼 클릭 시 구매 확인 모달 열기
   const handleBuyItem = (item: ShopItem) => {
     setSelectedPurchaseItem(item);
     setPurchaseModalVisible(true);
@@ -191,6 +195,7 @@ const ShopWithPreview: React.FC = () => {
   const confirmPurchase = () => {
     if (selectedPurchaseItem) {
       handleBuyItemConfirm(selectedPurchaseItem);
+      setPurchaseSuccessItem(selectedPurchaseItem);
     }
     setSelectedPurchaseItem(null);
     setPurchaseModalVisible(false);
@@ -262,7 +267,9 @@ const ShopWithPreview: React.FC = () => {
             {filteredItems.map((item) => (
               <ItemCard key={item.id}>
                 <ItemRow>
-                  <IconWrapper>{item.icon}</IconWrapper>
+                  <IconWrapper>
+                    <>{item.icon}</>
+                  </IconWrapper>
                   <ItemText>
                     <ItemName>{item.name}</ItemName>
                     <ItemPrice>가격: {item.price}원</ItemPrice>
@@ -287,7 +294,9 @@ const ShopWithPreview: React.FC = () => {
         <BattleBox customBorder={getBoxBorderStyle()}>
           <Nickname>{myBox.nickname}</Nickname>
           {myBox.appliedTeamIcon ? (
-            <AvatarContainer>{myBox.appliedTeamIcon.icon}</AvatarContainer>
+            <AvatarContainer>
+              <>{myBox.appliedTeamIcon.icon}</>
+            </AvatarContainer>
           ) : myBox.avatarUrl ? (
             <Avatar src={myBox.avatarUrl} alt='avatar' />
           ) : (
@@ -295,7 +304,6 @@ const ShopWithPreview: React.FC = () => {
               <FaUserAlt size={32} color='#888' />
             </DefaultAvatar>
           )}
-          {/* 사용하지 않는 ReadyIndicator 관련 코드는 주석 처리 */}
         </BattleBox>
         <ActionButton onClick={handleResetPreview}>원래대로</ActionButton>
         <MyItemsSection>
@@ -303,7 +311,9 @@ const ShopWithPreview: React.FC = () => {
           <MyItemsGrid>
             {myItems.map((item) => (
               <MyItemCard key={item.id} onClick={() => handlePreviewItem(item)}>
-                <MyItemIcon>{item.icon}</MyItemIcon>
+                <MyItemIcon>
+                  <>{item.icon}</>
+                </MyItemIcon>
                 <MyItemName>{item.name}</MyItemName>
               </MyItemCard>
             ))}
@@ -311,7 +321,7 @@ const ShopWithPreview: React.FC = () => {
         </MyItemsSection>
       </PreviewSection>
 
-      {/* 구매 모달 */}
+      {/* 구매 확인 모달 */}
       {purchaseModalVisible && selectedPurchaseItem && (
         <Modal title='구매 확인'>
           <p>
@@ -323,6 +333,21 @@ const ShopWithPreview: React.FC = () => {
               구매
             </ModalSubmitButton>
             <ModalCancelButton onClick={cancelPurchase}>취소</ModalCancelButton>
+          </div>
+        </Modal>
+      )}
+
+      {/* 구매 완료 모달 */}
+      {purchaseSuccessItem && (
+        <Modal title='구매 완료'>
+          <p>
+            <strong>{purchaseSuccessItem.name}</strong> 아이템을{' '}
+            <strong>{purchaseSuccessItem.price}원</strong>에 구매했습니다!
+          </p>
+          <div style={modalButtonsStyle}>
+            <ModalCancelButton onClick={() => setPurchaseSuccessItem(null)}>
+              닫기
+            </ModalCancelButton>
           </div>
         </Modal>
       )}
@@ -392,7 +417,6 @@ const ShopItemsContainer = styled.div`
 const ItemGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  grid-template-rows: repeat(auto-fit, auto);
   gap: 1rem;
   background-color: #d8ebff;
   border: 1px solid #99cfff;
@@ -611,29 +635,6 @@ const MyItemName = styled.span`
   font-weight: 500;
 `;
 
-/* Modal 관련 Styled Components */
-const ModalOverlay = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background-color: rgba(0, 0, 0, 0.6);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-`;
-const ModalContent = styled.div`
-  width: 400px;
-  background-color: #fff;
-  border-radius: 8px;
-  padding: 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  animation: scaleUp 0.3s ease-in-out;
-`;
 const ModalSubmitButton = styled.button`
   background-color: #4caf50;
   color: #fff;
@@ -647,6 +648,7 @@ const ModalSubmitButton = styled.button`
     transform: translateY(-2px);
   }
 `;
+
 const ModalCancelButton = styled.button`
   background-color: #f06292;
   color: #fff;
@@ -660,14 +662,3 @@ const ModalCancelButton = styled.button`
     transform: translateY(-2px);
   }
 `;
-const Modal: React.FC<{ title: string; children: React.ReactNode }> = ({
-  title,
-  children,
-}) => (
-  <ModalOverlay>
-    <ModalContent>
-      <h3 style={{ marginBottom: '1rem' }}>{title}</h3>
-      {children}
-    </ModalContent>
-  </ModalOverlay>
-);
