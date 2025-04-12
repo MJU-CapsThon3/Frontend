@@ -423,7 +423,7 @@ const BattleDetail: React.FC = () => {
         ) : (
           <div style={defaultAvatarStyle}>
             <FaUserAlt
-              style={{ fontSize: isSpectator ? '2rem' : '3rem', color: '#888' }}
+              style={{ fontSize: isSpectator ? '2rem' : '2rem', color: '#888' }}
             />
           </div>
         )}

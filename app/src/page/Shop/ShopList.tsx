@@ -20,8 +20,6 @@ interface ShopItem {
   category: CategoryType;
 }
 
-type TeamType = 'blue' | 'red' | null;
-
 interface MyBoxState {
   nickname: string;
   isReady: boolean;
@@ -141,16 +139,17 @@ const dummyShopItems: ShopItem[] = [
 ];
 
 /* ------------------- 애니메이션 ------------------- */
-const floatUpDown = keyframes`
-  0% { transform: translateY(0); }
-  50% { transform: translateY(-5px); }
-  100% { transform: translateY(0); }
-`;
-
 const fadeIn = keyframes`
   from { opacity: 0; transform: scale(0.95); }
   to { opacity: 1; transform: scale(1); }
 `;
+
+/* ------------------- 구매 모달 스타일 (추가) ------------------- */
+const modalButtonsStyle: React.CSSProperties = {
+  display: 'flex',
+  justifyContent: 'flex-end',
+  gap: '0.5rem',
+};
 
 /* ------------------- 상점 메인 컴포넌트 ------------------- */
 const ShopWithPreview: React.FC = () => {
@@ -165,18 +164,45 @@ const ShopWithPreview: React.FC = () => {
   const [selectedCategory, setSelectedCategory] =
     useState<CategoryType>('전체');
 
+  // 구매 모달 관련 상태
+  const [purchaseModalVisible, setPurchaseModalVisible] = useState(false);
+  const [selectedPurchaseItem, setSelectedPurchaseItem] =
+    useState<ShopItem | null>(null);
+
   const handleCategoryClick = (cat: CategoryType) => {
     setSelectedCategory(cat);
   };
 
-  const handleBuyItem = (item: ShopItem) => {
+  // 실제 구매 로직 (중복 구매 방지 처리 포함)
+  const handleBuyItemConfirm = (item: ShopItem) => {
     alert(`'${item.name}' 아이템을 구매했습니다!`);
     setMyItems((prev) =>
       prev.find((x) => x.id === item.id) ? prev : [...prev, item]
     );
   };
 
-  // 미리보기 버튼 - 팀 아이콘과 테두리는 적용, 효과음은 미리보기가 지원되지 않음
+  // 구매 버튼 클릭 시 모달 열기
+  const handleBuyItem = (item: ShopItem) => {
+    setSelectedPurchaseItem(item);
+    setPurchaseModalVisible(true);
+  };
+
+  // 모달 내 '구매' 버튼 클릭 처리
+  const confirmPurchase = () => {
+    if (selectedPurchaseItem) {
+      handleBuyItemConfirm(selectedPurchaseItem);
+    }
+    setSelectedPurchaseItem(null);
+    setPurchaseModalVisible(false);
+  };
+
+  // 모달 내 '취소' 버튼 클릭 처리
+  const cancelPurchase = () => {
+    setSelectedPurchaseItem(null);
+    setPurchaseModalVisible(false);
+  };
+
+  // 미리보기 버튼: 팀 아이콘과 테두리만 미리보기 지원
   const handlePreviewItem = (item: ShopItem) => {
     if (item.category === '팀 아이콘') {
       setMyBox((prev) => ({ ...prev, appliedTeamIcon: item }));
@@ -187,7 +213,7 @@ const ShopWithPreview: React.FC = () => {
     }
   };
 
-  // 원래대로(초기화) 버튼 핸들러
+  // 원래대로(초기화) 버튼
   const handleResetPreview = () => {
     setMyBox({
       nickname: '내 닉네임',
@@ -198,20 +224,12 @@ const ShopWithPreview: React.FC = () => {
     });
   };
 
-  // "전체"를 선택하면 전체 아이템, 아니라면 최대 8개만 보여주도록 처리
+  // 필터 처리: "전체" 선택 시 전체, 그 외에는 최대 8개만 표시
   const filteredItems =
     selectedCategory === '전체'
-      ? dummyShopItems.filter((item) =>
-          selectedCategory === '전체'
-            ? true
-            : item.category === selectedCategory
-        )
+      ? dummyShopItems
       : dummyShopItems
-          .filter((item) =>
-            selectedCategory === '전체'
-              ? true
-              : item.category === selectedCategory
-          )
+          .filter((item) => item.category === selectedCategory)
           .slice(0, 8);
 
   const getBoxBorderStyle = () => {
@@ -274,16 +292,10 @@ const ShopWithPreview: React.FC = () => {
             <Avatar src={myBox.avatarUrl} alt='avatar' />
           ) : (
             <DefaultAvatar>
-              <FaUserAlt size={48} color='#888' />
+              <FaUserAlt size={32} color='#888' />
             </DefaultAvatar>
           )}
-          <ReadyIndicator>
-            {myBox.isReady ? (
-              <ReadyBadge>준 비</ReadyBadge>
-            ) : (
-              <NotReadyBadge>대 기</NotReadyBadge>
-            )}
-          </ReadyIndicator>
+          {/* 사용하지 않는 ReadyIndicator 관련 코드는 주석 처리 */}
         </BattleBox>
         <ActionButton onClick={handleResetPreview}>원래대로</ActionButton>
         <MyItemsSection>
@@ -298,6 +310,22 @@ const ShopWithPreview: React.FC = () => {
           </MyItemsGrid>
         </MyItemsSection>
       </PreviewSection>
+
+      {/* 구매 모달 */}
+      {purchaseModalVisible && selectedPurchaseItem && (
+        <Modal title='구매 확인'>
+          <p>
+            <strong>{selectedPurchaseItem.name}</strong> 아이템을{' '}
+            <strong>{selectedPurchaseItem.price}원</strong>에 구매하시겠습니까?
+          </p>
+          <div style={modalButtonsStyle}>
+            <ModalSubmitButton onClick={confirmPurchase}>
+              구매
+            </ModalSubmitButton>
+            <ModalCancelButton onClick={cancelPurchase}>취소</ModalCancelButton>
+          </div>
+        </Modal>
+      )}
     </PageContainer>
   );
 };
@@ -513,7 +541,6 @@ const DefaultAvatar = styled.div`
   justify-content: center;
 `;
 
-/* AvatarContainer: 팀 아이콘이 적용되었을 경우, 아바타 자리로 대체 */
 const AvatarContainer = styled.div`
   width: 100%;
   height: 100%;
@@ -521,39 +548,6 @@ const AvatarContainer = styled.div`
   align-items: center;
   justify-content: center;
   background: #fff;
-`;
-
-const ReadyIndicator = styled.div`
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 100%;
-  height: 20px;
-  background-color: rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-`;
-
-const ReadyBadge = styled.div`
-  background-color: #ff9800;
-  color: #fff;
-  padding: 2px 6px;
-  font-size: 0.7rem;
-  font-weight: bold;
-  width: 100%;
-  text-align: center;
-`;
-
-const NotReadyBadge = styled.div`
-  background-color: #bbb;
-  color: #fff;
-  padding: 2px 6px;
-  font-size: 0.7rem;
-  font-weight: bold;
-  width: 100%;
-  text-align: center;
 `;
 
 const ActionButton = styled.button`
@@ -578,7 +572,7 @@ const MyItemsSection = styled.div`
 
 const MyItemsGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(3, 1fr); /* 3열 고정 */
+  grid-template-columns: repeat(3, 1fr);
   gap: 10px;
   padding: 10px;
 `;
@@ -616,3 +610,64 @@ const MyItemName = styled.span`
   color: #333;
   font-weight: 500;
 `;
+
+/* Modal 관련 Styled Components */
+const ModalOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+`;
+const ModalContent = styled.div`
+  width: 400px;
+  background-color: #fff;
+  border-radius: 8px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  animation: scaleUp 0.3s ease-in-out;
+`;
+const ModalSubmitButton = styled.button`
+  background-color: #4caf50;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 0.4rem 0.8rem;
+  cursor: pointer;
+  width: 100%;
+  transition: transform 0.2s;
+  &:hover {
+    transform: translateY(-2px);
+  }
+`;
+const ModalCancelButton = styled.button`
+  background-color: #f06292;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 0.4rem 0.8rem;
+  cursor: pointer;
+  width: 100%;
+  transition: transform 0.2s;
+  &:hover {
+    transform: translateY(-2px);
+  }
+`;
+const Modal: React.FC<{ title: string; children: React.ReactNode }> = ({
+  title,
+  children,
+}) => (
+  <ModalOverlay>
+    <ModalContent>
+      <h3 style={{ marginBottom: '1rem' }}>{title}</h3>
+      {children}
+    </ModalContent>
+  </ModalOverlay>
+);
