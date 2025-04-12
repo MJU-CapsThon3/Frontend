@@ -323,22 +323,22 @@ export default BattleList;
 
 // 컨테이너
 const containerStyle: CSSProperties = {
-  width: '1000px',
-  height: '80vh',
-  margin: '0 auto',
-  padding: '1rem',
+  width: '800px',
+
   background: 'linear-gradient(to bottom, #3aa7f0, #63c8ff)',
   border: '2px solid #48b0ff',
   borderRadius: '10px',
   display: 'flex',
   flexDirection: 'column',
+  marginTop: '20px',
+  padding: '0.5rem',
 };
 
 // 헤더
 const headerStyle: CSSProperties = {
   display: 'flex',
   justifyContent: 'space-between',
-  marginBottom: '1rem',
+  marginBottom: '0.5rem',
 };
 const headerLeftStyle: CSSProperties = {
   display: 'flex',

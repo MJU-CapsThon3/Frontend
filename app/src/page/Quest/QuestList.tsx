@@ -308,7 +308,7 @@ const modalFadeIn = keyframes`
 const Container = styled.div`
   width: 800px;
   height: 600px;
-  margin: 1rem auto;
+
   padding: 1rem;
   background: #3aa7f0;
   border: 3px solid #2e8bc0;
