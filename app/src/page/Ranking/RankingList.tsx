@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { FaArrowUp, FaArrowDown, FaQuestionCircle } from 'react-icons/fa';
 
@@ -88,8 +88,8 @@ const getTierByRank = (
     grandmaster: Math.ceil(totalPlayers * 0.04), // 상위 4%
     master: Math.ceil(totalPlayers * 0.1), // 상위 10%
     diamond: Math.ceil(totalPlayers * 0.2), // 상위 20%
-    gold: Math.ceil(totalPlayers * 0.35), // 상위 35%
-    platinum: Math.ceil(totalPlayers * 0.55), // 상위 55%
+    platinum: Math.ceil(totalPlayers * 0.35), // 상위 35%
+    gold: Math.ceil(totalPlayers * 0.55), // 상위 55%
     silver: Math.ceil(totalPlayers * 0.8), // 상위 80%
     bronze: totalPlayers, // 그 외
   };
@@ -98,8 +98,8 @@ const getTierByRank = (
   else if (rank <= thresholds.grandmaster) return 'grandmaster';
   else if (rank <= thresholds.master) return 'master';
   else if (rank <= thresholds.diamond) return 'diamond';
-  else if (rank <= thresholds.gold) return 'gold';
   else if (rank <= thresholds.platinum) return 'platinum';
+  else if (rank <= thresholds.gold) return 'gold';
   else if (rank <= thresholds.silver) return 'silver';
   else return 'bronze';
 };
@@ -145,7 +145,7 @@ const TierInfoModal: React.FC<TierInfoModalProps> = ({ onClose }) => {
 };
 
 // ─────────────────────────────────────────────
-// RankingPage Component (무한스크롤 적용)
+// RankingPage Component (내부 스크롤 적용)
 type UserRank = {
   id: number;
   username: string;
@@ -166,6 +166,7 @@ const RankingPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const tableWrapperRef = useRef<HTMLDivElement>(null);
 
   const fetchRankingData = (_: number): Promise<UserRank[]> => {
     return new Promise((resolve) => {
@@ -192,26 +193,33 @@ const RankingPage: React.FC = () => {
     });
   };
 
+  // TableWrapper 내부 스크롤 이벤트 핸들러
   const handleScroll = useCallback(() => {
-    const scrollTop =
-      document.documentElement.scrollTop || document.body.scrollTop;
-    const windowHeight = window.innerHeight;
-    const fullHeight = document.documentElement.scrollHeight;
-    if (fullHeight - (scrollTop + windowHeight) < 100 && !loading) {
-      setLoading(true);
-      fetchRankingData(page).then((newData) => {
-        if (newData.length > 0) {
-          setRankingData((prevData) => [...prevData, ...newData]);
-          setPage((prevPage) => prevPage + 1);
-        }
-        setLoading(false);
-      });
+    if (tableWrapperRef.current) {
+      const { scrollTop, clientHeight, scrollHeight } = tableWrapperRef.current;
+      if (scrollHeight - (scrollTop + clientHeight) < 100 && !loading) {
+        setLoading(true);
+        fetchRankingData(page).then((newData) => {
+          if (newData.length > 0) {
+            setRankingData((prevData) => [...prevData, ...newData]);
+            setPage((prevPage) => prevPage + 1);
+          }
+          setLoading(false);
+        });
+      }
     }
   }, [loading, page, rankingData]);
 
   useEffect(() => {
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    const wrapper = tableWrapperRef.current;
+    if (wrapper) {
+      wrapper.addEventListener('scroll', handleScroll);
+    }
+    return () => {
+      if (wrapper) {
+        wrapper.removeEventListener('scroll', handleScroll);
+      }
+    };
   }, [handleScroll]);
 
   return (
@@ -224,7 +232,7 @@ const RankingPage: React.FC = () => {
           </HelpIcon>
         </HeaderTitleWrapper>
       </RankingHeader>
-      <TableWrapper>
+      <TableWrapper ref={tableWrapperRef}>
         <RankingTable>
           <thead>
             <tr>
@@ -307,9 +315,8 @@ const fadeIn = keyframes`
 // ─────────────────────────────────────────────
 // Styled Components (공통 스타일)
 const RankingContainer = styled.div`
-  min-width: 1000px;
-  min-height: 80vh;
-  margin: 2rem auto;
+  width: 800px;
+  height: 600px;
   background: linear-gradient(135deg, #ffdb4b, #ffa136);
   border-radius: 12px;
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
@@ -352,8 +359,35 @@ const HelpIcon = styled.div`
 `;
 
 const TableWrapper = styled.div`
+  height: 400px; /* 내부 스크롤 영역의 고정 높이 */
   padding: 2rem;
-  overflow-x: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  /* 스크롤바 전체 영역 */
+  &::-webkit-scrollbar {
+    width: 10px; /* 스크롤바 폭 */
+  }
+
+  /* 스크롤 트랙: 밝은 회색 배경에 라운드 효과 */
+  &::-webkit-scrollbar-track {
+    background: #ffdb4b;
+    border-radius: 5px;
+    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.05);
+  }
+
+  /* 스크롤 thumb: 중간 회색 계열, 테두리는 트랙 색상과 동일하게 설정 */
+  &::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 5px;
+    border: 2px solid #ffdb4b;
+    transition: background 0.3s;
+  }
+
+  /* 스크롤 thumb hover: 좀 더 어두운 회색으로 변경 */
+  &::-webkit-scrollbar-thumb:hover {
+    background: #ffa136;
+  }
 `;
 
 const RankingTable = styled.table`
@@ -363,14 +397,13 @@ const RankingTable = styled.table`
 `;
 
 const TableHead = styled.th`
-  background: #ff6e40; /* 눈에 띄는 단색 배경 */
+  background: #ff6e40;
   color: #fff;
   padding: 1.2rem 1.5rem;
   text-align: center;
   font-size: 1.2rem;
   font-weight: bold;
   border-bottom: 2px solid #ffa136;
-  /* 좌우 모서리 둥글게 (첫 번째, 마지막 셀에 적용) */
   &:first-child {
     border-top-left-radius: 8px;
   }
@@ -413,8 +446,6 @@ const TierCell = styled.div`
 
 const TierIcon = styled.span`
   display: inline-flex;
-
-  /* 추가적인 스타일 조정 가능 */
 `;
 
 const ChangeCell = styled.div`

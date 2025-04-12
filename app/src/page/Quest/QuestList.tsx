@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { FaGift, FaClock, FaCoins } from 'react-icons/fa';
 
@@ -100,15 +100,12 @@ const initialQuestData: Quest[] = [
 
 const QuestPage: React.FC = () => {
   const [quests, setQuests] = useState<Quest[]>(initialQuestData);
-  // 무한 스크롤을 위한 현재 보여질 퀘스트 개수 (초기 3개)
-  const [visibleCount, setVisibleCount] = useState<number>(3);
   const [modalVisible, setModalVisible] = useState<boolean>(false);
   const [modalContent, setModalContent] = useState<string>('');
-  const questListRef = useRef<HTMLDivElement>(null);
 
   /**
    * 자정까지 남은 시간을 매초 업데이트하며,
-   * 자정 지나면 퀘스트의 진행도와 보상 상태 초기화
+   * 자정이 지나면 퀘스트의 진행도와 보상 상태를 초기화
    */
   useEffect(() => {
     const timer = setInterval(() => {
@@ -129,19 +126,6 @@ const QuestPage: React.FC = () => {
     }, 1000);
     return () => clearInterval(timer);
   }, []);
-
-  /**
-   * 스크롤 이벤트 핸들러: 스크롤 하단 50px 이내로 도달하면
-   * visibleCount 값을 증가시켜 더 많은 퀘스트를 보여줌
-   */
-  const handleScroll = () => {
-    if (questListRef.current) {
-      const { scrollTop, scrollHeight, clientHeight } = questListRef.current;
-      if (scrollHeight - scrollTop - clientHeight < 50) {
-        setVisibleCount((prevCount) => Math.min(prevCount + 1, quests.length));
-      }
-    }
-  };
 
   /**
    * 퀘스트 완료 버튼 클릭 시 현재 진행도를 1씩 증가
@@ -223,9 +207,9 @@ const QuestPage: React.FC = () => {
         <HeaderSubTitle>일일 미션은 매일 00:00에 초기화돼요 ★</HeaderSubTitle>
       </Header>
 
-      {/* QuestList에 직접 onScroll 이벤트를 전달 */}
-      <QuestList ref={questListRef} onScroll={handleScroll}>
-        {quests.slice(0, visibleCount).map((quest) => (
+      {/* QuestList는 Container 내 남은 영역을 차지하며 내용이 많을 경우 스크롤됩니다 */}
+      <QuestList>
+        {quests.map((quest) => (
           <QuestItem key={quest.id}>
             <CoinBoxWrapper>
               <GiftLabel>
@@ -249,7 +233,10 @@ const QuestPage: React.FC = () => {
                   <ProgressBar>
                     <ProgressFill
                       style={{
-                        width: `${Math.min((quest.progress / quest.goal) * 100, 100)}%`,
+                        width: `${Math.min(
+                          (quest.progress / quest.goal) * 100,
+                          100
+                        )}%`,
                       }}
                     />
                   </ProgressBar>
@@ -317,7 +304,7 @@ const modalFadeIn = keyframes`
   }
 `;
 
-// 컨테이너 스타일
+// 컨테이너 스타일 (600px로 고정)
 const Container = styled.div`
   width: 800px;
   height: 600px;
@@ -355,10 +342,10 @@ const HeaderSubTitle = styled.p`
   font-size: 0.9rem;
 `;
 
-// 퀘스트 리스트 (스크롤바 포함)
+// QuestList: 남은 영역을 모두 차지하며 스크롤이 발생하도록 함
 const QuestList = styled.div`
-  overflow-y: auto;
   flex: 1;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 1rem;
