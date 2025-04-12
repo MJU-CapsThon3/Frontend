@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { FaGift, FaClock, FaCoins } from 'react-icons/fa';
 
-// 자정까지 남은 시간을 초 단위로 계산하는 함수
+/**
+ * 자정까지 남은 시간을 초 단위로 계산하는 함수
+ */
 const getTimeUntilMidnight = (): number => {
   const now = new Date();
   const midnight = new Date();
@@ -21,8 +23,8 @@ type Quest = {
   rewardClaimed: boolean; // 보상 수령 여부
 };
 
-// 예시 데이터 (퀘스트 3종목)
-// 초기 타이머는 모두 자정까지 남은 시간으로 설정
+// 초기 퀘스트 데이터 (7종목)
+// 모든 타이머는 자정까지 남은 시간으로 초기화
 const initialQuestData: Quest[] = [
   {
     id: 1,
@@ -54,14 +56,60 @@ const initialQuestData: Quest[] = [
     goal: 10,
     rewardClaimed: false,
   },
+  {
+    id: 4,
+    title: '로그인 유지하기',
+    description: '하루 동안 연속 로그인 시, 보너스 지급!',
+    reward: '30포인트',
+    timeLeft: getTimeUntilMidnight(),
+    progress: 0,
+    goal: 1,
+    rewardClaimed: false,
+  },
+  {
+    id: 5,
+    title: '프로필 수정하기',
+    description: '한 번의 프로필 수정 시, 선물 지급!',
+    reward: '10포인트',
+    timeLeft: getTimeUntilMidnight(),
+    progress: 0,
+    goal: 1,
+    rewardClaimed: false,
+  },
+  {
+    id: 6,
+    title: '친구 초대하기',
+    description: '친구 초대 3회 완료 시, 선물 지급!',
+    reward: '150포인트',
+    timeLeft: getTimeUntilMidnight(),
+    progress: 0,
+    goal: 3,
+    rewardClaimed: false,
+  },
+  {
+    id: 7,
+    title: '일일 퀘스트 클리어',
+    description: '모든 퀘스트 완료 시, 보너스 지급!',
+    reward: '200포인트',
+    timeLeft: getTimeUntilMidnight(),
+    progress: 0,
+    goal: 7,
+    rewardClaimed: false,
+  },
 ];
 
 const QuestPage: React.FC = () => {
   const [quests, setQuests] = useState<Quest[]>(initialQuestData);
+  // 무한 스크롤을 위한 현재 보여질 퀘스트 개수 (초기 3개)
+  const [visibleCount, setVisibleCount] = useState<number>(3);
   const [modalVisible, setModalVisible] = useState<boolean>(false);
   const [modalContent, setModalContent] = useState<string>('');
+  const questListRef = useRef<HTMLDivElement>(null);
 
-  // 매초 자정까지 남은 시간을 업데이트하며, 자정 지나면 퀘스트 리셋 처리
+  /**
+   * 자정까지 남은 시간을 매초 업데이트하며,
+   * 자정 지나면 퀘스트의 진행도와 보상 상태 초기화
+   */
   useEffect(() => {
     const timer = setInterval(() => {
       const newTime = getTimeUntilMidnight();
@@ -82,7 +130,22 @@ const QuestPage: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // 퀘스트 완료 버튼 클릭 시 진행도를 1씩 증가
+  /**
+   * 스크롤 이벤트 핸들러: 스크롤 하단 50px 이내로 도달하면
+   * visibleCount 값을 증가시켜 더 많은 퀘스트를 보여줌
+   */
+  const handleScroll = () => {
+    if (questListRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = questListRef.current;
+      if (scrollHeight - scrollTop - clientHeight < 50) {
+        setVisibleCount((prevCount) => Math.min(prevCount + 1, quests.length));
+      }
+    }
+  };
+
+  /**
+   * 퀘스트 완료 버튼 클릭 시 현재 진행도를 1씩 증가
+   */
   const handleCompleteQuest = (questId: number) => {
     setQuests((prevQuests) =>
       prevQuests.map((quest) =>
@@ -91,10 +154,12 @@ const QuestPage: React.FC = () => {
           : quest
       )
     );
-    console.log(`퀘스트 ID ${questId} 완료 진행 중...`);
+    console.log(`퀘스트 ID ${questId} 진행 중...`);
   };
 
-  // 선물받기 버튼 클릭 시 모달을 띄우고 보상 수령 상태를 업데이트
+  /**
+   * 선물받기 버튼 클릭 시 모달을 띄우고 보상 수령 상태를 업데이트
+   */
   const handleClaimReward = (questId: number) => {
     const quest = quests.find((q) => q.id === questId);
     if (quest) {
@@ -109,12 +174,46 @@ const QuestPage: React.FC = () => {
     }
   };
 
-  // 초 단위 시간을 "HH시간 MM분 SS초" 형식으로 변환하는 함수
-  const formatTime = (seconds: number): string => {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = seconds % 60;
-    return `${h}시간 ${m < 10 ? '0' : ''}${m}분 ${s < 10 ? '0' : ''}${s}초`;
+  /**
+   * 초(seconds)를 "HH시간 MM분 SS초" 형태의 문자열로 변환
+   * padStart를 이용하여 자리수를 보완해 가독성을 높임
+   */
+  const formatSecondsToHMS = (seconds: number): string => {
+    const h = String(Math.floor(seconds / 3600)).padStart(2, '0');
+    const m = String(Math.floor((seconds % 3600) / 60)).padStart(2, '0');
+    const s = String(seconds % 60).padStart(2, '0');
+    return `${h}시간 ${m}분 ${s}초`;
+  };
+
+  /**
+   * 퀘스트 진행 상황에 따라 액션 버튼을 렌더링
+   */
+  const renderActionButton = (quest: Quest) => {
+    if (quest.progress < quest.goal) {
+      return (
+        <ActionButton
+          onClick={() => handleCompleteQuest(quest.id)}
+          $buttonType='complete'
+        >
+          퀘스트 완료
+        </ActionButton>
+      );
+    } else if (quest.progress >= quest.goal && !quest.rewardClaimed) {
+      return (
+        <ActionButton
+          onClick={() => handleClaimReward(quest.id)}
+          $buttonType='claim'
+        >
+          선물받기
+        </ActionButton>
+      );
+    } else {
+      return (
+        <ActionButton disabled $buttonType='claimed'>
+          보상완료
+        </ActionButton>
+      );
+    }
   };
 
   return (
@@ -124,87 +223,52 @@ const QuestPage: React.FC = () => {
         <HeaderSubTitle>일일 미션은 매일 00:00에 초기화돼요 ★</HeaderSubTitle>
       </Header>
 
-      <QuestList>
-        {quests.map((quest) => {
-          // 버튼 렌더링: 진행도 미달이면 "퀘스트 완료", 완료 후 보상 미수령이면 "선물받기", 수령 후 "보상완료"
-          const renderActionButton = () => {
-            if (quest.progress < quest.goal) {
-              return (
-                <ActionButton
-                  onClick={() => handleCompleteQuest(quest.id)}
-                  buttonType='complete'
-                >
-                  퀘스트 완료
-                </ActionButton>
-              );
-            } else if (quest.progress >= quest.goal && !quest.rewardClaimed) {
-              return (
-                <ActionButton
-                  onClick={() => handleClaimReward(quest.id)}
-                  buttonType='claim'
-                >
-                  선물받기
-                </ActionButton>
-              );
-            } else {
-              return (
-                <ActionButton disabled buttonType='claimed'>
-                  보상완료
-                </ActionButton>
-              );
-            }
-          };
+      {/* QuestList에 직접 onScroll 이벤트를 전달 */}
+      <QuestList ref={questListRef} onScroll={handleScroll}>
+        {quests.slice(0, visibleCount).map((quest) => (
+          <QuestItem key={quest.id}>
+            <CoinBoxWrapper>
+              <GiftLabel>
+                <FaGift size={14} />
+                선물
+              </GiftLabel>
+              <CoinBox>
+                <FaCoins size={28} />
+              </CoinBox>
+            </CoinBoxWrapper>
 
-          return (
-            <QuestItem key={quest.id}>
-              {/* 왼쪽 영역: 아이콘 및 선물 라벨 */}
-              <CoinBoxWrapper>
-                <GiftLabel>
-                  <FaGift size={14} />
-                  선물
-                </GiftLabel>
-                <CoinBox>
-                  <FaCoins size={28} />
-                </CoinBox>
-              </CoinBoxWrapper>
+            <ContentWrapper>
+              <InfoContainer>
+                <RowTitle>{quest.title}</RowTitle>
+                <RowDesc>내용 : {quest.description}</RowDesc>
+                <RowReward>선물 : {quest.reward}</RowReward>
+              </InfoContainer>
 
-              {/* 오른쪽 영역: 퀘스트 정보 및 진행률 */}
-              <ContentWrapper>
-                <InfoContainer>
-                  <RowTitle>{quest.title}</RowTitle>
-                  <RowDesc>내용 : {quest.description}</RowDesc>
-                  <RowReward>선물 : {quest.reward}</RowReward>
-                </InfoContainer>
+              <BottomRow>
+                <ProgressBarContainer>
+                  <ProgressBar>
+                    <ProgressFill
+                      style={{
+                        width: `${Math.min((quest.progress / quest.goal) * 100, 100)}%`,
+                      }}
+                    />
+                  </ProgressBar>
+                  <ProgressLabel>
+                    {quest.progress} / {quest.goal}
+                  </ProgressLabel>
+                </ProgressBarContainer>
 
-                <BottomRow>
-                  <ProgressBarContainer>
-                    <ProgressBar>
-                      <ProgressFill
-                        style={{
-                          width: `${Math.min(
-                            (quest.progress / quest.goal) * 100,
-                            100
-                          )}%`,
-                        }}
-                      />
-                    </ProgressBar>
-                    <ProgressLabel>
-                      {quest.progress} / {quest.goal}
-                    </ProgressLabel>
-                  </ProgressBarContainer>
-
-                  <RightContainer>
-                    <TimeLeft>
-                      <FaClock style={{ marginRight: '4px' }} />
-                      {formatTime(quest.timeLeft)}
-                    </TimeLeft>
-                    {renderActionButton()}
-                  </RightContainer>
-                </BottomRow>
-              </ContentWrapper>
-            </QuestItem>
-          );
-        })}
+                <RightContainer>
+                  <TimeLeft>
+                    <FaClock style={{ marginRight: '4px' }} />
+                    {formatSecondsToHMS(quest.timeLeft)}
+                  </TimeLeft>
+                  {renderActionButton(quest)}
+                </RightContainer>
+              </BottomRow>
+            </ContentWrapper>
+          </QuestItem>
+        ))}
       </QuestList>
 
       {modalVisible && (
@@ -226,6 +290,11 @@ const QuestPage: React.FC = () => {
 
 export default QuestPage;
 
+/* =========================
+   스타일 컴포넌트 정의 (가독성을 위해 효율적으로 재정렬)
+========================= */
+
+// 애니메이션 정의
 const slideIn = keyframes`
   from {
     opacity: 0;
@@ -248,47 +317,52 @@ const modalFadeIn = keyframes`
   }
 `;
 
-// Container와 기본 테마 (블루 계열)는 그대로 유지
+// 컨테이너 스타일
 const Container = styled.div`
-  min-width: 1000px;
-  margin: 0 auto;
-  min-height: 80vh;
-  padding: 1.5rem;
+  width: 800px;
+  height: 600px;
+  margin: 1rem auto;
+  padding: 1rem;
   background: #3aa7f0;
   border: 3px solid #2e8bc0;
   border-radius: 12px;
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
   font-family: 'Malgun Gothic', 'Arial', sans-serif;
+  display: flex;
+  flex-direction: column;
 `;
 
+// 헤더 스타일
 const Header = styled.div`
   text-align: center;
-  padding: 1rem;
+  padding: 0.8rem;
   background: #2e8bc0;
   border: 2px solid #246a94;
   border-radius: 8px;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
   box-shadow: inset 0 1px 0 #cee3f8;
 `;
 
 const HeaderTitle = styled.h1`
   margin: 0;
   color: #fff;
-  font-size: 1.5rem;
+  font-size: 1.4rem;
 `;
 
 const HeaderSubTitle = styled.p`
   margin: 0;
   color: #e0f7ff;
-  font-size: 1rem;
+  font-size: 0.9rem;
 `;
 
+// 퀘스트 리스트 (스크롤바 포함)
 const QuestList = styled.div`
-  max-height: 70vh;
   overflow-y: auto;
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  padding-right: 0.5rem;
   &::-webkit-scrollbar {
     width: 8px;
   }
@@ -302,12 +376,11 @@ const QuestList = styled.div`
   }
 `;
 
+// 퀘스트 아이템 레이아웃
 const QuestItem = styled.div`
-  width: 95%;
-  margin: 0 auto;
   display: flex;
-  gap: 1.2rem;
-  padding: 1rem;
+  gap: 1rem;
+  padding: 0.8rem;
   background: #fff;
   border: 2px solid #2e8bc0;
   border-radius: 8px;
@@ -317,8 +390,8 @@ const QuestItem = styled.div`
 
 const CoinBoxWrapper = styled.div`
   position: relative;
-  width: 150px;
-  height: 150px;
+  width: 120px;
+  height: 120px;
   flex-shrink: 0;
 `;
 
@@ -329,20 +402,19 @@ const GiftLabel = styled.div`
   background: #9fd1ff;
   border: 2px solid #2e8bc0;
   border-radius: 6px;
-  padding: 0.3rem 0.6rem;
+  padding: 0.2rem 0.4rem;
   display: flex;
   align-items: center;
   gap: 0.3rem;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: bold;
   color: #034f84;
   box-shadow: inset 0 1px 0 #fff;
 `;
 
-// 코인박스는 노란색 계열로 변경
 const CoinBox = styled.div`
-  width: 150px;
-  height: 150px;
+  width: 120px;
+  height: 120px;
   background: #ffd700;
   border: 2px solid #d4af37;
   border-radius: 8px;
@@ -351,41 +423,43 @@ const CoinBox = styled.div`
   align-items: center;
   justify-content: center;
   color: #333;
-  font-size: 1.4rem;
+  font-size: 1.2rem;
   font-weight: bold;
 `;
 
+// 콘텐츠 및 정보 레이아웃
 const ContentWrapper = styled.div`
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   flex: 1;
-  gap: 0.8rem;
+  gap: 0.6rem;
 `;
 
 const InfoContainer = styled.div`
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.4rem;
+  gap: 0.3rem;
 `;
 
 const RowTitle = styled.div`
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   font-weight: bold;
   color: #2e8bc0;
 `;
 
 const RowDesc = styled.div`
-  font-size: 1rem;
+  font-size: 0.95rem;
   color: #333;
 `;
 
 const RowReward = styled.div`
-  font-size: 1rem;
+  font-size: 0.95rem;
   color: #333;
 `;
 
+// 하단 정보 및 버튼 레이아웃
 const BottomRow = styled.div`
   display: flex;
   justify-content: space-between;
@@ -397,20 +471,17 @@ const ProgressBarContainer = styled.div`
   align-items: center;
   gap: 0.5rem;
   flex: 1;
-  margin-right: 20px;
 `;
 
-// 진행률 게이지 배경은 연한 회색(#eee)로 설정
 const ProgressBar = styled.div`
   flex: 1;
-  height: 18px;
-  border-radius: 9px;
+  height: 14px;
+  border-radius: 7px;
   background: #eee;
   overflow: hidden;
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
 `;
 
-// 진행률 채워진 부분은 빨간색 계열 그라데이션
 const ProgressFill = styled.div`
   height: 100%;
   background: linear-gradient(90deg, #ff5f5f, #ff7f7f);
@@ -432,36 +503,37 @@ const RightContainer = styled.div`
 const TimeLeft = styled.div`
   background: #d0eaff;
   color: #034f84;
-  font-size: 0.9rem;
-  padding: 0.4rem 0.8rem;
+  font-size: 0.85rem;
+  padding: 0.3rem 0.6rem;
   border-radius: 4px;
+  margin-left: 20px;
   border: 1px solid #2e8bc0;
   box-shadow: inset 0 1px 0 #fff;
   display: inline-flex;
   align-items: center;
 `;
 
-// 액션 버튼의 색상 재조합
+// 액션 버튼 (transient prop $buttonType 사용)
 const ActionButton = styled.button<{
-  buttonType: 'complete' | 'claim' | 'claimed';
+  $buttonType: 'complete' | 'claim' | 'claimed';
 }>`
-  background-color: ${({ buttonType }) =>
-    buttonType === 'complete'
-      ? '#4caf50' // 초록 (퀘스트 완료)
-      : buttonType === 'claim'
-        ? '#ff9800' // 주황 (선물받기)
-        : '#888'}; // 회색 (보상완료)
+  background-color: ${({ $buttonType }) =>
+    $buttonType === 'complete'
+      ? '#4caf50'
+      : $buttonType === 'claim'
+        ? '#ff9800'
+        : '#888'};
   color: #fff;
   border: none;
-  font-size: 1rem;
-  padding: 0.4rem 1rem;
+  font-size: 0.95rem;
+  padding: 0.3rem 0.8rem;
   border-radius: 6px;
   cursor: pointer;
   box-shadow: 0 2px 0
-    ${({ buttonType }) =>
-      buttonType === 'complete'
+    ${({ $buttonType }) =>
+      $buttonType === 'complete'
         ? '#388e3c'
-        : buttonType === 'claim'
+        : $buttonType === 'claim'
           ? '#f57c00'
           : '#555'};
   transition: background-color 0.2s ease;
@@ -470,6 +542,7 @@ const ActionButton = styled.button<{
     transform: translateY(1px);
     box-shadow: none;
   }
+
   &:disabled {
     background-color: #888;
     cursor: not-allowed;
@@ -494,7 +567,7 @@ const ModalOverlay = styled.div`
 
 const ModalContent = styled.div`
   background: #fff;
-  width: 360px;
+  width: 320px;
   border-radius: 12px;
   overflow: hidden;
   animation: ${modalFadeIn} 0.3s ease forwards;
@@ -503,37 +576,36 @@ const ModalContent = styled.div`
 
 const ModalHeader = styled.div`
   background: #2e8bc0;
-  padding: 1rem;
+  padding: 0.8rem;
   color: #fff;
-  font-size: 1.3rem;
+  font-size: 1.2rem;
   text-align: center;
 `;
 
 const ModalBody = styled.div`
-  padding: 1.2rem;
-  font-size: 1.1rem;
+  padding: 0.8rem;
+  font-size: 1rem;
   text-align: center;
-  line-height: 1.5;
-  min-height: 200px;
+  line-height: 1.4;
+  min-height: 150px;
   display: flex;
   align-items: center;
   justify-content: center;
 `;
 
 const ModalFooter = styled.div`
-  padding: 0.8rem;
+  padding: 0.6rem;
   display: flex;
   justify-content: center;
   background: #f9f9f9;
 `;
 
-// 모달 버튼은 모달 헤더와 조화를 이루는 밝은 파란색으로 설정
 const ModalButton = styled.button`
   background: #5aa9ff;
   border: none;
   color: #fff;
-  padding: 0.6rem 1.4rem;
-  font-size: 1rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.95rem;
   border-radius: 6px;
   cursor: pointer;
   transition: background 0.2s ease;
