@@ -272,7 +272,7 @@ const ShopWithPreview: React.FC = () => {
                   </IconWrapper>
                   <ItemText>
                     <ItemName>{item.name}</ItemName>
-                    <ItemPrice>가격: {item.price}원</ItemPrice>
+                    <ItemPrice>가격: {item.price}냥</ItemPrice>
                   </ItemText>
                 </ItemRow>
                 <ButtonRow>
