@@ -202,7 +202,8 @@ const PointsDisplay = styled.div`
   font-size: 1rem;
   font-weight: bold;
   color: #1c87c9;
-  margin-right: 1rem;
+
+  min-width: 80px;
 `;
 
 const PointsIcon = styled.span`
