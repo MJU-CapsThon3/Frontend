@@ -1,7 +1,7 @@
 // src/pages/MyInfo/MyInfo.tsx
 import React, { useState, useMemo, useCallback, FormEvent } from 'react';
 import styled, { keyframes } from 'styled-components';
-import { FaUserAlt, FaBorderStyle } from 'react-icons/fa';
+import { FaUserAlt, FaBorderStyle, FaCoins } from 'react-icons/fa';
 
 // svg 아이콘 임포트 (파일 경로는 프로젝트 구조에 맞게 수정)
 import BronzeIcon from '../../assets/Bronze.svg';
@@ -222,6 +222,7 @@ const MyInfo: React.FC = () => {
   return (
     <PageContainer>
       <LeftColumn>
+        {/* 내 정보 */}
         <Section>
           <SectionTitle>내 정보</SectionTitle>
           <InfoRow>
@@ -233,6 +234,8 @@ const MyInfo: React.FC = () => {
             <InfoValue>{userInfo.email}</InfoValue>
           </InfoRow>
         </Section>
+
+        {/* 내 랭킹 */}
         <Section>
           <SectionTitle>내 랭킹</SectionTitle>
           <TierCard>
@@ -245,6 +248,8 @@ const MyInfo: React.FC = () => {
             </TierDetail>
           </TierCard>
         </Section>
+
+        {/* 비밀번호 변경 */}
         <Section>
           <SectionTitle>비밀번호 변경</SectionTitle>
           <Form onSubmit={handlePasswordChange}>
@@ -283,7 +288,20 @@ const MyInfo: React.FC = () => {
           </Form>
         </Section>
       </LeftColumn>
+
       <RightColumn>
+        {/* 내 냥포인트 영역: "내포인트" 제목과 포인트 값 */}
+        <PointsSection>
+          <PointsTitle>내포인트</PointsTitle>
+          <PointsDisplay>
+            <PointsIcon>
+              <FaCoins size={18} />
+            </PointsIcon>
+            <PointsValue>1000냥</PointsValue>
+          </PointsDisplay>
+        </PointsSection>
+
+        {/* 내 박스 미리보기 및 내 아이템 */}
         <PreviewSection>
           <SectionTitle>내 박스 미리보기</SectionTitle>
           <BattleBox customBorder={getBoxBorderStyle()}>
@@ -349,6 +367,45 @@ const RightColumn = styled.div`
   display: flex;
   flex-direction: column;
   gap: 1rem;
+`;
+
+// 내 냥포인트 섹션
+const PointsSection = styled.section`
+  background: #fff;
+  padding: 0.8rem;
+  border: 2px solid #99cfff;
+  border-radius: 8px;
+  text-align: center;
+`;
+
+const PointsTitle = styled.h3`
+  margin: 0;
+  font-size: 1.2rem;
+  color: #1c87c9;
+  font-weight: bold;
+`;
+
+const PointsDisplay = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 1rem;
+  font-weight: bold;
+  color: #1c87c9;
+  margin-top: 0.5rem;
+`;
+
+const PointsIcon = styled.span`
+  display: inline-flex;
+  align-items: center;
+  font-size: 1.2rem;
+`;
+
+const PointsValue = styled.span`
+  font-size: 1rem;
+  font-weight: bold;
+  color: #1c87c9;
 `;
 
 const Section = styled.section`
@@ -544,7 +601,7 @@ const MyItemsGridVertical = styled.div`
   grid-template-columns: repeat(3, 1fr);
   gap: 10px;
   padding: 10px;
-  max-height: 350px;
+  max-height: 230px;
   overflow-y: auto;
   &::-webkit-scrollbar {
     width: 8px;
