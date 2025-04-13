@@ -29,7 +29,7 @@ const initialQuestData: Quest[] = [
   {
     id: 1,
     title: '토론 참여하기',
-    description: '토론 1회 참여 시, 선물 지급!',
+    description: '토론 1회 참여 시, 보상 지급!',
     reward: '100냥',
     timeLeft: getTimeUntilMidnight(),
     progress: 0,
@@ -39,7 +39,7 @@ const initialQuestData: Quest[] = [
   {
     id: 2,
     title: '글 작성하기',
-    description: '게시글 5회 작성 시, 선물 지급!',
+    description: '게시글 5회 작성 시, 보상 지급!',
     reward: '50냥',
     timeLeft: getTimeUntilMidnight(),
     progress: 0,
@@ -49,7 +49,7 @@ const initialQuestData: Quest[] = [
   {
     id: 3,
     title: '댓글 달기',
-    description: '댓글 10회 작성 시, 선물 지급!',
+    description: '댓글 10회 작성 시, 보상 지급!',
     reward: '20냥',
     timeLeft: getTimeUntilMidnight(),
     progress: 0,
@@ -69,7 +69,7 @@ const initialQuestData: Quest[] = [
   {
     id: 5,
     title: '프로필 수정하기',
-    description: '한 번의 프로필 수정 시, 선물 지급!',
+    description: '한 번의 프로필 수정 시, 보상 지급!',
     reward: '10냥',
     timeLeft: getTimeUntilMidnight(),
     progress: 0,
@@ -79,7 +79,7 @@ const initialQuestData: Quest[] = [
   {
     id: 6,
     title: '친구 초대하기',
-    description: '친구 초대 3회 완료 시, 선물 지급!',
+    description: '친구 초대 3회 완료 시, 보상 지급!',
     reward: '150냥',
     timeLeft: getTimeUntilMidnight(),
     progress: 0,
@@ -142,7 +142,7 @@ const QuestPage: React.FC = () => {
   };
 
   /**
-   * 선물받기 버튼 클릭 시 모달을 띄우고 보상 수령 상태를 업데이트
+   * 보상받기 버튼 클릭 시 모달을 띄우고 보상 수령 상태를 업데이트
    */
   const handleClaimReward = (questId: number) => {
     const quest = quests.find((q) => q.id === questId);
@@ -188,7 +188,7 @@ const QuestPage: React.FC = () => {
           onClick={() => handleClaimReward(quest.id)}
           $buttonType='claim'
         >
-          선물받기
+          보상받기
         </ActionButton>
       );
     } else {
@@ -214,7 +214,7 @@ const QuestPage: React.FC = () => {
             <CoinBoxWrapper>
               <GiftLabel>
                 <FaGift size={14} />
-                선물
+                보상
               </GiftLabel>
               <CoinBox>
                 <FaCoins size={28} />
@@ -225,7 +225,7 @@ const QuestPage: React.FC = () => {
               <InfoContainer>
                 <RowTitle>{quest.title}</RowTitle>
                 <RowDesc>내용 : {quest.description}</RowDesc>
-                <RowReward>선물 : {quest.reward}</RowReward>
+                <RowReward>보상 : {quest.reward}</RowReward>
               </InfoContainer>
 
               <BottomRow>
