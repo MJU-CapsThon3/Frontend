@@ -361,7 +361,7 @@ export default ShopWithPreview;
 
 const PageContainer = styled.div`
   width: 1000px;
-
+  margin: 20px auto 2rem;
   display: flex;
   gap: 1rem;
   padding: 1rem;
