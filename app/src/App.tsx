@@ -9,6 +9,7 @@ import BattleDetail from './page/Battle/BattleDetail';
 import RankingList from './page/Ranking/RankingList';
 import QuestList from './page/Quest/QuestList';
 import ShopList from './page/Shop/ShopList';
+import MyInfo from './page/MyInfo/MyInfo';
 
 import './App.css';
 
@@ -24,9 +25,10 @@ function App() {
           <Route path='find-password' element={<FindPassword />} />
           <Route path='battle-list' element={<BattleList />} />
           <Route path='/battle/:roomId' element={<BattleDetail />} />
-          <Route path='ranking-list' element={<RankingList />} />
-          <Route path='quest-list' element={<QuestList />} />
-          <Route path='shop-list' element={<ShopList />} />
+          <Route path='/ranking-list' element={<RankingList />} />
+          <Route path='/quest-list' element={<QuestList />} />
+          <Route path='/shop-list' element={<ShopList />} />
+          <Route path='/myinfo' element={<MyInfo />} />
         </Route>
       </Routes>
     </BrowserRouter>

@@ -317,6 +317,7 @@ const fadeIn = keyframes`
 const RankingContainer = styled.div`
   width: 800px;
   height: 600px;
+  margin: 20px auto 2rem;
   background: linear-gradient(135deg, #ffdb4b, #ffa136);
   border-radius: 12px;
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);

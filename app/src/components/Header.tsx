@@ -75,7 +75,7 @@ const Header: React.FC = () => {
             </IconWrapper>
             상점
           </NavItem>
-          <NavItem href='#'>
+          <NavItem href='/myinfo'>
             <IconWrapper>
               <FaUser />
             </IconWrapper>
