@@ -1,3 +1,4 @@
+// FindId.tsx
 import React, {
   useState,
   useEffect,
@@ -24,7 +25,6 @@ import {
   buttonStyle,
   dashStyle,
 } from '../../components/Auth/styles';
-
 import { useNavigate } from 'react-router-dom';
 import { FaArrowLeft } from 'react-icons/fa';
 
@@ -71,7 +71,7 @@ const FindId: React.FC = () => {
   );
   const navigate = useNavigate();
 
-  const [name, setName] = useState('');
+  const [nickname, setNickname] = useState('');
   const [birthDate, setBirthDate] = useState<Date | null>(null);
   const [phone1, setPhone1] = useState('');
   const [phone2, setPhone2] = useState('');
@@ -96,12 +96,17 @@ const FindId: React.FC = () => {
         ? birthDate.toISOString().slice(0, 10)
         : '';
       const phone = `${phone1}-${phone2}-${phone3}`;
-      const validationData = { name, birthDate: formattedBirthDate, phone };
+      // 검증 데이터의 키로 nickname 사용
+      const validationData = {
+        nickname,
+        birthDate: formattedBirthDate,
+        phone,
+      };
       const validationErrors = await validate(validationData);
       setErrors(validationErrors);
     };
     validateForm();
-  }, [name, birthDate, phone1, phone2, phone3, validate]);
+  }, [nickname, birthDate, phone1, phone2, phone3, validate]);
 
   const handlePhone1Change = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -137,27 +142,29 @@ const FindId: React.FC = () => {
         ? birthDate.toISOString().slice(0, 10)
         : '';
       const phone = `${phone1}-${phone2}-${phone3}`;
-      const validationData = { name, birthDate: formattedBirthDate, phone };
+      const validationData = {
+        nickname,
+        birthDate: formattedBirthDate,
+        phone,
+      };
       const validationErrors = await validate(validationData);
       setErrors(validationErrors);
-      setTouched({ name: true, birthDate: true, phone: true });
+      setTouched({ nickname: true, birthDate: true, phone: true });
       if (Object.keys(validationErrors).length > 0) return;
       alert(`아이디 찾기 시도:
-  이름: ${name}
-  생년월일: ${formattedBirthDate}
-  전화번호: ${phone}`);
+닉네임: ${nickname}
+생년월일: ${formattedBirthDate}
+전화번호: ${phone}`);
     },
-    [name, birthDate, phone1, phone2, phone3, validate]
+    [nickname, birthDate, phone1, phone2, phone3, validate]
   );
 
-  // 호버 상태에 따른 뒤로가기 버튼 스타일 결정
   const currentBackButtonStyle = isHovering
     ? { ...backButtonStyle, ...backButtonHoverStyle }
     : backButtonStyle;
 
   return (
     <div style={containerStyle}>
-      {/* 뒤로가기 버튼 클릭 시 /login으로 이동 */}
       <button
         onClick={() => navigate('/login')}
         style={currentBackButtonStyle}
@@ -167,22 +174,20 @@ const FindId: React.FC = () => {
       >
         <FaArrowLeft size={24} />
       </button>
-
       <h1 style={titleStyle}>아이디 찾기</h1>
       <p style={subtitleStyle}>가입 시 사용하신 정보를 입력해주세요.</p>
       <form onSubmit={handleSubmit} style={formStyle}>
         <InputField
-          id='findIdName'
+          id='findIdNickname'
           type='text'
-          placeholder='이름'
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onBlur={handleBlur('name')}
+          placeholder='닉네임'
+          value={nickname}
+          onChange={(e) => setNickname(e.target.value)}
+          onBlur={handleBlur('nickname')}
           style={inputStyle}
-          aria-label='이름 입력'
+          aria-label='닉네임 입력'
         />
-        <ErrorText message={touched.name ? errors.name : undefined} />
-
+        <ErrorText message={touched.nickname ? errors.nickname : undefined} />
         <DatePicker
           selected={birthDate}
           onChange={(date: Date | null) => setBirthDate(date)}
@@ -191,7 +196,6 @@ const FindId: React.FC = () => {
           onBlur={handleBlur('birthDate')}
         />
         <ErrorText message={touched.birthDate ? errors.birthDate : undefined} />
-
         <FormRow>
           <InputField
             id='findIdPhone1'

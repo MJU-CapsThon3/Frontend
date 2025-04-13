@@ -1,3 +1,4 @@
+// FindPassword.tsx
 import React, {
   useState,
   useEffect,
@@ -21,11 +22,10 @@ import {
   buttonStyle,
   dashStyle,
 } from '../../components/Auth/styles';
-
 import { useNavigate } from 'react-router-dom';
 import { FaArrowLeft } from 'react-icons/fa';
 
-const backButtonStyle: React.CSSProperties = {
+const backButtonStylePw: React.CSSProperties = {
   position: 'absolute',
   top: '16px',
   left: '16px',
@@ -36,7 +36,7 @@ const backButtonStyle: React.CSSProperties = {
   transition: 'transform 0.2s ease, opacity 0.2s ease',
 };
 
-const backButtonHoverStyle: React.CSSProperties = {
+const backButtonHoverStylePw: React.CSSProperties = {
   transform: 'scale(1.1)',
   opacity: 0.8,
 };
@@ -47,11 +47,10 @@ const FindPassword: React.FC = () => {
     () => ({ ...baseContainerStyle, width: responsiveWidth }),
     [responsiveWidth]
   );
-
   const navigate = useNavigate();
 
   const [email, setEmail] = useState('');
-  const [name, setName] = useState('');
+  const [nickname, setNickname] = useState('');
   const [phone1, setPhone1] = useState('');
   const [phone2, setPhone2] = useState('');
   const [phone3, setPhone3] = useState('');
@@ -98,37 +97,36 @@ const FindPassword: React.FC = () => {
   useEffect(() => {
     const validateForm = async () => {
       const phone = `${phone1}-${phone2}-${phone3}`;
-      const validationErrors = await validate({ email, name, phone });
+      // 검증 데이터에서 key를 nickname으로 사용
+      const validationErrors = await validate({ email, nickname, phone });
       setErrors(validationErrors);
     };
     validateForm();
-  }, [email, name, phone1, phone2, phone3, validate]);
+  }, [email, nickname, phone1, phone2, phone3, validate]);
 
   const handleSubmit = useCallback(
     async (e: FormEvent<HTMLFormElement>) => {
       e.preventDefault();
       const phone = `${phone1}-${phone2}-${phone3}`;
-      const validationData = { email, name, phone };
+      const validationData = { email, nickname, phone };
       const validationErrors = await validate(validationData);
       setErrors(validationErrors);
-      setTouched({ email: true, name: true, phone: true });
+      setTouched({ email: true, nickname: true, phone: true });
       if (Object.keys(validationErrors).length > 0) return;
       alert(`비밀번호 찾기 시도:
-  이메일: ${email},
-  이름: ${name},
-  전화번호: ${phone}`);
+이메일: ${email},
+닉네임: ${nickname},
+전화번호: ${phone}`);
     },
-    [email, name, phone1, phone2, phone3, validate]
+    [email, nickname, phone1, phone2, phone3, validate]
   );
 
-  // 호버 상태에 따른 뒤로가기 버튼 스타일 결정
   const currentBackButtonStyle = isHovering
-    ? { ...backButtonStyle, ...backButtonHoverStyle }
-    : backButtonStyle;
+    ? { ...backButtonStylePw, ...backButtonHoverStylePw }
+    : backButtonStylePw;
 
   return (
     <div style={containerStyle}>
-      {/* 뒤로가기 버튼 클릭 시 /login 경로로 이동 */}
       <button
         onClick={() => navigate('/login')}
         style={currentBackButtonStyle}
@@ -138,7 +136,6 @@ const FindPassword: React.FC = () => {
       >
         <FaArrowLeft size={24} />
       </button>
-
       <h1 style={titleStyle}>비밀번호 찾기</h1>
       <p style={subtitleStyle}>가입 시 사용하신 정보를 입력해주세요.</p>
       <form onSubmit={handleSubmit} style={formStyle}>
@@ -153,19 +150,17 @@ const FindPassword: React.FC = () => {
           aria-label='이메일 입력'
         />
         <ErrorText message={touched.email ? errors.email : undefined} />
-
         <InputField
-          id='findPwName'
+          id='findPwNickname'
           type='text'
-          placeholder='이름'
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onBlur={handleBlur('name')}
+          placeholder='닉네임'
+          value={nickname}
+          onChange={(e) => setNickname(e.target.value)}
+          onBlur={handleBlur('nickname')}
           style={inputStyle}
-          aria-label='이름 입력'
+          aria-label='닉네임 입력'
         />
-        <ErrorText message={touched.name ? errors.name : undefined} />
-
+        <ErrorText message={touched.nickname ? errors.nickname : undefined} />
         <FormRow>
           <InputField
             id='findPwPhone1'
@@ -204,7 +199,6 @@ const FindPassword: React.FC = () => {
           />
         </FormRow>
         <ErrorText message={touched.phone ? errors.phone : undefined} />
-
         <CustomButton type='submit' style={buttonStyle}>
           비밀번호 찾기
         </CustomButton>

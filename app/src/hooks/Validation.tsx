@@ -1,3 +1,4 @@
+// Validation.ts
 import * as yup from 'yup';
 import { useCallback } from 'react';
 
@@ -130,13 +131,13 @@ export const useSignupValidation = () => {
 
 const findIdSchema = yup
   .object({
-    name: yup
+    nickname: yup
       .string()
       .matches(
-        /^[가-힣\s]{2,10}$/,
-        '이름은 2자 이상 10자 이하의 한글만 입력 가능합니다.'
+        /^[가-힣A-Za-z\s]{2,10}$/,
+        '닉네임은 2자 이상 10자 이하의 한글 또는 영문만 입력 가능합니다.'
       )
-      .required('이름을 입력해주세요.'),
+      .required('닉네임을 입력해주세요.'),
     birthDate: yup.string().required('생년월일을 입력해주세요.'),
     phone: yup
       .string()
@@ -150,7 +151,7 @@ const findIdSchema = yup
 
 export const useFindIdValidation = () => {
   const validate = useCallback(
-    async (data: { name: string; birthDate: string; phone: string }) => {
+    async (data: { nickname: string; birthDate: string; phone: string }) => {
       try {
         await findIdSchema.validate(data, { abortEarly: false });
         return {};
@@ -181,13 +182,13 @@ const findPwSchema = yup
       .min(6, EMAIL_MIN_ERROR)
       .max(50, EMAIL_MAX_ERROR)
       .required('이메일을 입력해주세요.'),
-    name: yup
+    nickname: yup
       .string()
       .matches(
-        /^[가-힣\s]{2,10}$/,
-        '이름은 2자 이상 10자 이하의 한글만 입력 가능합니다.'
+        /^[가-힣A-Za-z\s]{2,10}$/,
+        '닉네임은 2자 이상 10자 이하의 한글 또는 영문만 입력 가능합니다.'
       )
-      .required('이름을 입력해주세요.'),
+      .required('닉네임을 입력해주세요.'),
     phone: yup
       .string()
       .matches(
@@ -200,7 +201,7 @@ const findPwSchema = yup
 
 export const useFindPasswordValidation = () => {
   const validate = useCallback(
-    async (data: { email: string; name: string; phone: string }) => {
+    async (data: { email: string; nickname: string; phone: string }) => {
       try {
         await findPwSchema.validate(data, { abortEarly: false });
         return {};
