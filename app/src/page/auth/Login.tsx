@@ -1,3 +1,4 @@
+// src/pages/Login.tsx
 import React, {
   useState,
   useEffect,
@@ -55,17 +56,26 @@ const Login: React.FC = () => {
   const handleSubmit = useCallback(
     async (e: FormEvent<HTMLFormElement>) => {
       e.preventDefault();
-      const validationErrors = await validate({ email, password });
-      setErrors(validationErrors);
-      setTouched({ email: true, password: true });
-      if (Object.keys(validationErrors).length > 0) return;
-      setErrors({});
-      if (saveEmail) {
-        localStorage.setItem('savedEmail', email);
+
+      // 테스트 계정 확인: 아이디 "qwer1234@naver.com", 비밀번호 "qwer1234!"
+      if (email === 'qwer1234@naver.com' && password === 'qwer1234!') {
+        setErrors({});
+        if (saveEmail) {
+          localStorage.setItem('savedEmail', email);
+        } else {
+          localStorage.removeItem('savedEmail');
+        }
+        // 토큰을 생성하여 localStorage에 저장 (예시 토큰)
+        localStorage.setItem('token', 'dummy-token-123456');
+        alert('로그인 성공!');
+        // 로그인 성공 후 리다이렉션: /battle-list로 이동
+        window.location.href = '/battle-list';
       } else {
-        localStorage.removeItem('savedEmail');
+        const validationErrors = await validate({ email, password });
+        setErrors(validationErrors);
+        setTouched({ email: true, password: true });
+        alert('아이디 또는 비밀번호가 올바르지 않습니다.');
       }
-      alert(`로그인 시도: 이메일=${email}, PW=${password}`);
     },
     [email, password, saveEmail, validate]
   );

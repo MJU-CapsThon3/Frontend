@@ -1,4 +1,5 @@
-import React from 'react';
+// src/components/Header/Header.tsx
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import {
   FaFistRaised,
@@ -9,9 +10,37 @@ import {
   FaSignInAlt,
   FaUserPlus,
   FaTasks,
+  FaCoins,
+  FaSignOutAlt,
 } from 'react-icons/fa';
 
 const Header: React.FC = () => {
+  // 초기 로그인 상태를 localStorage의 토큰 존재 여부로 설정
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(
+    !!localStorage.getItem('token')
+  );
+
+  // localStorage의 토큰 변화를 체크하여 로그인 상태 갱신 (필요 시)
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    setIsLoggedIn(!!token);
+  }, []);
+
+  // 로그아웃 버튼 클릭 시 처리 예시
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    setIsLoggedIn(false);
+    window.location.href = '/';
+  };
+
+  // 로그인, 회원가입 버튼 클릭 예시
+  const handleLogin = () => {
+    window.location.href = '/login';
+  };
+  const handleSignUp = () => {
+    window.location.href = '/sign-up';
+  };
+
   return (
     <HeaderContainer>
       <HeaderWrapper>
@@ -54,21 +83,36 @@ const Header: React.FC = () => {
           </NavItem>
         </Nav>
         <Actions>
-          <ActionButton onClick={() => (window.location.href = '/login')}>
-            <ButtonIcon>
-              <FaSignInAlt />
-            </ButtonIcon>
-            로그인
-          </ActionButton>
-          <ActionButton
-            primary
-            onClick={() => (window.location.href = '/sign-up')}
-          >
-            <ButtonIcon>
-              <FaUserPlus />
-            </ButtonIcon>
-            회원가입
-          </ActionButton>
+          {/* 내 냥포인트 영역은 항상 표시 */}
+          <PointsDisplay>
+            <PointsIcon>
+              <FaCoins />
+            </PointsIcon>
+            <span>1000냥</span>
+          </PointsDisplay>
+          {isLoggedIn ? (
+            <ActionButton onClick={handleLogout}>
+              <ButtonIcon>
+                <FaSignOutAlt />
+              </ButtonIcon>
+              로그아웃
+            </ActionButton>
+          ) : (
+            <>
+              <ActionButton onClick={handleLogin}>
+                <ButtonIcon>
+                  <FaSignInAlt />
+                </ButtonIcon>
+                로그인
+              </ActionButton>
+              <ActionButton primary onClick={handleSignUp}>
+                <ButtonIcon>
+                  <FaUserPlus />
+                </ButtonIcon>
+                회원가입
+              </ActionButton>
+            </>
+          )}
         </Actions>
       </HeaderWrapper>
     </HeaderContainer>
@@ -89,7 +133,6 @@ const HeaderContainer = styled.header`
 
 const HeaderWrapper = styled.div`
   max-width: 1280px;
-
   margin: 0 auto;
   padding: 0.5rem 2rem;
   display: flex;
@@ -132,7 +175,6 @@ const NavItem = styled.a`
   text-decoration: none;
   cursor: pointer;
   transition: color 0.3s ease;
-
   &:hover {
     color: #1c87c9;
   }
@@ -149,7 +191,24 @@ const Actions = styled.div`
   flex: 1;
   display: flex;
   justify-content: flex-end;
+  align-items: center;
   gap: 1rem;
+`;
+
+const PointsDisplay = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 1rem;
+  font-weight: bold;
+  color: #1c87c9;
+  margin-right: 1rem;
+`;
+
+const PointsIcon = styled.span`
+  display: inline-flex;
+  align-items: center;
+  font-size: 1.2rem;
 `;
 
 const ButtonIcon = styled.span`
@@ -173,7 +232,6 @@ const ActionButton = styled.button<{ primary?: boolean }>`
   display: flex;
   align-items: center;
   min-width: 120px;
-
   &:hover {
     opacity: 0.9;
   }
