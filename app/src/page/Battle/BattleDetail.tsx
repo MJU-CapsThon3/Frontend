@@ -661,7 +661,7 @@ const ParticipantKeyword = styled.div`
 
 // 채팅 영역
 const ChatSection = styled.div`
-  flex: 2 1 400px;
+  flex: 2 1 600px;
   display: flex;
   flex-direction: column;
   border: 1px solid #ddd;
@@ -671,7 +671,7 @@ const ChatSection = styled.div`
 
 // 채팅 메시지 컨테이너
 const ChatMessages = styled.div`
-  height: 200px;
+  height: 400px;
   overflow-y: scroll;
   padding: 0.5rem;
   font-size: 0.85rem;
