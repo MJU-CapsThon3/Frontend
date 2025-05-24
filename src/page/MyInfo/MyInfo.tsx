@@ -373,7 +373,7 @@ const RightColumn = styled.div`
 const PointsSection = styled.section`
   background: #fff;
   padding: 0.8rem;
-  border: 2px solid #99cfff;
+  border: 2px solid #ff9900;
   border-radius: 8px;
   text-align: center;
 `;
@@ -411,7 +411,7 @@ const PointsValue = styled.span`
 const Section = styled.section`
   background: #fff;
   padding: 1rem;
-  border: 2px solid #99cfff;
+  border: 2px solid #ff9900;
   border-radius: 8px;
 `;
 
@@ -527,7 +527,7 @@ const fadeIn = keyframes`
 
 const PreviewSection = styled.div`
   background: #fffdd0;
-  border: 2px solid #ffe45c;
+  border: 2px solid #ff9900;
   border-radius: 8px;
   padding: 1rem;
   display: flex;

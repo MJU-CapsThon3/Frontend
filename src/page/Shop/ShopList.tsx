@@ -365,15 +365,15 @@ const PageContainer = styled.div`
   display: flex;
   gap: 1rem;
   padding: 1rem;
-  background: #cde7ff;
-  border: 2px solid #48b0ff;
+  background: #fff;
+  border: 2px solid #ff9900;
   border-radius: 10px;
 `;
 
 const ShopSection = styled.div`
   flex: 2;
-  background: #f0f8ff;
-  border: 2px solid #99cfff;
+  background: #fff;
+  border: 2px solid #ff9900;
   border-radius: 8px;
   padding: 1rem;
   display: flex;
@@ -398,7 +398,7 @@ const CategoryButton = styled.button<{ active?: boolean }>`
   flex: 1;
   padding: 0.3rem;
   background-color: ${(p) => (p.active ? '#fff' : '#d8ebff')};
-  border: 1px solid #99cfff;
+  border: 1px solid #ff9900;
   border-radius: 4px;
   font-size: 0.9rem;
   font-weight: ${(p) => (p.active ? 'bold' : 'normal')};
@@ -418,8 +418,8 @@ const ItemGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 1rem;
-  background-color: #d8ebff;
-  border: 1px solid #99cfff;
+  background-color: #fff;
+  border: 1px solid #ff9900;
   border-radius: 4px;
   padding: 0.5rem;
 `;
@@ -517,8 +517,8 @@ const BuyButton = styled.button`
 
 const PreviewSection = styled.div`
   flex: 1;
-  background: #fffdd0;
-  border: 2px solid #ffe45c;
+  background: #fff;
+  border: 2px solid #ff9900;
   border-radius: 8px;
   padding: 1rem;
   display: flex;
@@ -606,7 +606,7 @@ const MyItemCard = styled.div`
   width: 80px;
   height: 80px;
   background-color: #fff;
-  border: 2px solid #ffa000;
+  border: 2px solid #ff9900;
   border-radius: 6px;
   padding: 0.3rem;
   text-align: center;
