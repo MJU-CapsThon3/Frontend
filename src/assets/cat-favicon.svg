@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="128" height="128" viewBox="0 0 128 128"
+     xmlns="http://www.w3.org/2000/svg">
+  <!-- 배경 투명 -->
+  <rect width="128" height="128" fill="none"/>
+
+  <!-- 중앙 패드 -->
+  <ellipse cx="64" cy="78" rx="38" ry="28" fill="#8C8C8C"/>
+
+  <!-- 발가락 패드 -->
+  <circle cx="38" cy="42" r="16" fill="#8C8C8C"/>
+  <circle cx="64" cy="28" r="16" fill="#8C8C8C"/>
+  <circle cx="90" cy="42" r="16" fill="#8C8C8C"/>
+  <circle cx="104" cy="78" r="16" fill="#8C8C8C"/>
+
+  <!-- 내부 하이라이트 (연한 회색) -->
+  <ellipse cx="64" cy="78" rx="26" ry="20" fill="#FFFFFF" opacity="0.3"/>
+  <circle cx="38" cy="42" r="10" fill="#FFFFFF" opacity="0.3"/>
+  <circle cx="64" cy="28" r="10" fill="#FFFFFF" opacity="0.3"/>
+  <circle cx="90" cy="42" r="10" fill="#FFFFFF" opacity="0.3"/>
+  <circle cx="104" cy="78" r="10" fill="#FFFFFF" opacity="0.3"/>
+</svg>
