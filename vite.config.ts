@@ -19,7 +19,7 @@ const httpsConfig =
     : undefined;
 
 export default defineConfig({
-  base: './',
+  base: '/',
   plugins: [react()],
   server: {
     https: httpsConfig,
