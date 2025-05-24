@@ -1,3 +1,4 @@
+// vite.config.ts
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import fs from 'fs';
@@ -15,7 +16,7 @@ const httpsConfig =
         key: fs.readFileSync(keyPath),
         cert: fs.readFileSync(certPath),
       }
-    : false;
+    : undefined; // false 대신 undefined
 
 export default defineConfig({
   plugins: [react()],
