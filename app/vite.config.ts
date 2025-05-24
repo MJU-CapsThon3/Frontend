@@ -4,16 +4,23 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-// ES 모듈 환경에서 __dirname 대체 (현재 파일의 디렉토리 경로)
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+const keyPath = path.resolve(__dirname, 'ssl', 'server.key');
+const certPath = path.resolve(__dirname, 'ssl', 'server.crt');
+
+const httpsConfig =
+  fs.existsSync(keyPath) && fs.existsSync(certPath)
+    ? {
+        key: fs.readFileSync(keyPath),
+        cert: fs.readFileSync(certPath),
+      }
+    : false;
 
 export default defineConfig({
   plugins: [react()],
   server: {
-    https: {
-      key: fs.readFileSync(path.resolve(__dirname, 'ssl', 'server.key')),
-      cert: fs.readFileSync(path.resolve(__dirname, 'ssl', 'server.crt')),
-    },
+    https: httpsConfig,
   },
   optimizeDeps: {
     include: ['react', 'react-dom'],
