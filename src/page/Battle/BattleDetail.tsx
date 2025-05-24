@@ -176,6 +176,7 @@ const BattleDetail: React.FC = () => {
   const [warningModalVisible, setWarningModalVisible] = useState(false);
   const [kickModalVisible, setKickModalVisible] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerData | null>(null);
+  const [isSpectatorsCollapsed, setIsSpectatorsCollapsed] = useState(false);
 
   const [leftKeyword, rightKeyword] = subject.split(' vs ');
 
@@ -485,7 +486,17 @@ const BattleDetail: React.FC = () => {
       </TopSection>
 
       <SpectatorsSection>
-        <SpectatorsGrid>{renderSpectatorGrid()}</SpectatorsGrid>
+        <SpectatorsHeader>
+          <SpectatorsTitle>관전자</SpectatorsTitle>
+          <ToggleButton
+            onClick={() => setIsSpectatorsCollapsed((prev) => !prev)}
+          >
+            {isSpectatorsCollapsed ? '펼치기' : '접기'}
+          </ToggleButton>
+        </SpectatorsHeader>
+        {!isSpectatorsCollapsed && (
+          <SpectatorsGrid>{renderSpectatorGrid()}</SpectatorsGrid>
+        )}
       </SpectatorsSection>
 
       {pendingMoveSlot !== null && (
@@ -999,5 +1010,37 @@ const ModalCancelButton = styled.button`
 
   &:hover {
     transform: translateY(-2px);
+  }
+`;
+
+// ───── 관전자 헤더 및 토글 버튼 ──────────────────────────────
+const SpectatorsHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+
+  gap: 20px;
+`;
+
+const SpectatorsTitle = styled.h2`
+  font-size: 1.1rem;
+  font-weight: bold;
+  margin: 0;
+  color: #0057a8;
+`;
+
+const ToggleButton = styled.button`
+  background-color: #0057a8;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: #004080;
   }
 `;
