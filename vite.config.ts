@@ -16,9 +16,10 @@ const httpsConfig =
         key: fs.readFileSync(keyPath),
         cert: fs.readFileSync(certPath),
       }
-    : undefined; // false 대신 undefined
+    : undefined;
 
 export default defineConfig({
+  base: './',
   plugins: [react()],
   server: {
     https: httpsConfig,
@@ -36,6 +37,14 @@ export default defineConfig({
           vendor: ['react', 'react-dom'],
         },
       },
+    },
+  },
+  preview: {
+    headers: {
+      // .js 로 요청했을 때
+      '/**/*.js': ['Content-Type: application/javascript'],
+      // .ts 로 요청했을 때
+      '/**/*.ts': ['Content-Type: application/javascript'],
     },
   },
 });
