@@ -381,7 +381,7 @@ const PointsSection = styled.section`
 const PointsTitle = styled.h3`
   margin: 0;
   font-size: 1.2rem;
-  color: #1c87c9;
+  color: #ff9900;
   font-weight: bold;
 `;
 
@@ -392,7 +392,7 @@ const PointsDisplay = styled.div`
   gap: 0.25rem;
   font-size: 1rem;
   font-weight: bold;
-  color: #1c87c9;
+  color: #ff9900;
   margin-top: 0.5rem;
 `;
 
@@ -405,7 +405,7 @@ const PointsIcon = styled.span`
 const PointsValue = styled.span`
   font-size: 1rem;
   font-weight: bold;
-  color: #1c87c9;
+  color: #ff9900;
 `;
 
 const Section = styled.section`
@@ -419,7 +419,7 @@ const SectionTitle = styled.h2`
   margin-bottom: 1rem;
   font-size: 1.4rem;
   color: #333;
-  border-bottom: 2px solid #1c87c9;
+  border-bottom: 2px solid #ff9900;
   padding-bottom: 0.3rem;
   text-align: center;
 `;
@@ -496,7 +496,7 @@ const FormInput = styled.input`
   border-radius: 4px;
   &:focus {
     outline: none;
-    border-color: #1c87c9;
+    border-color: #ff9900;
   }
 `;
 
@@ -504,7 +504,7 @@ const SubmitButton = styled.button`
   padding: 0.6rem 1.2rem;
   font-size: 1.1rem;
   font-weight: bold;
-  background: #1c87c9;
+  background: #ff9900;
   color: #fff;
   border: none;
   border-radius: 4px;

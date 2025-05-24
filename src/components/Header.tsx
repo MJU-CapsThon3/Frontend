@@ -148,13 +148,13 @@ const LogoSection = styled.div`
 
 const LogoIcon = styled.div`
   font-size: 2rem;
-  color: #1c87c9;
+  color: #ff9900;
 `;
 
 const LogoText = styled.span`
   font-size: 1.5rem;
   font-weight: bold;
-  color: #1c87c9;
+  color: #ff9900;
   min-width: 130px;
 `;
 
@@ -176,7 +176,7 @@ const NavItem = styled.a`
   cursor: pointer;
   transition: color 0.3s ease;
   &:hover {
-    color: #1c87c9;
+    color: #ff9900;
   }
 `;
 
@@ -201,7 +201,7 @@ const PointsDisplay = styled.div`
   gap: 0.25rem;
   font-size: 1rem;
   font-weight: bold;
-  color: #1c87c9;
+  color: #ff9900;
 
   min-width: 80px;
 `;
@@ -220,9 +220,9 @@ const ButtonIcon = styled.span`
 `;
 
 const ActionButton = styled.button<{ primary?: boolean }>`
-  background: ${(props) => (props.primary ? '#1c87c9' : 'transparent')};
-  color: ${(props) => (props.primary ? '#fff' : '#1c87c9')};
-  border: 1px solid #1c87c9;
+  background: ${(props) => (props.primary ? '#ff9900' : 'transparent')};
+  color: ${(props) => (props.primary ? '#fff' : '#ff9900')};
+  border: 1px solid #ff9900;
   padding: 0.5rem 1rem;
   font-size: 1rem;
   border-radius: 4px;

@@ -327,7 +327,7 @@ const RankingContainer = styled.div`
 `;
 
 const RankingHeader = styled.div`
-  background-color: #1c87c9;
+  background-color: #ff9900;
   padding: 1.5rem 1rem;
   text-align: center;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
@@ -493,7 +493,7 @@ const ModalContent = styled.div`
 `;
 
 const ModalHeader = styled.div`
-  background-color: #1c87c9;
+  background-color: #ff9900;
   color: #fff;
   padding: 1rem;
   display: flex;
