@@ -544,10 +544,10 @@ const ShopWithPreview: React.FC = () => {
             <strong>{selectedPurchaseItem.price}원</strong>에 구매하시겠습니까?
           </p>
           <div style={modalButtonsStyle}>
+            <ModalCancelButton onClick={cancelPurchase}>취소</ModalCancelButton>
             <ModalSubmitButton onClick={confirmPurchase}>
               구매
             </ModalSubmitButton>
-            <ModalCancelButton onClick={cancelPurchase}>취소</ModalCancelButton>
           </div>
         </Modal>
       )}
