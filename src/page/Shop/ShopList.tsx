@@ -1,21 +1,44 @@
-// app/src/page/Shop/ShopList.tsx
+// src/page/Shop/ShopList.tsx
 import React, { useState } from 'react';
 import styled, { keyframes } from 'styled-components';
 import {
   FaUserAlt,
-  FaChessKnight,
-  FaChessRook,
-  FaSmileBeam,
-  FaBomb,
   FaBorderStyle,
+  FaUserFriends,
+  FaUserTie,
+  FaBaby,
+  FaSmile,
+  FaLaugh,
+  FaSurprise,
+  FaGhost,
+  FaDragon,
+  FaCrow,
+  FaCat,
 } from 'react-icons/fa';
-// Modal 컴포넌트를 분리된 파일에서 import (경로는 프로젝트 구조에 맞게 수정)
 import Modal from '../../components/Modal';
+import ShopItemCard from '../../components/Shop/ShopItemCard';
+import TeamIcon1 from '../../assets/ShopIcon/TeamIcon1.svg';
+import TeamIcon2 from '../../assets/ShopIcon/TeamIcon2.svg';
+import TeamIcon3 from '../../assets/ShopIcon/TeamIcon3.svg';
+import TeamIcon4 from '../../assets/ShopIcon/TeamIcon4.svg';
+import TeamIcon5 from '../../assets/ShopIcon/TeamIcon5.svg';
+import TeamIcon6 from '../../assets/ShopIcon/TeamIcon6.svg';
+import TeamIcon7 from '../../assets/ShopIcon/TeamIcon7.svg';
+import TeamIcon8 from '../../assets/ShopIcon/TeamIcon8.svg';
+import TeamIcon9 from '../../assets/ShopIcon/TeamIcon9.svg';
+import TeamIcon10 from '../../assets/ShopIcon/TeamIcon10.svg';
+import TeamIcon11 from '../../assets/ShopIcon/TeamIcon11.svg';
+import TeamIcon12 from '../../assets/ShopIcon/TeamIcon12.svg';
+import TeamIcon13 from '../../assets/ShopIcon/TeamIcon13.svg';
+import TeamIcon14 from '../../assets/ShopIcon/TeamIcon14.svg';
+import TeamIcon15 from '../../assets/ShopIcon/TeamIcon15.svg';
+import TeamIcon16 from '../../assets/ShopIcon/TeamIcon16.svg';
+import TeamIcon17 from '../../assets/ShopIcon/TeamIcon17.svg';
 
 /* ------------------- 타입 정의 ------------------- */
-type CategoryType = '전체' | '팀 아이콘' | '효과음' | '테두리';
+export type CategoryType = '전체' | '팀 아이콘' | '테두리';
 
-interface ShopItem {
+export interface ShopItem {
   id: number;
   name: string;
   price: number;
@@ -35,108 +58,331 @@ interface MyBoxState {
 const dummyShopItems: ShopItem[] = [
   {
     id: 1,
-    name: '스타 팀 아이콘',
-    price: 9900,
-    icon: <FaUserAlt size={32} color='#888888' />,
+    name: '커스텀 팀 아이콘',
+    price: 11500,
+    icon: <img src={TeamIcon1} alt='TeamIcon1' width={64} height={64} />,
     category: '팀 아이콘',
   },
   {
     id: 2,
-    name: '전사 팀 아이콘',
-    price: 11000,
-    icon: <FaChessKnight size={32} color='#888888' />,
+    name: '커스텀 팀 아이콘',
+    price: 11500,
+    icon: <img src={TeamIcon2} alt='TeamIcon2' width={64} height={64} />,
     category: '팀 아이콘',
   },
   {
     id: 3,
-    name: '마법사 팀 아이콘',
-    price: 12000,
-    icon: <FaChessRook size={32} color='#888888' />,
+    name: '커스텀 팀 아이콘',
+    price: 11500,
+    icon: <img src={TeamIcon3} alt='TeamIcon3' width={64} height={64} />,
     category: '팀 아이콘',
   },
   {
     id: 4,
-    name: '우렁찬 효과',
-    price: 1500,
-    icon: <FaBomb size={32} color='#666' />,
-    category: '효과음',
+    name: '커스텀 팀 아이콘',
+    price: 11500,
+    icon: <img src={TeamIcon4} alt='TeamIcon4' width={64} height={64} />,
+    category: '팀 아이콘',
   },
   {
     id: 5,
-    name: '환한 효과',
-    price: 1800,
-    icon: <FaSmileBeam size={32} color='#0066ff' />,
-    category: '효과음',
+    name: '커스텀 팀 아이콘',
+    price: 11500,
+    icon: <img src={TeamIcon5} alt='TeamIcon5' width={64} height={64} />,
+    category: '팀 아이콘',
   },
   {
     id: 6,
-    name: '빛나는 테두리',
-    price: 2000,
-    icon: <FaBorderStyle size={32} color='#ffff66' />,
-    category: '테두리',
+    name: '커스텀 팀 아이콘',
+    price: 11500,
+    icon: <img src={TeamIcon6} alt='TeamIcon6' width={64} height={64} />,
+    category: '팀 아이콘',
   },
   {
     id: 7,
-    name: '네온 테두리',
-    price: 2500,
-    icon: <FaBorderStyle size={32} color='#ff33cc' />,
-    category: '테두리',
+    name: '커스텀 팀 아이콘',
+    price: 11500,
+    icon: <img src={TeamIcon7} alt='TeamIcon7' width={64} height={64} />,
+    category: '팀 아이콘',
   },
   {
     id: 8,
-    name: '달콤 효과음',
-    price: 1300,
-    icon: <FaBomb size={32} color='#ffcc00' />,
-    category: '효과음',
+    name: '커스텀 팀 아이콘',
+    price: 11500,
+    icon: <img src={TeamIcon8} alt='TeamIcon8' width={64} height={64} />,
+    category: '팀 아이콘',
   },
   {
     id: 9,
-    name: '레트로 팀 아이콘',
-    price: 10500,
-    icon: <FaUserAlt size={32} color='#888888' />,
+    name: '커스텀 팀 아이콘',
+    price: 11500,
+    icon: <img src={TeamIcon9} alt='TeamIcon9' width={64} height={64} />,
     category: '팀 아이콘',
   },
   {
     id: 10,
-    name: '파워 효과음',
-    price: 1600,
-    icon: <FaSmileBeam size={32} color='#cc3333' />,
-    category: '효과음',
+    name: '커스텀 팀 아이콘',
+    price: 11500,
+    icon: <img src={TeamIcon10} alt='TeamIcon10' width={64} height={64} />,
+    category: '팀 아이콘',
   },
   {
     id: 11,
-    name: '메탈 테두리',
-    price: 2200,
-    icon: <FaBorderStyle size={32} color='#999999' />,
-    category: '테두리',
+    name: '커스텀 팀 아이콘',
+    price: 11500,
+    icon: <img src={TeamIcon11} alt='TeamIcon11' width={64} height={64} />,
+    category: '팀 아이콘',
   },
   {
     id: 12,
-    name: '글로우 팀 아이콘',
+    name: '커스텀 팀 아이콘',
     price: 11500,
-    icon: <FaChessKnight size={32} color='#888888' />,
+    icon: <img src={TeamIcon12} alt='TeamIcon12' width={64} height={64} />,
     category: '팀 아이콘',
   },
   {
     id: 13,
-    name: '실버 팀 아이콘',
-    price: 9500,
-    icon: <FaUserAlt size={32} color='#C0C0C0' />,
+    name: '커스텀 팀 아이콘',
+    price: 11500,
+    icon: <img src={TeamIcon13} alt='TeamIcon13' width={64} height={64} />,
     category: '팀 아이콘',
   },
   {
     id: 14,
-    name: '럭셔리 테두리',
-    price: 3000,
-    icon: <FaBorderStyle size={32} color='#FFD700' />,
+    name: '커스텀 팀 아이콘',
+    price: 11500,
+    icon: <img src={TeamIcon14} alt='TeamIcon14' width={64} height={64} />,
+    category: '팀 아이콘',
+  },
+  {
+    id: 15,
+    name: '커스텀 팀 아이콘',
+    price: 11500,
+    icon: <img src={TeamIcon15} alt='TeamIcon15' width={64} height={64} />,
+    category: '팀 아이콘',
+  },
+  {
+    id: 16,
+    name: '커스텀 팀 아이콘',
+    price: 11500,
+    icon: <img src={TeamIcon16} alt='TeamIcon16' width={64} height={64} />,
+    category: '팀 아이콘',
+  },
+  {
+    id: 17,
+    name: '커스텀 팀 아이콘',
+    price: 11500,
+    icon: <img src={TeamIcon17} alt='TeamIcon17' width={64} height={64} />,
+    category: '팀 아이콘',
+  },
+
+  // ─── 새로운 캐릭터 아바타 10개 ───
+  {
+    id: 101,
+    name: '친구들 아바타',
+    price: 12500,
+    icon: <FaUserFriends size={64} color='#6c5ce7' />,
+    category: '팀 아이콘',
+  },
+  {
+    id: 102,
+    name: '정장맨 아바타',
+    price: 13000,
+    icon: <FaUserTie size={64} color='#2d3436' />,
+    category: '팀 아이콘',
+  },
+  {
+    id: 103,
+    name: '아기 아바타',
+    price: 9000,
+    icon: <FaBaby size={64} color='#fdcb6e' />,
+    category: '팀 아이콘',
+  },
+  {
+    id: 104,
+    name: '웃는얼굴 아바타',
+    price: 9500,
+    icon: <FaSmile size={64} color='#00b894' />,
+    category: '팀 아이콘',
+  },
+  {
+    id: 105,
+    name: '웃음 아바타',
+    price: 10000,
+    icon: <FaLaugh size={64} color='#0984e3' />,
+    category: '팀 아이콘',
+  },
+  {
+    id: 106,
+    name: '놀람 아바타',
+    price: 9800,
+    icon: <FaSurprise size={64} color='#d63031' />,
+    category: '팀 아이콘',
+  },
+  {
+    id: 107,
+    name: '유령 아바타',
+    price: 11000,
+    icon: <FaGhost size={64} color='#b2bec3' />,
+    category: '팀 아이콘',
+  },
+  {
+    id: 108,
+    name: '드래곤 아바타',
+    price: 14000,
+    icon: <FaDragon size={64} color='#e17055' />,
+    category: '팀 아이콘',
+  },
+  {
+    id: 109,
+    name: '까마귀 아바타',
+    price: 10500,
+    icon: <FaCrow size={64} color='#2d3436' />,
+    category: '팀 아이콘',
+  },
+  {
+    id: 110,
+    name: '고양이 아바타',
+    price: 11500,
+    icon: <FaCat size={64} color='#fd79a8' />,
+    category: '팀 아이콘',
+  },
+
+  // ─── 테두리 기존 9개 ───
+  {
+    id: 10,
+    name: '기본 실선 테두리',
+    price: 1800,
+    icon: <FaBorderStyle size={64} color='#999' />,
+    category: '테두리',
+  },
+  {
+    id: 11,
+    name: '대시드 네온 테두리',
+    price: 2500,
+    icon: <FaBorderStyle size={64} color='#ff33cc' />,
+    category: '테두리',
+  },
+  {
+    id: 12,
+    name: '메탈 실선 테두리',
+    price: 2200,
+    icon: <FaBorderStyle size={64} color='#999999' />,
+    category: '테두리',
+  },
+  {
+    id: 13,
+    name: '더블 라인 테두리',
+    price: 2800,
+    icon: <FaBorderStyle size={64} color='#34495e' />,
+    category: '테두리',
+  },
+  {
+    id: 14,
+    name: '빛나는 옐로우 테두리',
+    price: 2000,
+    icon: <FaBorderStyle size={64} color='#ffff66' />,
     category: '테두리',
   },
   {
     id: 15,
-    name: '모던 효과',
-    price: 1700,
-    icon: <FaSmileBeam size={32} color='#00CC99' />,
-    category: '효과음',
+    name: '그라데이션 테두리',
+    price: 3000,
+    icon: <FaBorderStyle size={64} color='url(#grad)' />,
+    category: '테두리',
+  },
+  {
+    id: 16,
+    name: '도트 점선 테두리',
+    price: 2400,
+    icon: <FaBorderStyle size={64} color='#3498db' />,
+    category: '테두리',
+  },
+  {
+    id: 17,
+    name: '라이트닝 메탈 테두리',
+    price: 2600,
+    icon: <FaBorderStyle size={64} color='#e74c3c' />,
+    category: '테두리',
+  },
+  {
+    id: 18,
+    name: '그린 숲 테두리',
+    price: 2300,
+    icon: <FaBorderStyle size={64} color='#27ae60' />,
+    category: '테두리',
+  },
+
+  // ─── 추가 테두리 10개 ───
+  {
+    id: 201,
+    name: '펄스 테두리',
+    price: 6400,
+    icon: <FaBorderStyle size={64} color='#e74c3c' />,
+    category: '테두리',
+  },
+  {
+    id: 202,
+    name: '로테이트 테두리',
+    price: 3300,
+    icon: <FaBorderStyle size={64} color='#0984e3' />,
+    category: '테두리',
+  },
+  {
+    id: 203,
+    name: '글로우 테두리',
+    price: 3400,
+    icon: <FaBorderStyle size={64} color='#00b894' />,
+    category: '테두리',
+  },
+  {
+    id: 204,
+    name: '섀도우 테두리',
+    price: 3500,
+    icon: <FaBorderStyle size={64} color='#6c5ce7' />,
+    category: '테두리',
+  },
+  {
+    id: 205,
+    name: '스케일 테두리',
+    price: 3600,
+    icon: <FaBorderStyle size={64} color='#fdcb6e' />,
+    category: '테두리',
+  },
+  {
+    id: 206,
+    name: '스윙 테두리',
+    price: 3700,
+    icon: <FaBorderStyle size={64} color='#d63031' />,
+    category: '테두리',
+  },
+  {
+    id: 207,
+    name: '플래시 테두리',
+    price: 3800,
+    icon: <FaBorderStyle size={64} color='#b2bec3' />,
+    category: '테두리',
+  },
+  {
+    id: 208,
+    name: '위브 테두리',
+    price: 3900,
+    icon: <FaBorderStyle size={64} color='#e17055' />,
+    category: '테두리',
+  },
+  {
+    id: 209,
+    name: '하이라이트 테두리',
+    price: 4000,
+    icon: <FaBorderStyle size={64} color='#fd79a8' />,
+    category: '테두리',
+  },
+  {
+    id: 210,
+    name: '네온 테두리',
+    price: 4100,
+    icon: <FaBorderStyle size={64} color='#00cec9' />,
+    category: '테두리',
   },
 ];
 
@@ -146,7 +392,7 @@ const fadeIn = keyframes`
   to { opacity: 1; transform: scale(1); }
 `;
 
-/* ------------------- 구매 모달 스타일 (추가) ------------------- */
+/* ------------------- 구매 모달 버튼 스타일 ------------------- */
 const modalButtonsStyle: React.CSSProperties = {
   display: 'flex',
   justifyContent: 'flex-end',
@@ -165,61 +411,39 @@ const ShopWithPreview: React.FC = () => {
   const [myItems, setMyItems] = useState<ShopItem[]>([]);
   const [selectedCategory, setSelectedCategory] =
     useState<CategoryType>('전체');
-
-  // 구매 모달 관련 상태
   const [purchaseModalVisible, setPurchaseModalVisible] = useState(false);
   const [selectedPurchaseItem, setSelectedPurchaseItem] =
     useState<ShopItem | null>(null);
-  // 구매 완료(모달) 상태: 모든 아이템에 대해 사용
   const [purchaseSuccessItem, setPurchaseSuccessItem] =
     useState<ShopItem | null>(null);
 
-  const handleCategoryClick = (cat: CategoryType) => {
-    setSelectedCategory(cat);
-  };
-
-  // 실제 구매 로직 (중복 구매 방지 포함)
-  const handleBuyItemConfirm = (item: ShopItem) => {
+  const handleCategoryClick = (cat: CategoryType) => setSelectedCategory(cat);
+  const handleBuyItemConfirm = (item: ShopItem) =>
     setMyItems((prev) =>
       prev.find((x) => x.id === item.id) ? prev : [...prev, item]
     );
-  };
-
-  // 구매 버튼 클릭 시 구매 확인 모달 열기
   const handleBuyItem = (item: ShopItem) => {
     setSelectedPurchaseItem(item);
     setPurchaseModalVisible(true);
   };
-
-  // 모달 내 '구매' 버튼 클릭 처리
   const confirmPurchase = () => {
-    if (selectedPurchaseItem) {
-      handleBuyItemConfirm(selectedPurchaseItem);
-      setPurchaseSuccessItem(selectedPurchaseItem);
-    }
+    if (selectedPurchaseItem) handleBuyItemConfirm(selectedPurchaseItem);
+    setPurchaseSuccessItem(selectedPurchaseItem);
     setSelectedPurchaseItem(null);
     setPurchaseModalVisible(false);
   };
-
-  // 모달 내 '취소' 버튼 클릭 처리
   const cancelPurchase = () => {
     setSelectedPurchaseItem(null);
     setPurchaseModalVisible(false);
   };
-
-  // 미리보기 버튼: 팀 아이콘과 테두리만 미리보기 지원
   const handlePreviewItem = (item: ShopItem) => {
     if (item.category === '팀 아이콘') {
       setMyBox((prev) => ({ ...prev, appliedTeamIcon: item }));
     } else if (item.category === '테두리') {
       setMyBox((prev) => ({ ...prev, appliedBorder: item }));
-    } else {
-      alert('효과음 아이템은 미리보기가 지원되지 않습니다.');
     }
   };
-
-  // 원래대로(초기화) 버튼
-  const handleResetPreview = () => {
+  const handleResetPreview = () =>
     setMyBox({
       nickname: '내 닉네임',
       isReady: false,
@@ -227,22 +451,33 @@ const ShopWithPreview: React.FC = () => {
       appliedBorder: null,
       avatarUrl: '',
     });
-  };
 
-  // 필터 처리: "전체" 선택 시 전체, 그 외에는 최대 8개만 표시
   const filteredItems =
     selectedCategory === '전체'
       ? dummyShopItems
-      : dummyShopItems
-          .filter((item) => item.category === selectedCategory)
-          .slice(0, 8);
+      : dummyShopItems.filter((item) => item.category === selectedCategory);
 
   const getBoxBorderStyle = () => {
     if (!myBox.appliedBorder) return '2px solid #999';
-    if (myBox.appliedBorder.name.includes('네온')) return '4px dashed #ff33cc';
-    if (myBox.appliedBorder.name.includes('메탈')) return '4px solid #999';
-    if (myBox.appliedBorder.name.includes('빛나는')) return '4px solid yellow';
-    return '4px solid #ffa000';
+    const n = myBox.appliedBorder.name;
+    if (n.includes('대시드')) return '4px dashed #ff33cc';
+    if (n.includes('더블')) return '4px double #34495e';
+    if (n.includes('메탈')) return '4px solid #999';
+    if (n.includes('빛나는')) return '4px solid yellow';
+    if (n.includes('도트')) return '4px dotted #3498db';
+    if (n.includes('라이트닝')) return '4px solid #e74c3c';
+    if (n.includes('그린')) return '4px solid #27ae60';
+    if (n.includes('펄스')) return '4px solid #e74c3c';
+    if (n.includes('로테이트')) return '4px solid #0984e3';
+    if (n.includes('글로우')) return '4px solid #00b894';
+    if (n.includes('섀도우')) return '4px solid #6c5ce7';
+    if (n.includes('스케일')) return '4px solid #fdcb6e';
+    if (n.includes('스윙')) return '4px solid #d63031';
+    if (n.includes('플래시')) return '4px solid #b2bec3';
+    if (n.includes('위브')) return '4px solid #e17055';
+    if (n.includes('하이라이트')) return '4px solid #fd79a8';
+    if (n.includes('네온')) return '4px solid #00cec9';
+    return '2px solid #999';
   };
 
   return (
@@ -250,40 +485,25 @@ const ShopWithPreview: React.FC = () => {
       <ShopSection>
         <SectionTitle>상점</SectionTitle>
         <CategoryContainer>
-          {(['전체', '팀 아이콘', '효과음', '테두리'] as CategoryType[]).map(
-            (cat) => (
-              <CategoryButton
-                key={cat}
-                active={selectedCategory === cat}
-                onClick={() => handleCategoryClick(cat)}
-              >
-                {cat}
-              </CategoryButton>
-            )
-          )}
+          {(['전체', '팀 아이콘', '테두리'] as CategoryType[]).map((cat) => (
+            <CategoryButton
+              key={cat}
+              active={selectedCategory === cat}
+              onClick={() => handleCategoryClick(cat)}
+            >
+              {cat}
+            </CategoryButton>
+          ))}
         </CategoryContainer>
         <ShopItemsContainer>
           <ItemGrid>
             {filteredItems.map((item) => (
-              <ItemCard key={item.id}>
-                <ItemRow>
-                  <IconWrapper>
-                    <>{item.icon}</>
-                  </IconWrapper>
-                  <ItemText>
-                    <ItemName>{item.name}</ItemName>
-                    <ItemPrice>가격: {item.price}냥</ItemPrice>
-                  </ItemText>
-                </ItemRow>
-                <ButtonRow>
-                  <PreviewButton onClick={() => handlePreviewItem(item)}>
-                    미리보기
-                  </PreviewButton>
-                  <BuyButton onClick={() => handleBuyItem(item)}>
-                    구매
-                  </BuyButton>
-                </ButtonRow>
-              </ItemCard>
+              <ShopItemCard
+                key={item.id}
+                item={item}
+                onPreview={handlePreviewItem}
+                onBuy={handleBuyItem}
+              />
             ))}
           </ItemGrid>
         </ShopItemsContainer>
@@ -294,14 +514,12 @@ const ShopWithPreview: React.FC = () => {
         <BattleBox customBorder={getBoxBorderStyle()}>
           <Nickname>{myBox.nickname}</Nickname>
           {myBox.appliedTeamIcon ? (
-            <AvatarContainer>
-              <>{myBox.appliedTeamIcon.icon}</>
-            </AvatarContainer>
+            <AvatarContainer>{myBox.appliedTeamIcon.icon}</AvatarContainer>
           ) : myBox.avatarUrl ? (
             <Avatar src={myBox.avatarUrl} alt='avatar' />
           ) : (
             <DefaultAvatar>
-              <FaUserAlt size={32} color='#888' />
+              <FaUserAlt size={64} color='#888' />
             </DefaultAvatar>
           )}
         </BattleBox>
@@ -311,9 +529,7 @@ const ShopWithPreview: React.FC = () => {
           <MyItemsGrid>
             {myItems.map((item) => (
               <MyItemCard key={item.id} onClick={() => handlePreviewItem(item)}>
-                <MyItemIcon>
-                  <>{item.icon}</>
-                </MyItemIcon>
+                <MyItemIcon>{item.icon}</MyItemIcon>
                 <MyItemName>{item.name}</MyItemName>
               </MyItemCard>
             ))}
@@ -321,7 +537,6 @@ const ShopWithPreview: React.FC = () => {
         </MyItemsSection>
       </PreviewSection>
 
-      {/* 구매 확인 모달 */}
       {purchaseModalVisible && selectedPurchaseItem && (
         <Modal title='구매 확인'>
           <p>
@@ -336,8 +551,6 @@ const ShopWithPreview: React.FC = () => {
           </div>
         </Modal>
       )}
-
-      {/* 구매 완료 모달 */}
       {purchaseSuccessItem && (
         <Modal title='구매 완료'>
           <p>
@@ -397,11 +610,11 @@ const CategoryContainer = styled.div`
 const CategoryButton = styled.button<{ active?: boolean }>`
   flex: 1;
   padding: 0.3rem;
-  background-color: ${(p) => (p.active ? '#fff' : '#d8ebff')};
+  background-color: ${({ active }) => (active ? '#fff' : '#d8ebff')};
   border: 1px solid #ff9900;
   border-radius: 4px;
   font-size: 0.9rem;
-  font-weight: ${(p) => (p.active ? 'bold' : 'normal')};
+  font-weight: ${({ active }) => (active ? 'bold' : 'normal')};
   cursor: pointer;
   &:hover {
     background-color: #fff;
@@ -422,97 +635,6 @@ const ItemGrid = styled.div`
   border: 1px solid #ff9900;
   border-radius: 4px;
   padding: 0.5rem;
-`;
-
-const ItemCard = styled.div`
-  background-color: #2d397e;
-  border: 2px solid #1d2a68;
-  border-radius: 6px;
-  padding: 0.5rem;
-  color: #eef;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  cursor: pointer;
-  transition:
-    transform 0.3s,
-    box-shadow 0.3s;
-  animation: ${fadeIn} 0.5s ease-out;
-  &:hover {
-    transform: scale(1.03);
-    box-shadow: 0 5px 12px rgba(255, 255, 255, 0.3);
-  }
-`;
-
-const ItemRow = styled.div`
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-`;
-
-const IconWrapper = styled.div`
-  flex: 0 0 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: #eef;
-  padding: 10px;
-  border-radius: 8px;
-`;
-
-const ItemText = styled.div`
-  display: flex;
-  flex-direction: column;
-`;
-
-const ItemName = styled.span`
-  font-size: 0.9rem;
-  font-weight: bold;
-  color: #ffccff;
-  margin-bottom: 0.2rem;
-`;
-
-const ItemPrice = styled.span`
-  font-size: 0.8rem;
-  color: #ddd;
-`;
-
-const ButtonRow = styled.div`
-  margin-top: 0.5rem;
-  display: flex;
-  gap: 0.5rem;
-`;
-
-const PreviewButton = styled.button`
-  flex: 1;
-  background-color: #5599ff;
-  border: none;
-  border-radius: 4px;
-  padding: 0.3rem;
-  color: #fff;
-  font-size: 0.8rem;
-  font-weight: bold;
-  cursor: pointer;
-  transition: opacity 0.2s;
-  &:hover {
-    opacity: 0.9;
-  }
-`;
-
-const BuyButton = styled.button`
-  flex: 1;
-  background-color: #4460ff;
-  border: none;
-  border-radius: 4px;
-  padding: 0.3rem;
-  color: #fff;
-  font-size: 0.8rem;
-  font-weight: bold;
-  cursor: pointer;
-  transition: opacity 0.2s;
-  &:hover {
-    opacity: 0.9;
-  }
 `;
 
 const PreviewSection = styled.div`
@@ -572,8 +694,14 @@ const AvatarContainer = styled.div`
   align-items: center;
   justify-content: center;
   background: #fff;
-`;
 
+  & > img,
+  & > svg {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain;
+  }
+`;
 const ActionButton = styled.button`
   background-color: #eee;
   border: 1px solid #999;
@@ -611,9 +739,6 @@ const MyItemCard = styled.div`
   padding: 0.3rem;
   text-align: center;
   cursor: pointer;
-  transition:
-    transform 0.3s,
-    background-color 0.3s;
   display: flex;
   flex-direction: column;
   align-items: center;
