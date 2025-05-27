@@ -72,14 +72,14 @@ const HeaderRight = styled.div`
   gap: 0.5rem;
 `;
 
-const HeaderButton = styled.button<{ primary?: boolean }>`
+const HeaderButton = styled.button<{ $primary?: boolean }>`
   padding: 0.5rem 1rem;
   border: none;
   border-radius: 4px;
   color: #fff;
   font-weight: bold;
   cursor: pointer;
-  background-color: ${({ primary }) => (primary ? '#0050b3' : '#ffa700')};
+  background-color: ${({ $primary }) => ($primary ? '#0050b3' : '#ffa700')};
 `;
 
 const Main = styled.main`
@@ -130,7 +130,7 @@ const BattleList: React.FC = () => {
     <Container>
       <Header>
         <HeaderLeft>
-          <HeaderButton primary onClick={() => setShowCreateModal(true)}>
+          <HeaderButton $primary onClick={() => setShowCreateModal(true)}>
             방만들기
           </HeaderButton>
         </HeaderLeft>
