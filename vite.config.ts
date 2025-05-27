@@ -23,6 +23,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 3000,
+    https: httpsConfig, // 필요 시 HTTPS 옵션도 활성화
   },
   optimizeDeps: {
     include: ['react', 'react-dom'],
@@ -32,6 +33,12 @@ export default defineConfig({
     sourcemap: false,
     minify: 'esbuild',
     rollupOptions: {
+      // 외부화할 패키지
+      external: [
+        'axios',
+        'js-cookie',
+        // 추가로 외부화할 모듈이 있으면 여기에 더 나열
+      ],
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom'],
@@ -41,9 +48,7 @@ export default defineConfig({
   },
   preview: {
     headers: {
-      // .js 로 요청했을 때
       '/**/*.js': ['Content-Type: application/javascript'],
-      // .ts 로 요청했을 때
       '/**/*.ts': ['Content-Type: application/javascript'],
     },
   },
