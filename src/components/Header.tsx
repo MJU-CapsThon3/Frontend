@@ -105,7 +105,7 @@ const Header: React.FC = () => {
                 </ButtonIcon>
                 로그인
               </ActionButton>
-              <ActionButton primary onClick={handleSignUp}>
+              <ActionButton $primary onClick={handleSignUp}>
                 <ButtonIcon>
                   <FaUserPlus />
                 </ButtonIcon>

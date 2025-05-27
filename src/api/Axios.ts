@@ -12,12 +12,14 @@ import Cookies from 'js-cookie';
  * Axios 인스턴스 설정
  */
 const Axios: AxiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://13.209.12.236:3000',
+  baseURL:
+    import.meta.env.VITE_API_BASE_URL ||
+    'https://api.thiscatthatcat.shop/docs/',
   headers: {
     'Content-Type': 'application/json',
     Accept: 'application/json',
   },
-  withCredentials: true,
+  withCredentials: false,
 });
 
 // 요청 인터셉터: 토큰을 Authorization 헤더에 추가
