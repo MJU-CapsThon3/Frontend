@@ -33,12 +33,6 @@ export default defineConfig({
     sourcemap: false,
     minify: 'esbuild',
     rollupOptions: {
-      // 외부화할 패키지
-      external: [
-        'axios',
-        'js-cookie',
-        // 추가로 외부화할 모듈이 있으면 여기에 더 나열
-      ],
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom'],
