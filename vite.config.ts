@@ -22,7 +22,7 @@ export default defineConfig({
   base: '/',
   plugins: [react()],
   server: {
-    https: httpsConfig,
+    port: 3000,
   },
   optimizeDeps: {
     include: ['react', 'react-dom'],

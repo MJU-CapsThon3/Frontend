@@ -12,8 +12,7 @@ import Cookies from 'js-cookie';
  * Axios 인스턴스 설정
  */
 const Axios: AxiosInstance = axios.create({
-  baseURL:
-    process.env.REACT_APP_API_BASE_URL || 'http://13.209.12.236:3000/docs/',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://13.209.12.236:3000',
   headers: {
     'Content-Type': 'application/json',
     Accept: 'application/json',

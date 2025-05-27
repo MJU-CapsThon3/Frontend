@@ -1,6 +1,15 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { FaArrowUp, FaArrowDown, FaQuestionCircle } from 'react-icons/fa';
+import {
+  getTopRankings,
+  ApiResponse,
+  RankingItem,
+} from '../../api/ranking/rankingApi';
+
+// ─────────────────────────────────────────────
+// 최대 플레이어 수 (예제에서는 40명)
+const MAX_PLAYERS = 40;
 
 // ─────────────────────────────────────────────
 // 아이콘 임포트 (각 파일 경로는 프로젝트 구조에 맞게 수정)
@@ -14,67 +23,16 @@ import GrandMasterIcon from '../../assets/GrandMaster.svg';
 import ChallengerIcon from '../../assets/Challenger.svg';
 
 // ─────────────────────────────────────────────
-// 최대 플레이어 수 (예제에서는 40명)
-const MAX_PLAYERS = 40;
-
-// ─────────────────────────────────────────────
-// 티어별 매핑 (티어명, 아이콘, 색상, 설명)
-const tierMapping: {
-  [key: string]: {
-    label: string;
-    color: string;
-    description: string;
-    icon: string;
-  };
-} = {
-  bronze: {
-    label: '브론즈',
-    color: '#cd7f32',
-    description: '전체 계정의 80% 초과에 해당합니다.',
-    icon: BronzeIcon,
-  },
-  silver: {
-    label: '실버',
-    color: '#c0c0c0',
-    description: '전체 계정의 상위 55% 초과 ~ 80% 이내에 해당합니다.',
-    icon: SilverIcon,
-  },
-  gold: {
-    label: '골드',
-    color: '#ffd700',
-    description: '전체 계정의 상위 20% 초과 ~ 35% 이내에 해당합니다.',
-    icon: GoldIcon,
-  },
-  platinum: {
-    label: '플레',
-    color: '#e5e4e2',
-    description: '전체 계정의 상위 35% 초과 ~ 55% 이내에 해당합니다.',
-    icon: PlatinumIcon,
-  },
-  diamond: {
-    label: '다이아',
-    color: '#b9f2ff',
-    description: '전체 계정의 상위 10% 초과 ~ 20% 이내에 해당합니다.',
-    icon: DiamondIcon,
-  },
-  master: {
-    label: '마스터',
-    color: '#800080',
-    description: '전체 계정의 상위 4% 초과 ~ 10% 이내에 해당합니다.',
-    icon: MasterIcon,
-  },
-  grandmaster: {
-    label: '그랜드마스터',
-    color: '#ff4500',
-    description: '전체 계정의 상위 1% 초과 ~ 4% 이내에 해당합니다.',
-    icon: GrandMasterIcon,
-  },
-  challenger: {
-    label: '챌린저',
-    color: '#00ced1',
-    description: '전체 계정의 상위 1% 이내에 해당합니다.',
-    icon: ChallengerIcon,
-  },
+// 티어별 매핑 (티어명, 아이콘)
+const tierMapping: { [key: string]: { label: string; icon: string } } = {
+  bronze: { label: '브론즈', icon: BronzeIcon },
+  silver: { label: '실버', icon: SilverIcon },
+  gold: { label: '골드', icon: GoldIcon },
+  platinum: { label: '플레', icon: PlatinumIcon },
+  diamond: { label: '다이아', icon: DiamondIcon },
+  master: { label: '마스터', icon: MasterIcon },
+  grandmaster: { label: '그랜드마스터', icon: GrandMasterIcon },
+  challenger: { label: '챌린저', icon: ChallengerIcon },
 };
 
 // ─────────────────────────────────────────────
@@ -84,142 +42,121 @@ const getTierByRank = (
   totalPlayers: number = MAX_PLAYERS
 ): string => {
   const thresholds = {
-    challenger: Math.ceil(totalPlayers * 0.01), // 상위 1%
-    grandmaster: Math.ceil(totalPlayers * 0.04), // 상위 4%
-    master: Math.ceil(totalPlayers * 0.1), // 상위 10%
-    diamond: Math.ceil(totalPlayers * 0.2), // 상위 20%
-    platinum: Math.ceil(totalPlayers * 0.35), // 상위 35%
-    gold: Math.ceil(totalPlayers * 0.55), // 상위 55%
-    silver: Math.ceil(totalPlayers * 0.8), // 상위 80%
-    bronze: totalPlayers, // 그 외
+    challenger: Math.ceil(totalPlayers * 0.01),
+    grandmaster: Math.ceil(totalPlayers * 0.04),
+    master: Math.ceil(totalPlayers * 0.1),
+    diamond: Math.ceil(totalPlayers * 0.2),
+    platinum: Math.ceil(totalPlayers * 0.35),
+    gold: Math.ceil(totalPlayers * 0.55),
+    silver: Math.ceil(totalPlayers * 0.8),
+    bronze: totalPlayers,
   };
 
   if (rank <= thresholds.challenger) return 'challenger';
-  else if (rank <= thresholds.grandmaster) return 'grandmaster';
-  else if (rank <= thresholds.master) return 'master';
-  else if (rank <= thresholds.diamond) return 'diamond';
-  else if (rank <= thresholds.platinum) return 'platinum';
-  else if (rank <= thresholds.gold) return 'gold';
-  else if (rank <= thresholds.silver) return 'silver';
-  else return 'bronze';
+  if (rank <= thresholds.grandmaster) return 'grandmaster';
+  if (rank <= thresholds.master) return 'master';
+  if (rank <= thresholds.diamond) return 'diamond';
+  if (rank <= thresholds.platinum) return 'platinum';
+  if (rank <= thresholds.gold) return 'gold';
+  if (rank <= thresholds.silver) return 'silver';
+  return 'bronze';
 };
 
 // ─────────────────────────────────────────────
 // TierInfoModal Component (모달)
-type TierInfoModalProps = {
-  onClose: () => void;
-};
 
-const TierInfoModal: React.FC<TierInfoModalProps> = ({ onClose }) => {
-  return (
-    <ModalOverlay onClick={onClose}>
-      <ModalContent onClick={(e) => e.stopPropagation()}>
-        <ModalHeader>
-          <ModalTitle>티어 구성 안내</ModalTitle>
-          <ModalCloseButton onClick={onClose}>×</ModalCloseButton>
-        </ModalHeader>
-        <ModalBody>
-          {Object.keys(tierMapping).map((key) => {
-            const tier = tierMapping[key];
-            return (
-              <TierInfo key={key}>
-                <TierIcon>
-                  <img
-                    src={tier.icon}
-                    alt={tier.label}
-                    width='40'
-                    height='40'
-                  />
-                </TierIcon>
-                <TierDetail>
-                  <TierLabel>{tier.label}</TierLabel>
-                  <TierDescription>{tier.description}</TierDescription>
-                </TierDetail>
-              </TierInfo>
-            );
-          })}
-        </ModalBody>
-      </ModalContent>
-    </ModalOverlay>
-  );
-};
+type TierInfoModalProps = { onClose: () => void };
+const TierInfoModal: React.FC<TierInfoModalProps> = ({ onClose }) => (
+  <ModalOverlay onClick={onClose}>
+    <ModalContent onClick={(e) => e.stopPropagation()}>
+      <ModalHeader>
+        <ModalTitle>티어 구성 안내</ModalTitle>
+        <ModalCloseButton onClick={onClose}>×</ModalCloseButton>
+      </ModalHeader>
+      <ModalBody>
+        {Object.keys(tierMapping).map((key: string) => {
+          const tier = tierMapping[key];
+          return (
+            <TierInfo key={key}>
+              <TierIcon>
+                <img src={tier.icon} alt={tier.label} width='40' height='40' />
+              </TierIcon>
+              <TierDetail>
+                <TierLabel>{tier.label}</TierLabel>
+              </TierDetail>
+            </TierInfo>
+          );
+        })}
+      </ModalBody>
+    </ModalContent>
+  </ModalOverlay>
+);
 
 // ─────────────────────────────────────────────
 // RankingPage Component (내부 스크롤 적용)
-type UserRank = {
+
+interface UserRank {
   id: number;
   username: string;
   score: number;
   rank: number;
-  change: number;
-};
+  previousRank: number | null;
+}
 
 const RankingPage: React.FC = () => {
-  const [rankingData, setRankingData] = useState<UserRank[]>([
-    { id: 1, username: '홍길동', score: 1500, rank: 1, change: 0 },
-    { id: 2, username: '김철수', score: 1400, rank: 2, change: 1 },
-    { id: 3, username: '이영희', score: 1300, rank: 3, change: -1 },
-    { id: 4, username: '박지민', score: 1200, rank: 4, change: 2 },
-    { id: 5, username: '최수정', score: 1100, rank: 5, change: 0 },
-  ]);
-
-  const [page, setPage] = useState(1);
+  const [rankingData, setRankingData] = useState<UserRank[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const tableWrapperRef = useRef<HTMLDivElement>(null);
 
-  const fetchRankingData = (_: number): Promise<UserRank[]> => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const currentCount = rankingData.length;
-        if (currentCount >= MAX_PLAYERS) {
-          resolve([]);
-          return;
+  // 초기 랭킹 데이터 로드
+  useEffect(() => {
+    setLoading(true);
+    getTopRankings()
+      .then((res: ApiResponse<RankingItem[]>) => {
+        if (res.isSuccess && res.result) {
+          setRankingData(
+            res.result.map((item: RankingItem) => ({
+              id: Number(item.userId),
+              username: item.nickname,
+              score: item.totalPoints,
+              rank: item.rank,
+              previousRank: item.previousRank,
+            }))
+          );
         }
-        const newData: UserRank[] = [];
-        for (let i = 0; i < 5; i++) {
-          const newRank = currentCount + i + 1;
-          if (newRank > MAX_PLAYERS) break;
-          newData.push({
-            id: newRank,
-            username: `유저 ${newRank}`,
-            score: 1500 - newRank * 10,
-            rank: newRank,
-            change: newRank % 3 === 0 ? -1 : newRank % 3 === 1 ? 1 : 0,
-          });
-        }
-        resolve(newData);
-      }, 1000);
-    });
-  };
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
-  // TableWrapper 내부 스크롤 이벤트 핸들러
+  // 스크롤 페이징 (추가 로드)
   const handleScroll = useCallback(() => {
-    if (tableWrapperRef.current) {
+    if (tableWrapperRef.current && !loading) {
       const { scrollTop, clientHeight, scrollHeight } = tableWrapperRef.current;
-      if (scrollHeight - (scrollTop + clientHeight) < 100 && !loading) {
+      if (scrollHeight - (scrollTop + clientHeight) < 100) {
         setLoading(true);
-        fetchRankingData(page).then((newData) => {
-          if (newData.length > 0) {
-            setRankingData((prevData) => [...prevData, ...newData]);
-            setPage((prevPage) => prevPage + 1);
-          }
-          setLoading(false);
-        });
+        getTopRankings() // TODO: 페이지별 API 지원 시 수정
+          .then((res: ApiResponse<RankingItem[]>) => {
+            if (res.isSuccess && res.result) {
+              const newItems = res.result.map((item: RankingItem) => ({
+                id: Number(item.userId),
+                username: item.nickname,
+                score: item.totalPoints,
+                rank: item.rank,
+                previousRank: item.previousRank,
+              }));
+              setRankingData((prev) => [...prev, ...newItems]);
+            }
+          })
+          .finally(() => setLoading(false));
       }
     }
-  }, [loading, page, rankingData]);
+  }, [loading]);
 
   useEffect(() => {
     const wrapper = tableWrapperRef.current;
-    if (wrapper) {
-      wrapper.addEventListener('scroll', handleScroll);
-    }
-    return () => {
-      if (wrapper) {
-        wrapper.removeEventListener('scroll', handleScroll);
-      }
-    };
+    if (wrapper) wrapper.addEventListener('scroll', handleScroll);
+    return () => wrapper?.removeEventListener('scroll', handleScroll);
   }, [handleScroll]);
 
   return (
@@ -232,66 +169,75 @@ const RankingPage: React.FC = () => {
           </HelpIcon>
         </HeaderTitleWrapper>
       </RankingHeader>
+
       <TableWrapper ref={tableWrapperRef}>
-        <RankingTable>
-          <thead>
-            <tr>
-              <TableHead>순위</TableHead>
-              <TableHead>변동</TableHead>
-              <TableHead>티어</TableHead>
-              <TableHead>닉네임</TableHead>
-              <TableHead>점수</TableHead>
-            </tr>
-          </thead>
-          <tbody>
-            {rankingData.map((user, index) => {
-              const tierKey = getTierByRank(user.rank, MAX_PLAYERS);
-              const tierInfo = tierMapping[tierKey];
-              return (
-                <TableRow key={user.id} delay={index * 0.1}>
-                  <TableCell>{user.rank}</TableCell>
-                  <TableCell>
-                    <ChangeCell>
-                      {user.change > 0 ? (
-                        <>
-                          <FaArrowUp style={{ color: '#4caf50' }} />
-                          <ChangeText positive>{user.change}</ChangeText>
-                        </>
-                      ) : user.change < 0 ? (
-                        <>
-                          <FaArrowDown style={{ color: '#f44336' }} />
-                          <ChangeText negative>
-                            {Math.abs(user.change)}
-                          </ChangeText>
-                        </>
-                      ) : (
-                        <ChangeText>—</ChangeText>
-                      )}
-                    </ChangeCell>
-                  </TableCell>
-                  <TableCell>
-                    <TierCell>
-                      <TierIcon>
-                        <img
-                          src={tierInfo.icon}
-                          alt={tierInfo.label}
-                          width='40'
-                          height='40'
-                          style={{ marginRight: '0.5rem' }}
-                        />
-                      </TierIcon>
-                      {tierInfo.label}
-                    </TierCell>
-                  </TableCell>
-                  <TableCell>{user.username}</TableCell>
-                  <TableCell>{user.score} 점</TableCell>
-                </TableRow>
-              );
-            })}
-          </tbody>
-        </RankingTable>
-        {loading && <LoadingText>로딩 중...</LoadingText>}
+        {loading && rankingData.length === 0 ? (
+          <LoadingText>로딩 중...</LoadingText>
+        ) : (
+          <RankingTable>
+            <thead>
+              <tr>
+                <TableHead>순위</TableHead>
+                <TableHead>변동</TableHead>
+                <TableHead>티어</TableHead>
+                <TableHead>닉네임</TableHead>
+                <TableHead>점수</TableHead>
+              </tr>
+            </thead>
+            <tbody>
+              {rankingData.map((user, idx) => {
+                const change =
+                  user.previousRank !== null
+                    ? user.previousRank - user.rank
+                    : 0;
+                const tierKey = getTierByRank(user.rank, MAX_PLAYERS);
+                const tierInfo = tierMapping[tierKey];
+                return (
+                  <TableRow key={user.id} delay={idx * 0.1}>
+                    <TableCell>{user.rank}</TableCell>
+                    <TableCell>
+                      <ChangeCell>
+                        {change > 0 ? (
+                          <>
+                            <FaArrowUp style={{ color: '#4caf50' }} />
+                            <ChangeText positive>{change}</ChangeText>
+                          </>
+                        ) : change < 0 ? (
+                          <>
+                            <FaArrowDown style={{ color: '#f44336' }} />
+                            <ChangeText negative>{Math.abs(change)}</ChangeText>
+                          </>
+                        ) : (
+                          <ChangeText>—</ChangeText>
+                        )}
+                      </ChangeCell>
+                    </TableCell>
+                    <TableCell>
+                      <TierCell>
+                        <TierIcon>
+                          <img
+                            src={tierInfo.icon}
+                            alt={tierInfo.label}
+                            width='40'
+                            height='40'
+                          />
+                        </TierIcon>
+                        {tierInfo.label}
+                      </TierCell>
+                    </TableCell>
+                    <TableCell>{user.username}</TableCell>
+                    <TableCell>{user.score} 점</TableCell>
+                  </TableRow>
+                );
+              })}
+            </tbody>
+          </RankingTable>
+        )}
+        {loading && rankingData.length > 0 && (
+          <LoadingText>로딩 중...</LoadingText>
+        )}
       </TableWrapper>
+
       {isModalOpen && <TierInfoModal onClose={() => setIsModalOpen(false)} />}
     </RankingContainer>
   );
@@ -537,8 +483,8 @@ const TierLabel = styled.span`
   margin-bottom: 0.3rem;
 `;
 
-const TierDescription = styled.p`
-  font-size: 0.95rem;
-  margin: 0;
-  color: #555;
-`;
+// const TierDescription = styled.p`
+//   font-size: 0.95rem;
+//   margin: 0;
+//   color: #555;
+// `;

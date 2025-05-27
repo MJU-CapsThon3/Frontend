@@ -219,9 +219,9 @@ const ButtonIcon = styled.span`
   font-size: 1.2rem;
 `;
 
-const ActionButton = styled.button<{ primary?: boolean }>`
-  background: ${(props) => (props.primary ? '#ff9900' : 'transparent')};
-  color: ${(props) => (props.primary ? '#fff' : '#ff9900')};
+const ActionButton = styled.button<{ $primary?: boolean }>`
+  background: ${(props) => (props.$primary ? '#ff9900' : 'transparent')};
+  color: ${(props) => (props.$primary ? '#fff' : '#ff9900')};
   border: 1px solid #ff9900;
   padding: 0.5rem 1rem;
   font-size: 1rem;
