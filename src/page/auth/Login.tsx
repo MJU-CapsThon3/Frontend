@@ -6,7 +6,7 @@ import React, {
   useCallback,
   FormEvent,
 } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom'; // useNavigate 추가
 import EyeIcon from '../../assets/EyeIcon';
 import EyeClosedIcon from '../../assets/EyeClosedIcon';
 import { useLoginValidation } from '../../hooks/Validation';
@@ -23,7 +23,11 @@ import {
   buttonStyle as loginButtonStyle,
 } from '../../components/Auth/styles';
 
+// 로그인 API import
+import { login, LoginRequest } from '../../api/user/userApi';
+
 const Login: React.FC = () => {
+  const navigate = useNavigate(); // ← 추가
   const responsiveWidth = useResponsiveWidth();
   const loginContainerStyle = useMemo(
     () => ({ ...baseLoginContainerStyle, width: responsiveWidth }),
@@ -57,27 +61,41 @@ const Login: React.FC = () => {
     async (e: FormEvent<HTMLFormElement>) => {
       e.preventDefault();
 
-      // 테스트 계정 확인: 아이디 "qwer1234@naver.com", 비밀번호 "qwer1234!"
-      if (email === 'qwer1234@naver.com' && password === 'qwer1234!') {
-        setErrors({});
-        if (saveEmail) {
-          localStorage.setItem('savedEmail', email);
+      // 유효성 검사
+      const validationErrors = await validate({ email, password });
+      setErrors(validationErrors);
+      setTouched({ email: true, password: true });
+      if (Object.keys(validationErrors).length > 0) {
+        alert('입력 정보를 확인해 주세요.');
+        return;
+      }
+
+      try {
+        const reqData: LoginRequest = { email, password };
+        const res = await login(reqData);
+        console.log('login response →', res);
+
+        if (res.isSuccess && res.result) {
+          // 이메일 저장 로직
+          if (saveEmail) {
+            localStorage.setItem('savedEmail', email);
+          } else {
+            localStorage.removeItem('savedEmail');
+          }
+          // 토큰 저장
+          localStorage.setItem('token', res.result.token);
+
+          alert('로그인 성공!');
+          navigate('/battle-list'); // ← 리다이렉트
         } else {
-          localStorage.removeItem('savedEmail');
+          alert(`로그인 실패: ${res.message}`);
         }
-        // 토큰을 생성하여 localStorage에 저장 (예시 토큰)
-        localStorage.setItem('token', 'dummy-token-123456');
-        alert('로그인 성공!');
-        // 로그인 성공 후 리다이렉션: /battle-list로 이동
-        window.location.href = '/battle-list';
-      } else {
-        const validationErrors = await validate({ email, password });
-        setErrors(validationErrors);
-        setTouched({ email: true, password: true });
-        alert('아이디 또는 비밀번호가 올바르지 않습니다.');
+      } catch (err: any) {
+        console.error(err);
+        alert('서버 오류가 발생했습니다. 다시 시도해주세요.');
       }
     },
-    [email, password, saveEmail, validate]
+    [email, password, saveEmail, validate, navigate]
   );
 
   const togglePasswordVisibility = useCallback(
