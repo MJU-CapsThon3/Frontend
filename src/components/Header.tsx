@@ -13,32 +13,46 @@ import {
   FaCoins,
   FaSignOutAlt,
 } from 'react-icons/fa';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const Header: React.FC = () => {
-  // 초기 로그인 상태를 localStorage의 토큰 존재 여부로 설정
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // 토큰 존재 여부로 로그인 상태 관리
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(
     !!localStorage.getItem('token')
   );
 
-  // localStorage의 토큰 변화를 체크하여 로그인 상태 갱신 (필요 시)
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    setIsLoggedIn(!!token);
+    // 라우트가 바뀔 때마다 토큰 상태 재확인
+    setIsLoggedIn(!!localStorage.getItem('token'));
+  }, [location]);
+
+  // 다른 탭에서 로그아웃/로그인 시에도 반영
+  useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'token') {
+        setIsLoggedIn(!!e.newValue);
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+    };
   }, []);
 
-  // 로그아웃 버튼 클릭 시 처리 예시
   const handleLogout = () => {
     localStorage.removeItem('token');
     setIsLoggedIn(false);
-    window.location.href = '/';
+    navigate('/'); // SPA 내에서 홈으로 이동
   };
 
-  // 로그인, 회원가입 버튼 클릭 예시
   const handleLogin = () => {
-    window.location.href = '/login';
+    navigate('/login'); // SPA 내에서 로그인 페이지로 이동
   };
   const handleSignUp = () => {
-    window.location.href = '/sign-up';
+    navigate('/sign-up'); // SPA 내에서 회원가입 페이지로 이동
   };
 
   return (
@@ -83,13 +97,14 @@ const Header: React.FC = () => {
           </NavItem>
         </Nav>
         <Actions>
-          {/* 내 냥포인트 영역은 항상 표시 */}
-          <PointsDisplay>
-            <PointsIcon>
-              <FaCoins />
-            </PointsIcon>
-            <span>1000냥</span>
-          </PointsDisplay>
+          {isLoggedIn && (
+            <PointsDisplay>
+              <PointsIcon>
+                <FaCoins />
+              </PointsIcon>
+              <span>1000냥</span>
+            </PointsDisplay>
+          )}
           {isLoggedIn ? (
             <ActionButton onClick={handleLogout}>
               <ButtonIcon>
@@ -202,7 +217,6 @@ const PointsDisplay = styled.div`
   font-size: 1rem;
   font-weight: bold;
   color: #ff9900;
-
   min-width: 80px;
 `;
 
