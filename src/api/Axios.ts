@@ -13,8 +13,7 @@ import Cookies from 'js-cookie';
  */
 const Axios: AxiosInstance = axios.create({
   baseURL:
-    import.meta.env.VITE_API_BASE_URL ||
-    'https://api.thiscatthatcat.shop/docs/',
+    import.meta.env.VITE_API_BASE_URL || 'https://api.thiscatthatcat.shop/',
   headers: {
     'Content-Type': 'application/json',
     Accept: 'application/json',

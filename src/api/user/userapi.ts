@@ -83,7 +83,6 @@ export const signup = async (
   );
   return response.data;
 };
-
 /**
  * 로그인 API 호출
  * @param credentials LoginRequest

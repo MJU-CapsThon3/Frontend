@@ -67,6 +67,7 @@ export interface SignupData {
   gender: string;
   birthDate: string;
   phone: string;
+  name: string;
 }
 
 export const signupSchema = yup

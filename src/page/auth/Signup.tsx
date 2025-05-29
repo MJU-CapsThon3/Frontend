@@ -1,3 +1,4 @@
+// src/api/user/userApi.ts (Signup 컴포넌트)
 import React, {
   useState,
   useEffect,
@@ -7,6 +8,7 @@ import React, {
   FormEvent,
   forwardRef,
 } from 'react';
+import { useNavigate } from 'react-router-dom'; // ← 추가
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import EyeIcon from '../../assets/EyeIcon';
@@ -36,6 +38,9 @@ import {
 
 import useResponsiveWidth from '../../hooks/useResponsiveWidth';
 
+// API 함수 import
+import { signup, SignupRequest } from '../../api/user/userApi';
+
 const CustomDateInput = forwardRef<HTMLInputElement, any>(
   ({ value, onClick, onBlur }, ref) => (
     <InputField
@@ -55,6 +60,7 @@ const CustomDateInput = forwardRef<HTMLInputElement, any>(
 );
 
 const Signup: React.FC = () => {
+  const navigate = useNavigate(); // ← 추가
   const responsiveWidth = useResponsiveWidth();
   const signupContainerStyle = useMemo(
     () => ({ ...baseSignupContainerStyle, width: responsiveWidth }),
@@ -62,10 +68,11 @@ const Signup: React.FC = () => {
   );
 
   const [email, setEmail] = useState('');
+  const [name, setName] = useState(''); // 이름
   const [nickname, setNickname] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
-  const [gender, setGender] = useState('');
+  const [gender, setGender] = useState<'male' | 'female' | ''>('');
 
   const [birthDate, setBirthDate] = useState<Date | null>(null);
   const [phone1, setPhone1] = useState('');
@@ -91,22 +98,16 @@ const Signup: React.FC = () => {
     const value = e.target.value;
     if (/^\d*$/.test(value) && value.length <= 3) {
       setPhone1(value);
-      if (value.length === 3 && phone2Ref.current) {
-        phone2Ref.current.focus();
-      }
+      if (value.length === 3 && phone2Ref.current) phone2Ref.current.focus();
     }
   };
-
   const handlePhone2Change = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     if (/^\d*$/.test(value) && value.length <= 4) {
       setPhone2(value);
-      if (value.length === 4 && phone3Ref.current) {
-        phone3Ref.current.focus();
-      }
+      if (value.length === 4 && phone3Ref.current) phone3Ref.current.focus();
     }
   };
-
   const handlePhone3Change = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     if (/^\d*$/.test(value) && value.length <= 4) {
@@ -122,6 +123,7 @@ const Signup: React.FC = () => {
       const phone = `${phone1}-${phone2}-${phone3}`;
       const formData: SignupData = {
         email,
+        name,
         nickname,
         password,
         confirmPw,
@@ -135,6 +137,7 @@ const Signup: React.FC = () => {
     validateForm();
   }, [
     email,
+    name,
     nickname,
     password,
     confirmPw,
@@ -156,24 +159,26 @@ const Signup: React.FC = () => {
   const handleSubmit = useCallback(
     async (e: FormEvent<HTMLFormElement>) => {
       e.preventDefault();
+
       const formattedBirthDate = birthDate
         ? birthDate.toISOString().slice(0, 10)
         : '';
-      const phone = `${phone1}-${phone2}-${phone3}`;
-      const formData: SignupData = {
+      const phoneNumber = `${phone1}-${phone2}-${phone3}`;
+
+      const validationErrors = await validate({
         email,
+        name,
         nickname,
         password,
         confirmPw,
         gender,
         birthDate: formattedBirthDate,
-        phone,
-      };
-
-      const validationErrors = await validate(formData);
+        phone: phoneNumber,
+      });
       setErrors(validationErrors);
       setTouched({
         email: true,
+        name: true,
         nickname: true,
         password: true,
         confirmPw: true,
@@ -181,21 +186,34 @@ const Signup: React.FC = () => {
         birthDate: true,
         phone: true,
       });
+      if (Object.keys(validationErrors).length > 0) return;
 
-      if (Object.keys(validationErrors).length === 0) {
-        alert(
-          `회원가입 완료!
-  이메일: ${email}
-  닉네임: ${nickname}
-  비밀번호: ${password}
-  생년월일: ${formattedBirthDate}
-  성별: ${gender === 'male' ? '남성' : '여성'}
-  전화번호: ${phone}`
-        );
+      try {
+        const reqData: SignupRequest = {
+          email,
+          name,
+          nickname,
+          password,
+          gender: gender === 'male' ? 'M' : 'F',
+          birth: formattedBirthDate,
+          phoneNumber,
+        };
+        const res = await signup(reqData);
+        console.log('signup response →', res); // 응답 전체 확인용
+        if (res.isSuccess && res.result) {
+          alert('회원가입이 완료되었습니다!');
+          navigate('/login'); // ← 성공 시 로그인 페이지로 이동
+        } else {
+          alert(`회원가입 실패: ${res.message}`);
+        }
+      } catch (err: any) {
+        console.error(err);
+        alert('서버 오류가 발생했습니다. 다시 시도해주세요.');
       }
     },
     [
       email,
+      name,
       nickname,
       password,
       confirmPw,
@@ -205,6 +223,7 @@ const Signup: React.FC = () => {
       phone2,
       phone3,
       validate,
+      navigate, // useNavigate 의존성 추가
     ]
   );
 
@@ -215,6 +234,7 @@ const Signup: React.FC = () => {
         회원가입 후 더 많은 서비스를 만나보세요.
       </p>
       <form onSubmit={handleSubmit} style={signupFormStyle}>
+        {/* 이메일 */}
         <InputField
           id='signupEmail'
           type='text'
@@ -227,6 +247,33 @@ const Signup: React.FC = () => {
         />
         <ErrorText message={touched.email ? errors.email : undefined} />
 
+        {/* 이름 */}
+        <InputField
+          id='signupName'
+          type='text'
+          placeholder='이름'
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onBlur={handleBlur('name')}
+          style={signupInputStyle}
+          aria-label='이름 입력'
+        />
+        <ErrorText message={touched.name ? errors.name : undefined} />
+
+        {/* 닉네임 */}
+        <InputField
+          id='signupNickname'
+          type='text'
+          placeholder='닉네임'
+          value={nickname}
+          onChange={(e) => setNickname(e.target.value)}
+          onBlur={handleBlur('nickname')}
+          style={signupInputStyle}
+          aria-label='닉네임 입력'
+        />
+        <ErrorText message={touched.nickname ? errors.nickname : undefined} />
+
+        {/* 비밀번호 */}
         <div style={passwordWrapperStyle}>
           <InputField
             id='signupPassword'
@@ -248,6 +295,7 @@ const Signup: React.FC = () => {
         </div>
         <ErrorText message={touched.password ? errors.password : undefined} />
 
+        {/* 비밀번호 확인 */}
         <div style={passwordWrapperStyle}>
           <InputField
             id='signupConfirmPw'
@@ -269,18 +317,7 @@ const Signup: React.FC = () => {
         </div>
         <ErrorText message={touched.confirmPw ? errors.confirmPw : undefined} />
 
-        <InputField
-          id='signupNickname'
-          type='text'
-          placeholder='닉네임'
-          value={nickname}
-          onChange={(e) => setNickname(e.target.value)}
-          onBlur={handleBlur('nickname')}
-          style={signupInputStyle}
-          aria-label='닉네임 입력'
-        />
-        <ErrorText message={touched.nickname ? errors.nickname : undefined} />
-
+        {/* 성별 */}
         <FormRow>
           <button
             type='button'
@@ -305,6 +342,7 @@ const Signup: React.FC = () => {
         </FormRow>
         <ErrorText message={touched.gender ? errors.gender : undefined} />
 
+        {/* 생년월일 */}
         <DatePicker
           selected={birthDate}
           onChange={(date: Date | null) => setBirthDate(date)}
@@ -315,6 +353,7 @@ const Signup: React.FC = () => {
         />
         <ErrorText message={touched.birthDate ? errors.birthDate : undefined} />
 
+        {/* 전화번호 */}
         <FormRow>
           <InputField
             id='signupPhone1'
@@ -354,11 +393,13 @@ const Signup: React.FC = () => {
         </FormRow>
         <ErrorText message={touched.phone ? errors.phone : undefined} />
 
+        {/* 제출 */}
         <CustomButton type='submit' style={signupButtonStyle}>
           Signup
         </CustomButton>
       </form>
 
+      {/* 푸터 */}
       <div style={signupFooterStyle}>
         이미 계정이 있으신가요?
         <a href='/' style={linkStyle}>
