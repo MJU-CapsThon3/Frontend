@@ -39,7 +39,7 @@ import {
 import useResponsiveWidth from '../../hooks/useResponsiveWidth';
 
 // API 함수 import
-import { signup, SignupRequest } from '../../api/user/userApi';
+import { signup, SignupRequest } from '../../api/user/userAuth';
 
 const CustomDateInput = forwardRef<HTMLInputElement, any>(
   ({ value, onClick, onBlur }, ref) => (

@@ -24,7 +24,7 @@ import {
 } from '../../components/Auth/styles';
 
 // 로그인 API import
-import { login, LoginRequest } from '../../api/user/userApi';
+import { login, LoginRequest } from '../../api/user/userAuth';
 
 const Login: React.FC = () => {
   const navigate = useNavigate(); // ← 추가
