@@ -350,13 +350,13 @@ const modalFadeIn = keyframes`
 `;
 
 const Container = styled.div`
-  width: 800px;
+  width: 1000px;
   height: 600px;
-  margin: 20px auto 2rem;
+  margin: auto;
   padding: 1rem;
   background: #3aa7f0;
-  border: 3px solid #2e8bc0;
-  border-radius: 12px;
+  border: 5px solid #000;
+  border-radius: 4px;
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
   font-family: 'Malgun Gothic', 'Arial', sans-serif;
   display: flex;
@@ -371,6 +371,8 @@ const Header = styled.div`
   border-radius: 8px;
   margin-bottom: 1rem;
   box-shadow: inset 0 1px 0 #cee3f8;
+  border: 2px solid #000;
+  border-radius: 4px;
 `;
 
 const HeaderTitle = styled.h1`
@@ -415,6 +417,8 @@ const QuestItem = styled.div`
   border-radius: 8px;
   box-shadow: 0 3px 5px rgba(46, 139, 192, 0.2);
   animation: ${slideIn} 0.3s ease-out forwards;
+  border: 2px solid #000;
+  border-radius: 4px;
 `;
 
 const CoinBoxWrapper = styled.div`
@@ -445,7 +449,8 @@ const CoinBox = styled.div`
   width: 120px;
   height: 120px;
   background: #ffd700;
-  border: 2px solid #d4af37;
+  border: 2px solid #000;
+  border-radius: 4px;
   border-radius: 8px;
   box-shadow: inset 0 1px 0 #fff;
   display: flex;
@@ -507,6 +512,7 @@ const ProgressBar = styled.div`
   background: #eee;
   overflow: hidden;
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+  border: 2px solid #000;
 `;
 
 const ProgressFill = styled.div`
@@ -534,7 +540,8 @@ const TimeLeft = styled.div`
   padding: 0.3rem 0.6rem;
   border-radius: 4px;
   margin-left: 20px;
-  border: 1px solid #2e8bc0;
+  border: 2px solid #000;
+
   box-shadow: inset 0 1px 0 #fff;
   display: inline-flex;
   align-items: center;
@@ -550,23 +557,18 @@ const ActionButton = styled.button<{
         ? '#ff9800'
         : '#888'};
   color: #fff;
-  border: none;
+  border: 2px solid #000;
+  border-radius: 4px;
   font-size: 0.95rem;
-  padding: 0.3rem 0.8rem;
-  border-radius: 6px;
+  padding: 0.4rem 0.8rem;
+
   cursor: ${({ $buttonType }) =>
     $buttonType === 'complete' || $buttonType === 'claim'
       ? 'pointer'
       : 'not-allowed'};
-  box-shadow: ${({ $buttonType }) =>
-    $buttonType === 'complete'
-      ? '0 2px 0 #388e3c'
-      : $buttonType === 'claim'
-        ? '0 2px 0 #f57c00'
-        : 'none'};
-  transition: background-color 0.2s ease;
 
-  &:active {
+  transition: background-color 0.2s ease;
+  v &:active {
     transform: translateY(1px);
     box-shadow: none;
   }
