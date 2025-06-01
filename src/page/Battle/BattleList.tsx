@@ -156,10 +156,10 @@ const BattleList: React.FC = () => {
 export default BattleList;
 
 const Container = styled.div`
-  width: 1000px;
+  width: 100%;
   background: linear-gradient(to bottom, #3aa7f0, #63c8ff);
-  border: 2px solid #48b0ff;
-  border-radius: 10px;
+  border: 5px solid #000;
+  border-radius: 4px;
   display: flex;
   flex-direction: column;
   padding: 1rem;
@@ -183,12 +183,15 @@ const HeaderRight = styled.div`
 
 const HeaderButton = styled.button<{ $primary?: boolean }>`
   padding: 0.5rem 1rem;
+  min-width: 100px;
   border: none;
   border-radius: 4px;
   color: #fff;
   font-weight: bold;
   cursor: pointer;
   background-color: ${({ $primary }) => ($primary ? '#0050b3' : '#ffa700')};
+  border: 2px solid #000;
+  border-radius: 4px;
 `;
 
 const Main = styled.main`

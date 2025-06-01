@@ -21,6 +21,7 @@ const Button = styled.div`
   justify-content: center;
   align-items: center;
   cursor: pointer;
+  border: 2px solid #000;
 `;
 
 const Indicator = styled.span`
