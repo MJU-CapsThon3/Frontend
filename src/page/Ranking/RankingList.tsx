@@ -23,16 +23,27 @@ import GrandMasterIcon from '../../assets/GrandMaster.svg';
 import ChallengerIcon from '../../assets/Challenger.svg';
 
 // ─────────────────────────────────────────────
-// 티어별 매핑 (티어명, 아이콘)
-const tierMapping: { [key: string]: { label: string; icon: string } } = {
-  bronze: { label: '브론즈', icon: BronzeIcon },
-  silver: { label: '실버', icon: SilverIcon },
-  gold: { label: '골드', icon: GoldIcon },
-  platinum: { label: '플레', icon: PlatinumIcon },
-  diamond: { label: '다이아', icon: DiamondIcon },
-  master: { label: '마스터', icon: MasterIcon },
-  grandmaster: { label: '그랜드마스터', icon: GrandMasterIcon },
-  challenger: { label: '챌린저', icon: ChallengerIcon },
+// 티어별 매핑 (티어명, 아이콘, 설명)
+// 정렬 순서: 챌린저, 그랜드마스터, 마스터, 다이아, 플레, 골드, 실버, 브론즈
+const tierMapping: {
+  [key: string]: { label: string; icon: string; description: string };
+} = {
+  challenger: {
+    label: '챌린저',
+    icon: ChallengerIcon,
+    description: '상위 1% 이내',
+  },
+  grandmaster: {
+    label: '그랜드마스터',
+    icon: GrandMasterIcon,
+    description: '상위 4% 이내',
+  },
+  master: { label: '마스터', icon: MasterIcon, description: '상위 10% 이내' },
+  diamond: { label: '다이아', icon: DiamondIcon, description: '상위 20% 이내' },
+  platinum: { label: '플레', icon: PlatinumIcon, description: '상위 35% 이내' },
+  gold: { label: '골드', icon: GoldIcon, description: '상위 55% 이내' },
+  silver: { label: '실버', icon: SilverIcon, description: '상위 80% 이내' },
+  bronze: { label: '브론즈', icon: BronzeIcon, description: '하위 20% 이상' },
 };
 
 // ─────────────────────────────────────────────
@@ -64,36 +75,56 @@ const getTierByRank = (
 
 // ─────────────────────────────────────────────
 // TierInfoModal Component (모달)
+// 티어를 챌린저 → 그랜드마스터 → 마스터 → 다이아 → 플레 → 골드 → 실버 → 브론즈 순으로 정렬
 
 type TierInfoModalProps = { onClose: () => void };
-const TierInfoModal: React.FC<TierInfoModalProps> = ({ onClose }) => (
-  <ModalOverlay onClick={onClose}>
-    <ModalContent onClick={(e) => e.stopPropagation()}>
-      <ModalHeader>
-        <ModalTitle>티어 구성 안내</ModalTitle>
-        <ModalCloseButton onClick={onClose}>×</ModalCloseButton>
-      </ModalHeader>
-      <ModalBody>
-        {Object.keys(tierMapping).map((key: string) => {
-          const tier = tierMapping[key];
-          return (
-            <TierInfo key={key}>
-              <TierIcon>
-                <img src={tier.icon} alt={tier.label} width='40' height='40' />
-              </TierIcon>
-              <TierDetail>
-                <TierLabel>{tier.label}</TierLabel>
-              </TierDetail>
-            </TierInfo>
-          );
-        })}
-      </ModalBody>
-    </ModalContent>
-  </ModalOverlay>
-);
+const TierInfoModal: React.FC<TierInfoModalProps> = ({ onClose }) => {
+  const orderedTiers = [
+    'challenger',
+    'grandmaster',
+    'master',
+    'diamond',
+    'platinum',
+    'gold',
+    'silver',
+    'bronze',
+  ];
+
+  return (
+    <ModalOverlay onClick={onClose}>
+      <ModalContent onClick={(e) => e.stopPropagation()}>
+        <ModalHeader>
+          <ModalTitle>티어 구성 안내</ModalTitle>
+          <ModalCloseButton onClick={onClose}>×</ModalCloseButton>
+        </ModalHeader>
+        <ModalBody>
+          {orderedTiers.map((key) => {
+            const tier = tierMapping[key];
+            return (
+              <TierInfo key={key}>
+                <TierIcon>
+                  <img
+                    src={tier.icon}
+                    alt={tier.label}
+                    width='40'
+                    height='40'
+                  />
+                </TierIcon>
+                <TierDetail>
+                  <TierLabel>{tier.label}</TierLabel>
+                  <TierDescription>{tier.description}</TierDescription>
+                </TierDetail>
+              </TierInfo>
+            );
+          })}
+        </ModalBody>
+      </ModalContent>
+    </ModalOverlay>
+  );
+};
 
 // ─────────────────────────────────────────────
-// RankingPage Component (내부 스크롤 적용)
+// RankingPage Component (점수 기준 내림차순 정렬 + 배틀방 스타일 적용)
 
 interface UserRank {
   id: number;
@@ -107,35 +138,36 @@ const RankingPage: React.FC = () => {
   const [rankingData, setRankingData] = useState<UserRank[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const tableWrapperRef = useRef<HTMLDivElement>(null);
+  const listWrapperRef = useRef<HTMLDivElement>(null);
 
-  // 초기 랭킹 데이터 로드
+  // 초기 랭킹 데이터 로드 (점수 기준 내림차순 정렬)
   useEffect(() => {
     setLoading(true);
     getTopRankings()
       .then((res: ApiResponse<RankingItem[]>) => {
         if (res.isSuccess && res.result) {
-          setRankingData(
-            res.result.map((item: RankingItem) => ({
-              id: Number(item.userId),
-              username: item.nickname,
-              score: item.totalPoints,
-              rank: item.rank,
-              previousRank: item.previousRank,
-            }))
-          );
+          const mapped = res.result.map((item: RankingItem) => ({
+            id: Number(item.userId),
+            username: item.nickname,
+            score: item.totalPoints,
+            rank: item.rank,
+            previousRank: item.previousRank,
+          }));
+          // score 기준 내림차순 정렬
+          mapped.sort((a, b) => b.score - a.score);
+          setRankingData(mapped);
         }
       })
       .finally(() => setLoading(false));
   }, []);
 
-  // 스크롤 페이징 (추가 로드)
+  // 스크롤 페이징 (추가 로드 시에도 내림차순 유지)
   const handleScroll = useCallback(() => {
-    if (tableWrapperRef.current && !loading) {
-      const { scrollTop, clientHeight, scrollHeight } = tableWrapperRef.current;
+    if (listWrapperRef.current && !loading) {
+      const { scrollTop, clientHeight, scrollHeight } = listWrapperRef.current;
       if (scrollHeight - (scrollTop + clientHeight) < 100) {
         setLoading(true);
-        getTopRankings() // TODO: 페이지별 API 지원 시 수정
+        getTopRankings() // TODO: API가 페이지별 지원 시 수정 필요
           .then((res: ApiResponse<RankingItem[]>) => {
             if (res.isSuccess && res.result) {
               const newItems = res.result.map((item: RankingItem) => ({
@@ -145,101 +177,95 @@ const RankingPage: React.FC = () => {
                 rank: item.rank,
                 previousRank: item.previousRank,
               }));
-              setRankingData((prev) => [...prev, ...newItems]);
+              // 기존 데이터 + 새로운 데이터 합친 뒤 중복 제거 후 score 기준 내림차순
+              const combined = [...rankingData, ...newItems];
+              const uniqueMap = new Map<number, UserRank>();
+              combined.forEach((u) => {
+                if (!uniqueMap.has(u.id)) uniqueMap.set(u.id, u);
+              });
+              const uniqueArray = Array.from(uniqueMap.values());
+              uniqueArray.sort((a, b) => b.score - a.score);
+              setRankingData(uniqueArray);
             }
           })
           .finally(() => setLoading(false));
       }
     }
-  }, [loading]);
+  }, [loading, rankingData]);
 
   useEffect(() => {
-    const wrapper = tableWrapperRef.current;
+    const wrapper = listWrapperRef.current;
     if (wrapper) wrapper.addEventListener('scroll', handleScroll);
     return () => wrapper?.removeEventListener('scroll', handleScroll);
   }, [handleScroll]);
 
   return (
-    <RankingContainer>
-      <RankingHeader>
-        <HeaderTitleWrapper>
+    <Container>
+      {/* Header: 배틀방 스타일과 유사하게 적용 */}
+      <Header>
+        <HeaderLeft>
           <HeaderTitle>랭킹</HeaderTitle>
+        </HeaderLeft>
+        <HeaderRight>
           <HelpIcon onClick={() => setIsModalOpen(true)}>
-            <FaQuestionCircle />
+            <FaQuestionCircle color='#fff' size={20} />
           </HelpIcon>
-        </HeaderTitleWrapper>
-      </RankingHeader>
+        </HeaderRight>
+      </Header>
 
-      <TableWrapper ref={tableWrapperRef}>
+      {/* 리스트 영역 (내부 스크롤) */}
+      <ListWrapper ref={listWrapperRef}>
         {loading && rankingData.length === 0 ? (
           <LoadingText>로딩 중...</LoadingText>
         ) : (
-          <RankingTable>
-            <thead>
-              <tr>
-                <TableHead>순위</TableHead>
-                <TableHead>변동</TableHead>
-                <TableHead>티어</TableHead>
-                <TableHead>닉네임</TableHead>
-                <TableHead>점수</TableHead>
-              </tr>
-            </thead>
-            <tbody>
-              {rankingData.map((user, idx) => {
-                const change =
-                  user.previousRank !== null
-                    ? user.previousRank - user.rank
-                    : 0;
-                const tierKey = getTierByRank(user.rank, MAX_PLAYERS);
-                const tierInfo = tierMapping[tierKey];
-                return (
-                  <TableRow key={user.id} delay={idx * 0.1}>
-                    <TableCell>{user.rank}</TableCell>
-                    <TableCell>
-                      <ChangeCell>
-                        {change > 0 ? (
-                          <>
-                            <FaArrowUp style={{ color: '#4caf50' }} />
-                            <ChangeText positive>{change}</ChangeText>
-                          </>
-                        ) : change < 0 ? (
-                          <>
-                            <FaArrowDown style={{ color: '#f44336' }} />
-                            <ChangeText negative>{Math.abs(change)}</ChangeText>
-                          </>
-                        ) : (
-                          <ChangeText>—</ChangeText>
-                        )}
-                      </ChangeCell>
-                    </TableCell>
-                    <TableCell>
-                      <TierCell>
-                        <TierIcon>
-                          <img
-                            src={tierInfo.icon}
-                            alt={tierInfo.label}
-                            width='40'
-                            height='40'
-                          />
-                        </TierIcon>
-                        {tierInfo.label}
-                      </TierCell>
-                    </TableCell>
-                    <TableCell>{user.username}</TableCell>
-                    <TableCell>{user.score} 점</TableCell>
-                  </TableRow>
-                );
-              })}
-            </tbody>
-          </RankingTable>
+          rankingData.map((user, idx) => {
+            const change =
+              user.previousRank !== null ? user.previousRank - user.rank : 0;
+            const tierKey = getTierByRank(user.rank, MAX_PLAYERS);
+            const tierInfo = tierMapping[tierKey];
+            return (
+              <CardRow key={user.id} delay={idx * 0.05}>
+                <RankCell>
+                  <RankText>{user.rank}</RankText>
+                </RankCell>
+                <ChangeCell>
+                  {change > 0 ? (
+                    <>
+                      <FaArrowUp style={{ color: '#4caf50' }} />
+                      <ChangeText positive>{change}</ChangeText>
+                    </>
+                  ) : change < 0 ? (
+                    <>
+                      <FaArrowDown style={{ color: '#f44336' }} />
+                      <ChangeText negative>{Math.abs(change)}</ChangeText>
+                    </>
+                  ) : (
+                    <ChangeText>—</ChangeText>
+                  )}
+                </ChangeCell>
+                <TierCell>
+                  <img
+                    src={tierInfo.icon}
+                    alt={tierInfo.label}
+                    width='32'
+                    height='32'
+                    style={{ marginRight: '6px' }}
+                  />
+                  <TierLabel>{tierInfo.label}</TierLabel>
+                </TierCell>
+                <UsernameCell>{user.username}</UsernameCell>
+                <ScoreCell>{user.score} 점</ScoreCell>
+              </CardRow>
+            );
+          })
         )}
         {loading && rankingData.length > 0 && (
           <LoadingText>로딩 중...</LoadingText>
         )}
-      </TableWrapper>
+      </ListWrapper>
 
       {isModalOpen && <TierInfoModal onClose={() => setIsModalOpen(false)} />}
-    </RankingContainer>
+    </Container>
   );
 };
 
@@ -250,172 +276,175 @@ export default RankingPage;
 const fadeIn = keyframes`
   from {
     opacity: 0;
-    transform: translateX(-30px);
+    transform: translateY(20px);
   }
   to {
     opacity: 1;
-    transform: translateX(0);
+    transform: translateY(0);
   }
 `;
 
 // ─────────────────────────────────────────────
-// Styled Components (공통 스타일)
-const RankingContainer = styled.div`
-  width: 800px;
-  height: 600px;
-  margin: 20px auto 2rem;
-  background: linear-gradient(135deg, #ffdb4b, #ffa136);
-  border-radius: 12px;
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
-  overflow: hidden;
-  animation: ${fadeIn} 0.8s ease-out;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-`;
+// Styled Components (배틀방과 동일한 디자인 요소)
 
-const RankingHeader = styled.div`
-  background-color: #ff9900;
-  padding: 1.5rem 1rem;
-  text-align: center;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-`;
-
-const HeaderTitleWrapper = styled.div`
+const Container = styled.div`
+  width: 100%;
+  max-width: 1000px;
+  margin: 20px auto;
+  background: linear-gradient(to bottom, #3aa7f0, #63c8ff);
+  border: 5px solid #000;
+  border-radius: 4px;
   display: flex;
-  justify-content: center;
-  align-items: center;
-  position: relative;
+  flex-direction: column;
+  padding: 1rem;
+  overflow: hidden;
 `;
 
-const HeaderTitle = styled.h1`
-  margin: 0;
+// Header 구조: 왼쪽에 타이틀, 오른쪽에 도움말 아이콘
+const Header = styled.header`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+`;
+
+const HeaderLeft = styled.div`
+  display: flex;
+  align-items: center;
+`;
+
+const HeaderRight = styled.div`
+  display: flex;
+  align-items: center;
+`;
+
+const HeaderTitle = styled.div`
+  font-weight: bold;
   color: #fff;
-  font-size: 2rem;
-  letter-spacing: 1px;
+  font-size: 1.5rem;
+  text-shadow: 1px 1px #000;
 `;
 
 const HelpIcon = styled.div`
-  position: absolute;
-  right: 0;
-  font-size: 2rem;
-  color: #fff;
   cursor: pointer;
-  transition: transform 0.3s;
-  &:hover {
-    transform: scale(1.2);
-  }
+  background-color: #0050b3;
+  padding: 0.3rem;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #000;
+  border-radius: 4px;
 `;
 
-const TableWrapper = styled.div`
-  height: 400px; /* 내부 스크롤 영역의 고정 높이 */
-  padding: 2rem;
+// 리스트 영역: 내부 스크롤 + 카드 간 간격 유지
+const ListWrapper = styled.div`
+  flex: 1;
+  height: 500px;
+  padding: 0.5rem 0;
   overflow-y: auto;
-  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
 
-  /* 스크롤바 전체 영역 */
+  /* 스크롤바 스타일 (크롬 계열) */
   &::-webkit-scrollbar {
-    width: 10px; /* 스크롤바 폭 */
+    width: 8px;
   }
-
-  /* 스크롤 트랙: 밝은 회색 배경에 라운드 효과 */
   &::-webkit-scrollbar-track {
-    background: #ffdb4b;
-    border-radius: 5px;
-    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.05);
+    background: #63c8ff;
+    border-radius: 4px;
   }
-
-  /* 스크롤 thumb: 중간 회색 계열, 테두리는 트랙 색상과 동일하게 설정 */
   &::-webkit-scrollbar-thumb {
-    background: #c1c1c1;
-    border-radius: 5px;
-    border: 2px solid #ffdb4b;
-    transition: background 0.3s;
+    background: #48b0ff;
+    border-radius: 4px;
   }
-
-  /* 스크롤 thumb hover: 좀 더 어두운 회색으로 변경 */
   &::-webkit-scrollbar-thumb:hover {
-    background: #ffa136;
+    background: #0050b3;
   }
 `;
 
-const RankingTable = styled.table`
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0 10px;
-`;
-
-const TableHead = styled.th`
-  background: #ff6e40;
-  color: #fff;
-  padding: 1.2rem 1.5rem;
-  text-align: center;
-  font-size: 1.2rem;
-  font-weight: bold;
-  border-bottom: 2px solid #ffa136;
-  &:first-child {
-    border-top-left-radius: 8px;
-  }
-  &:last-child {
-    border-top-right-radius: 8px;
-  }
-`;
-
-interface TableRowProps {
+// 카드(row) 스타일: 배틀방 카드와 유사한 테두리/둥근 모서리/그림자/호버 효과
+interface CardRowProps {
   delay: number;
 }
-const TableRow = styled.tr<TableRowProps>`
-  animation: ${fadeIn} 0.5s ease-out forwards;
+const CardRow = styled.div<CardRowProps>`
+  display: grid;
+  grid-template-columns: 60px 60px 200px 1fr 80px;
+  align-items: center;
+  background-color: #fff;
+  border: 2px solid #000;
+  border-radius: 4px;
+  padding: 0.6rem 1rem;
+  animation: ${fadeIn} 0.4s ease-out forwards;
   animation-delay: ${(props) => props.delay}s;
   opacity: 0;
-  background-color: #fff;
-  border-radius: 8px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   transition:
-    background-color 0.3s,
-    transform 0.3s;
+    transform 0.2s,
+    background-color 0.2s;
   &:hover {
-    background-color: #f1f1f1;
     transform: translateY(-3px);
+    background-color: #f0f8ff;
   }
 `;
 
-const TableCell = styled.td`
-  padding: 1rem;
+const RankCell = styled.div`
   text-align: center;
+`;
+const RankText = styled.span`
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #004a66;
+`;
+
+const ChangeCell = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+`;
+const ChangeText = styled.span<{ positive?: boolean; negative?: boolean }>`
+  margin-left: 0.3rem;
   font-size: 1rem;
+  font-weight: bold;
+  color: ${(props) =>
+    props.positive ? '#4caf50' : props.negative ? '#f44336' : '#999'};
 `;
 
 const TierCell = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: bold;
 `;
-
-const TierIcon = styled.span`
-  display: inline-flex;
-`;
-
-const ChangeCell = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-`;
-
-const ChangeText = styled.span<{ positive?: boolean; negative?: boolean }>`
+const TierLabel = styled.span`
   font-size: 1rem;
   font-weight: bold;
-  margin-left: 0.3rem;
-  color: ${(props) =>
-    props.positive ? '#4caf50' : props.negative ? '#f44336' : '#999'};
+  color: #004a66;
+`;
+
+const UsernameCell = styled.div`
+  font-size: 1rem;
+  color: #333;
+  font-weight: 500;
+  padding-left: 0.5rem;
+`;
+
+const ScoreCell = styled.div`
+  text-align: center;
+  font-size: 1rem;
+  font-weight: bold;
+  color: #004a66;
 `;
 
 const LoadingText = styled.p`
   text-align: center;
   font-size: 1.2rem;
-  color: #555;
-  margin-top: 1rem;
+  color: #fff;
+  margin: 2rem 0;
 `;
 
+// ─────────────────────────────────────────────
+// Modal Styled Components (변경 없음)
 const ModalOverlay = styled.div`
   position: fixed;
   top: 0;
@@ -431,7 +460,9 @@ const ModalOverlay = styled.div`
 
 const ModalContent = styled.div`
   background: #fff;
-  width: 500px;
+  border: 2px solid #000;
+  border-radius: 4px;
+  width: 400px;
   max-width: 90%;
   border-radius: 8px;
   overflow: hidden;
@@ -439,12 +470,13 @@ const ModalContent = styled.div`
 `;
 
 const ModalHeader = styled.div`
-  background-color: #ff9900;
+  background-color: #48b0ff;
   color: #fff;
   padding: 1rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  border-bottom: 2px solid #000;
 `;
 
 const ModalTitle = styled.h2`
@@ -477,14 +509,11 @@ const TierDetail = styled.div`
   margin-left: 0.8rem;
 `;
 
-const TierLabel = styled.span`
-  font-size: 1.1rem;
-  font-weight: bold;
-  margin-bottom: 0.3rem;
+const TierIcon = styled.span`
+  display: inline-flex;
 `;
 
-// const TierDescription = styled.p`
-//   font-size: 0.95rem;
-//   margin: 0;
-//   color: #555;
-// `;
+const TierDescription = styled.span`
+  font-size: 0.95rem;
+  color: #555;
+`;
