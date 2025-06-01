@@ -10,6 +10,7 @@ import RankingList from './page/Ranking/RankingList';
 import QuestList from './page/Quest/QuestList';
 import ShopList from './page/Shop/ShopList';
 import MyInfo from './page/MyInfo/MyInfo';
+import Home from './page/home';
 
 import './App.css';
 
@@ -29,6 +30,7 @@ function App() {
           <Route path='/quest-list' element={<QuestList />} />
           <Route path='/shop-list' element={<ShopList />} />
           <Route path='/myinfo' element={<MyInfo />} />
+          <Route path='/home' element={<Home />} />
         </Route>
       </Routes>
     </BrowserRouter>
