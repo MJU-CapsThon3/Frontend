@@ -430,8 +430,8 @@ const BattleDetail: React.FC = () => {
     return (
       <ModalOverlay>
         <ModalContent>
-          <h3 style={{ marginBottom: '0.3rem' }}>{title}</h3>
-          <>{children}</>
+          <ModalTitle>{title}</ModalTitle>
+          {children}
         </ModalContent>
       </ModalOverlay>
     );
@@ -501,7 +501,7 @@ const BattleDetail: React.FC = () => {
 
       {pendingMoveSlot !== null && (
         <ModalComponent title='이동 확인'>
-          <p>해당 슬롯으로 이동하시겠습니까?</p>
+          <ModalText>해당 슬롯으로 이동하시겠습니까?</ModalText>
           <ModalButtons>
             <ModalSubmitButton onClick={handleConfirmMove}>
               네
@@ -540,11 +540,11 @@ const BattleDetail: React.FC = () => {
 
       {startModalVisible && (
         <ModalComponent title='게임 시작 확인'>
-          <p>
+          <ModalText>
             모든 플레이어가 준비되었습니다.
             <br />
             게임을 시작하시겠습니까?
-          </p>
+          </ModalText>
           <ModalButtons>
             <ModalSubmitButton
               onClick={() => {
@@ -563,10 +563,10 @@ const BattleDetail: React.FC = () => {
 
       {warningModalVisible && (
         <ModalComponent title='경고'>
-          <p>
+          <ModalText>
             참가자 2명이 모두 있고 준비 완료된 상태여야 게임을 시작할 수
             있습니다.
-          </p>
+          </ModalText>
           <ModalButtons>
             <ModalSubmitButton onClick={() => setWarningModalVisible(false)}>
               확인
@@ -577,7 +577,9 @@ const BattleDetail: React.FC = () => {
 
       {kickModalVisible && selectedPlayer && (
         <ModalComponent title='플레이어 강퇴 확인'>
-          <p>{selectedPlayer.nickname} 플레이어를 강퇴하시겠습니까?</p>
+          <ModalText>
+            {selectedPlayer.nickname} 플레이어를 강퇴하시겠습니까?
+          </ModalText>
           <ModalButtons>
             <ModalSubmitButton onClick={handleKickPlayer}>네</ModalSubmitButton>
             <ModalCancelButton
@@ -597,16 +599,19 @@ const BattleDetail: React.FC = () => {
 
 export default BattleDetail;
 
-// ───── styled-components 정의 ──────────────────────────────
+/* ==========================
+   Styled Components 정의
+   (위 코드들 디자인 요소 그대로 적용)
+========================== */
 
 // Container (기본 박스)
 const Container = styled.div`
   width: 1000px;
   margin: 0 auto;
-  border: 2px solid #48b0ff;
-  border-radius: 10px;
-  background-color: #cde7ff;
-  font-family: sans-serif;
+  border: 5px solid #000; /* 검은색 테두리 */
+  border-radius: 8px; /* 둥근 테두리 */
+  background-color: #3aa7f0; /* 밝은 블루 배경 */
+  font-family: 'Malgun Gothic', 'Arial', sans-serif; /* 폰트 통일 */
   overflow: hidden;
   position: relative;
   animation: ${fadeIn} 0.5s ease-in-out forwards;
@@ -618,9 +623,10 @@ const Header = styled.header`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background-color: #3b83c0;
+  background-color: #2e8bc0; /* 퀘스트 페이지 헤더 배경색과 동일 */
   color: #fff;
-  padding: 0.5rem 1rem;
+  padding: 0.6rem 1rem;
+  border-bottom: 2px solid #000; /* 검은색 하단 테두리 */
 `;
 
 // Header 내부 타이틀
@@ -668,6 +674,8 @@ const CenteredDiv = styled.div`
 const ParticipantKeyword = styled.div`
   font-weight: bold;
   margin-bottom: 0.5rem;
+  border: 2px solid #000;
+  border-radius: 4px;
 `;
 
 // 채팅 영역
@@ -675,21 +683,22 @@ const ChatSection = styled.div`
   flex: 2 1 600px;
   display: flex;
   flex-direction: column;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  background-color: #fff;
+  border: 2px solid #000; /* 검은색 테두리 */
+  border-radius: 6px; /* 모서리 둥글게 */
+  background-color: #fff; /* 흰색 배경 */
+  box-shadow: inset 0 1px 0 #cee3f8; /* 내부 그림자 */
 `;
 
 // 채팅 메시지 컨테이너
 const ChatMessages = styled.div`
   height: 400px;
-  overflow-y: scroll;
+  overflow-y: auto;
   padding: 0.5rem;
   font-size: 0.85rem;
   display: flex;
   flex-direction: column;
-  background-color: #f0f0f0;
-  border-radius: 10px;
+  background-color: #f0f0f0; /* 연한 그레이 배경 */
+  border-radius: 6px 6px 0 0; /* 모서리 둥글게 */
 `;
 
 // 채팅 폼
@@ -698,6 +707,7 @@ const ChatForm = styled.form`
   align-items: center;
   border-top: 1px solid #ddd;
   padding: 0.5rem;
+  background-color: #fff;
 `;
 
 // 채팅 인풋
@@ -711,9 +721,9 @@ const ChatInput = styled.input`
 
 // 관전자 영역
 const SpectatorsSection = styled.div`
-  border-top: 2px solid #48b0ff;
+  border-top: 2px solid #000; /* 검은색 상단 테두리 */
   padding: 1rem;
-  background-color: #f9f9f9;
+  background-color: #cce6f4; /* 연-블루 배경 */
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -732,13 +742,17 @@ const SpectatorsGrid = styled.div`
 const SpectatorSlotContainer = styled.div<{ occupied: boolean }>`
   width: ${BOX_SIZE};
   height: ${BOX_SIZE};
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  background-color: #fff;
+  background-color: #fff; /* 흰색 배경 */
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: ${(props) => (props.occupied ? 'default' : 'pointer')};
+  box-shadow: 0 3px 5px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s;
+
+  &:hover {
+    transform: ${(props) => (props.occupied ? 'none' : 'scale(1.03)')};
+  }
 `;
 
 // 빈 박스 (관전자 슬롯 내)
@@ -746,17 +760,20 @@ const EmptyBox = styled.div`
   width: 100%;
   height: 100%;
   background-color: #fff;
+  border: 2px solid #000;
+  border-radius: 4px;
 `;
 
-// CommonCard (참가자/관전자 카드 - 기존 styled-components)
+// CommonCard (참가자/관전자 카드)
 const CommonCard = styled.div`
   width: ${BOX_SIZE};
   height: ${BOX_SIZE};
-  border: 1px solid #ddd;
-  border-radius: 6px;
+
   background-color: #fff;
   position: relative;
-  padding: 0.5rem;
+  border: 2px solid #000;
+  border-radius: 4px;
+
   box-sizing: border-box;
   text-align: center;
   transition:
@@ -780,6 +797,7 @@ const PlayerImage = styled.img`
   width: 100%;
   height: 100%;
   object-fit: cover;
+  border-radius: 4px;
 `;
 
 // 기본 아바타 (이미지 없을 경우)
@@ -790,6 +808,7 @@ const DefaultAvatar = styled.div`
   align-items: center;
   justify-content: center;
   background-color: #eee;
+  border-radius: 4px;
 `;
 
 // 닉네임 영역
@@ -811,44 +830,52 @@ const TierIcon = styled.img`
   position: absolute;
   top: 0.3rem;
   right: 0.3rem;
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   z-index: 3;
+  border: 2px solid #000; /* 검은색 테두리 */
+  border-radius: 6px;
 `;
 
 // 순위 영역 (카드 하단)
 const RankArea = styled.div`
   position: absolute;
-  bottom: 0.3rem;
+  bottom: 0;
   left: 50%;
   transform: translateX(-50%);
-  width: 90%;
+  width: 100%;
   text-align: center;
-  height: 20px;
+
   background-color: rgba(0, 0, 0, 0.4);
   display: flex;
   justify-content: center;
   align-items: center;
+  border-top: 2px solid #000; /* 검은색 테두리 */
 `;
 
 // 방장 뱃지
 const OwnerBadge = styled.div`
-  background-color: #4caf50;
+  background-color: #4caf50; /* 녹색 */
+
   color: #fff;
-  padding: 2px 6px;
-  font-size: 0.7rem;
+
+  font-size: 0.8rem;
   font-weight: bold;
   width: 100%;
+  border-bottom-right-radius: 4px;
+  border-bottom-left-radius: 4px;
 `;
 
 // 준비 뱃지
 const ReadyBadge = styled.div`
-  background-color: #ff9800;
+  background-color: #ff9800; /* 주황색 */
   color: #fff;
-  padding: 2px 6px;
-  font-size: 0.7rem;
+
+  font-size: 0.8rem;
   font-weight: bold;
   width: 100%;
+  border-bottom-right-radius: 4px;
+  border-bottom-left-radius: 4px;
 `;
 
 // 관전자용 아바타 이미지
@@ -906,6 +933,25 @@ const ModalContent = styled.div`
   flex-direction: column;
   gap: 1rem;
   animation: ${scaleUp} 0.3s ease-in-out;
+  box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.3);
+`;
+
+// 모달 타이틀
+const ModalTitle = styled.h3`
+  margin: 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #ddd;
+  font-size: 1.1rem;
+  color: #333;
+`;
+
+// 모달 본문 텍스트
+const ModalText = styled.p`
+  font-size: 1rem;
+  color: #333;
+  margin: 0;
+  line-height: 1.4;
+  text-align: center;
 `;
 
 // 모달 인풋
@@ -928,6 +974,7 @@ const EmptySlotText = styled.div`
   color: #aaa;
   text-align: center;
   line-height: ${BOX_SIZE};
+  font-size: 0.9rem;
 `;
 
 // ───── 기존 버튼 styled-components ──────────────────────────────
@@ -935,12 +982,12 @@ const EmptySlotText = styled.div`
 const ExitButton = styled.button`
   background-color: #fff;
   color: #333;
-  border: 2px solid #ccc;
+  border: 2px solid #000; /* 검은색 테두리 */
   border-radius: 4px;
   padding: 0.3rem 0.8rem;
   cursor: pointer;
   font-weight: bold;
-  box-shadow: 0 2px 0 #aaa;
+
   transition: transform 0.2s;
 
   &:hover {
@@ -951,12 +998,12 @@ const ExitButton = styled.button`
 const SubjectButton = styled.button`
   background-color: #f06292;
   color: #fff;
-  border: none;
+  border: 2px solid #000; /* 검은색 테두리 */
   border-radius: 6px;
   padding: 0.4rem 0.8rem;
   cursor: pointer;
   font-weight: bold;
-  box-shadow: 0 2px 0 #c7436f;
+
   transition: transform 0.2s;
 
   &:hover {
@@ -966,15 +1013,15 @@ const SubjectButton = styled.button`
 
 const StartButton = styled.button`
   position: absolute;
-  top: 3.5rem;
+  top: 5rem;
   right: 0.5rem;
   padding: 0.5rem 1.5rem;
   border-radius: 6px;
   background-color: #f06292;
   color: #fff;
-  border: none;
+  border: 2px solid #000; /* 검은색 테두리 */
   font-weight: bold;
-  box-shadow: 0 3px 0 #c7436f;
+
   cursor: pointer;
   transition: transform 0.2s;
 
@@ -1016,11 +1063,11 @@ const ModalCancelButton = styled.button`
 // ───── 관전자 헤더 및 토글 버튼 ──────────────────────────────
 const SpectatorsHeader = styled.div`
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
-  padding: 1rem;
-
-  gap: 20px;
+  padding: 1rem 0;
+  width: 100%;
+  gap: 10px;
 `;
 
 const SpectatorsTitle = styled.h2`
@@ -1034,13 +1081,14 @@ const ToggleButton = styled.button`
   background-color: #0057a8;
   color: #fff;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   padding: 0.3rem 0.6rem;
-  font-size: 0.9rem;
+  font-size: 1rem;
   cursor: pointer;
   transition: background-color 0.2s;
 
   &:hover {
     background-color: #004080;
   }
+  border: 2px solid #000; /* 검은색 테두리 */
 `;
