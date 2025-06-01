@@ -170,6 +170,7 @@ const Container = styled.div`
   font-family: 'Malgun Gothic', 'Arial', sans-serif;
   display: flex;
   flex-direction: column;
+  border-radius: 8px;
 `;
 
 const Header = styled.header`
