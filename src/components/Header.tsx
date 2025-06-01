@@ -141,9 +141,11 @@ const HeaderContainer = styled.header`
   top: 0;
   left: 0;
   width: 100%;
-  background: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background: rgba(0, 0, 0, 0.95);
+
   z-index: 1000;
+  border: 5px solid #000; /* 검은색 테두리 */
+  border-radius: 8px; /* 둥근 테두리 */
 `;
 
 const HeaderWrapper = styled.div`
@@ -186,7 +188,7 @@ const NavItem = styled.a`
   display: flex;
   align-items: center;
   font-size: 1rem;
-  color: #333;
+  color: #fff;
   text-decoration: none;
   cursor: pointer;
   transition: color 0.3s ease;
@@ -200,6 +202,7 @@ const IconWrapper = styled.span`
   align-items: center;
   margin-right: 0.5rem;
   font-size: 1.2rem;
+  color: #fff;
 `;
 
 const Actions = styled.div`
@@ -234,8 +237,7 @@ const ButtonIcon = styled.span`
 `;
 
 const ActionButton = styled.button<{ $primary?: boolean }>`
-  background: ${(props) => (props.$primary ? '#ff9900' : 'transparent')};
-  color: ${(props) => (props.$primary ? '#fff' : '#ff9900')};
+  color: #fff;
   border: 1px solid #ff9900;
   padding: 0.5rem 1rem;
   font-size: 1rem;
