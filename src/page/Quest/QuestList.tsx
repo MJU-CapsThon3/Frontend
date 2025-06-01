@@ -359,7 +359,7 @@ const Container = styled.div`
   padding: 1rem;
   background: #3aa7f0;
   border: 5px solid #000;
-  border-radius: 4px;
+  border-radius: 8px;
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
   font-family: 'Malgun Gothic', 'Arial', sans-serif;
   display: flex;
