@@ -26,6 +26,8 @@ const Badge = styled.span<{ status: RoomStatus }>`
   border-radius: 4px;
   background-color: ${({ status }) => getStatusBadgeColor(status)};
   text-shadow: 1px 1px #555;
+  border: 2px solid #000;
+  border-radius: 4px;
 `;
 
 interface Props {

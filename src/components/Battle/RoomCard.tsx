@@ -33,6 +33,8 @@ const Card = styled.div`
   &:hover {
     transform: translateY(-4px);
   }
+  border: 2px solid #000;
+  border-radius: 4px;
 `;
 
 const IconSection = styled.div`
@@ -42,7 +44,8 @@ const IconSection = styled.div`
   display: flex;
   justify-content: center;
   align-items: center;
-  border-right: 2px solid rgba(0, 0, 0, 0.2);
+  border: 2px solid #000;
+  border-radius: 4px;
 `;
 
 const InfoSection = styled.div`
@@ -61,14 +64,17 @@ const Title = styled.div`
   background-color: #a4b4e6;
   padding: 5px;
   border-radius: 4px;
+  text-align: left;
+  border: 2px solid #000;
 `;
 
 const Id = styled.span`
   color: #ffcc00;
   text-shadow: 1px 1px #555;
-  background-color: skyblue;
-  padding: 5px;
+
   border-radius: 4px;
+  background-color: skyblue;
+  padding: 4px;
   margin-right: 4px;
 `;
 
@@ -89,6 +95,8 @@ const PlayerCount = styled.span`
   background-color: #b4d7fa;
   padding: 6px 8px;
   border-radius: 8px;
+  border: 2px solid #000;
+  border-radius: 4px;
 `;
 
 const UserIconWrapper = styled.div`
@@ -96,8 +104,13 @@ const UserIconWrapper = styled.div`
 `;
 
 const UserIcon = styled(FaUserFriends as any)`
-  font-size: 1.2rem;
+  width: 20px;
+
+  height: 20px;
+  padding: 6px 8px;
   cursor: pointer;
+  border: 2px solid #000;
+  border-radius: 4px;
 `;
 
 interface Props {

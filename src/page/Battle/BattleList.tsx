@@ -9,49 +9,6 @@ import { BattleRoomApi } from '../../api/battle/battleRoomApi';
 
 const ROOMS_PER_PAGE = 10;
 
-const Container = styled.div`
-  width: 800px;
-  background: linear-gradient(to bottom, #3aa7f0, #63c8ff);
-  border: 2px solid #48b0ff;
-  border-radius: 10px;
-  display: flex;
-  flex-direction: column;
-  padding: 0.5rem;
-`;
-
-const Header = styled.header`
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 0.5rem;
-`;
-
-const HeaderLeft = styled.div`
-  display: flex;
-  gap: 0.5rem;
-`;
-
-const HeaderRight = styled.div`
-  display: flex;
-  gap: 0.5rem;
-`;
-
-const HeaderButton = styled.button<{ $primary?: boolean }>`
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 4px;
-  color: #fff;
-  font-weight: bold;
-  cursor: pointer;
-  background-color: ${({ $primary }) => ($primary ? '#0050b3' : '#ffa700')};
-`;
-
-const Main = styled.main`
-  flex: 1;
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0.5rem;
-`;
-
 /**
  * RoomSummary 타입 재정의 (API에서 실제로 `id`라는 키로 들어온다고 가정)
  * 필요하다면 이 인터페이스를 BattleRoomApi.getAllRooms()에서 사용하는 타입에 맞춰서 조정해야 합니다.
@@ -197,3 +154,46 @@ const BattleList: React.FC = () => {
 };
 
 export default BattleList;
+
+const Container = styled.div`
+  width: 1000px;
+  background: linear-gradient(to bottom, #3aa7f0, #63c8ff);
+  border: 2px solid #48b0ff;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+`;
+
+const Header = styled.header`
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+`;
+
+const HeaderLeft = styled.div`
+  display: flex;
+  gap: 0.5rem;
+`;
+
+const HeaderRight = styled.div`
+  display: flex;
+  gap: 0.5rem;
+`;
+
+const HeaderButton = styled.button<{ $primary?: boolean }>`
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  color: #fff;
+  font-weight: bold;
+  cursor: pointer;
+  background-color: ${({ $primary }) => ($primary ? '#0050b3' : '#ffa700')};
+`;
+
+const Main = styled.main`
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+`;
