@@ -36,8 +36,7 @@ export default ShopItemCard;
 
 const ItemCard = styled.div`
   background-color: #2d397e;
-  border: 2px solid #1d2a68;
-  border-radius: 6px;
+
   padding: 0.5rem;
   color: #eef;
   display: flex;
@@ -57,22 +56,25 @@ const ItemCard = styled.div`
 const ItemRow = styled.div`
   display: flex;
   gap: 0.5rem;
-  align-items: center;
 `;
 
 const IconWrapper = styled.div`
   flex: 0 0 40px;
   display: flex;
-  align-items: center;
-  justify-content: center;
   background-color: #eef;
   padding: 10px;
   border-radius: 8px;
+  border: 2px solid #000;
 `;
 
 const ItemText = styled.div`
   display: flex;
   flex-direction: column;
+  flex: 1;
+  border: 2px solid #000;
+  border-radius: 4px;
+  padding: 0.5rem; /* 텍스트와 가장자리 간격 추가 */
+  text-align: left; /* 텍스트 왼쪽 정렬 */
 `;
 
 const ItemName = styled.span`
@@ -97,6 +99,7 @@ const PreviewButton = styled.button`
   flex: 1;
   background-color: #5599ff;
   border: none;
+  border: 2px solid #000;
   border-radius: 4px;
   padding: 0.3rem;
   color: #fff;
@@ -113,6 +116,7 @@ const BuyButton = styled.button`
   flex: 1;
   background-color: #4460ff;
   border: none;
+  border: 2px solid #000;
   border-radius: 4px;
   padding: 0.3rem;
   color: #fff;

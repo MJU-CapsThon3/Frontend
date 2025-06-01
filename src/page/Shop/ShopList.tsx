@@ -690,6 +690,8 @@ const ItemGrid = styled.div`
 
 const ItemCardWrapper = styled.div`
   animation: ${fadeIn} 0.4s ease-out;
+  border: 2px solid #000;
+  border-radius: 8px;
 `;
 
 const PreviewSection = styled.div`
@@ -736,7 +738,7 @@ const Avatar = styled.img`
 const DefaultAvatar = styled.div`
   width: 100%;
   height: 100%;
-  background-color: #eee;
+
   display: flex;
   align-items: center;
   justify-content: center;
