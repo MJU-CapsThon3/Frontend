@@ -1,6 +1,14 @@
+// src/pages/QuestPage.tsx
+
 import React, { useState, useEffect } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { FaGift, FaClock, FaCoins } from 'react-icons/fa';
+import { QuestApi } from '../../api/quest/questApi'; // 경로를 프로젝트 구조에 맞게 조절하세요.
+import type {
+  Quest as APIQuest,
+  CompleteQuestResult,
+  QuestRewardResult,
+} from '../../api/quest/questApi';
 
 /**
  * 자정까지 남은 시간을 초 단위로 계산하는 함수
@@ -18,149 +26,165 @@ type Quest = {
   description: string;
   reward: string;
   timeLeft: number; // 남은 시간 (초 단위)
-  progress: number; // 현재 진행도
-  goal: number; // 퀘스트 목표치
-  rewardClaimed: boolean; // 보상 수령 여부
+  progress: number; // 현재 진행도 (클라이언트에서 임시로 유지)
+  goal: number; // 퀘스트 목표치 (클라이언트에서 임시로 유지)
+  rewardClaimed: boolean; // 보상 수령 여부 (클라이언트에서 임시로 유지)
 };
 
-// 초기 퀘스트 데이터 (7종목)
-// 모든 타이머는 자정까지 남은 시간으로 초기화
-const initialQuestData: Quest[] = [
-  {
-    id: 1,
-    title: '토론 참여하기',
-    description: '토론 1회 참여 시, 보상 지급!',
-    reward: '100냥',
-    timeLeft: getTimeUntilMidnight(),
-    progress: 0,
-    goal: 1,
-    rewardClaimed: false,
-  },
-  {
-    id: 2,
-    title: '글 작성하기',
-    description: '게시글 5회 작성 시, 보상 지급!',
-    reward: '50냥',
-    timeLeft: getTimeUntilMidnight(),
-    progress: 0,
-    goal: 5,
-    rewardClaimed: false,
-  },
-  {
-    id: 3,
-    title: '댓글 달기',
-    description: '댓글 10회 작성 시, 보상 지급!',
-    reward: '20냥',
-    timeLeft: getTimeUntilMidnight(),
-    progress: 0,
-    goal: 10,
-    rewardClaimed: false,
-  },
-  {
-    id: 4,
-    title: '로그인 유지하기',
-    description: '하루 동안 연속 로그인 시, 보너스 지급!',
-    reward: '30냥',
-    timeLeft: getTimeUntilMidnight(),
-    progress: 0,
-    goal: 1,
-    rewardClaimed: false,
-  },
-  {
-    id: 5,
-    title: '프로필 수정하기',
-    description: '한 번의 프로필 수정 시, 보상 지급!',
-    reward: '10냥',
-    timeLeft: getTimeUntilMidnight(),
-    progress: 0,
-    goal: 1,
-    rewardClaimed: false,
-  },
-  {
-    id: 6,
-    title: '친구 초대하기',
-    description: '친구 초대 3회 완료 시, 보상 지급!',
-    reward: '150냥',
-    timeLeft: getTimeUntilMidnight(),
-    progress: 0,
-    goal: 3,
-    rewardClaimed: false,
-  },
-  {
-    id: 7,
-    title: '일일 퀘스트 클리어',
-    description: '모든 퀘스트 완료 시, 보너스 지급!',
-    reward: '200냥',
-    timeLeft: getTimeUntilMidnight(),
-    progress: 0,
-    goal: 7,
-    rewardClaimed: false,
-  },
-];
-
 const QuestPage: React.FC = () => {
-  const [quests, setQuests] = useState<Quest[]>(initialQuestData);
+  // 클라이언트 상태로 퀘스트 배열 관리
+  const [quests, setQuests] = useState<Quest[]>([]);
   const [modalVisible, setModalVisible] = useState<boolean>(false);
   const [modalContent, setModalContent] = useState<string>('');
 
+  // 초기 로딩: API 호출하여 퀘스트 목록을 받아온 다음,
+  // 클라이언트 로직으로 progress/goal/claim 상태를 지정
+  useEffect(() => {
+    (async () => {
+      try {
+        // 1) 서버에서 전체 퀘스트 목록 조회
+        const apiList: APIQuest[] = await QuestApi.getQuestList();
+        // 2) 클라이언트 로직으로 추가 필드를 채워서 상태로 저장
+        const mapped: Quest[] = apiList.map((item) => {
+          // id에 따라 목표치(goal)를 정하는 예시 로직
+          let goalCount = 1;
+          switch (item.id) {
+            case 2:
+              goalCount = 5;
+              break;
+            case 3:
+              goalCount = 10;
+              break;
+            case 6:
+              goalCount = 3;
+              break;
+            case 7:
+              goalCount = apiList.length; // 예: 전체 퀘스트 개수
+              break;
+            default:
+              goalCount = 1;
+          }
+
+          return {
+            id: item.id,
+            title: item.name,
+            description: item.description,
+            reward: `${item.rewardPts}냥`,
+            timeLeft: getTimeUntilMidnight(),
+            progress: 0,
+            goal: goalCount,
+            rewardClaimed: false,
+          };
+        });
+        setQuests(mapped);
+      } catch (error) {
+        console.error('[QuestPage] 퀘스트 목록 로딩 오류:', error);
+      }
+    })();
+  }, []);
+
   /**
    * 자정까지 남은 시간을 매초 업데이트하며,
-   * 자정이 지나면 퀘스트의 진행도와 보상 상태를 초기화
+   * 만약 자정을 지났으면 서버에 일일 리셋 API를 호출하고
+   * 클라이언트 로직으로도 progress, rewardClaimed 상태를 리셋
    */
   useEffect(() => {
-    const timer = setInterval(() => {
+    const timer = setInterval(async () => {
       const newTime = getTimeUntilMidnight();
-      setQuests((prevQuests) =>
-        prevQuests.map((quest) => {
-          if (newTime <= 1) {
-            return {
-              ...quest,
-              timeLeft: newTime,
-              progress: 0,
-              rewardClaimed: false,
-            };
-          }
-          return { ...quest, timeLeft: newTime };
-        })
-      );
+
+      // 만약 자정을 지났다면 (남은 시간이 1초 이하라면)
+      if (newTime <= 1) {
+        try {
+          // 서버에 일일 퀘스트 초기화 요청
+          await QuestApi.resetDailyQuests();
+        } catch (error) {
+          console.error('[QuestPage] 일일 퀘스트 초기화 오류:', error);
+        }
+        // 클라이언트 상태도 리셋
+        setQuests((prevQuests) =>
+          prevQuests.map((quest) => ({
+            ...quest,
+            timeLeft: newTime,
+            progress: 0,
+            rewardClaimed: false,
+          }))
+        );
+      } else {
+        // 그 외에는 단순히 남은 시간만 업데이트
+        setQuests((prevQuests) =>
+          prevQuests.map((quest) => ({
+            ...quest,
+            timeLeft: newTime,
+          }))
+        );
+      }
     }, 1000);
+
     return () => clearInterval(timer);
   }, []);
 
   /**
-   * 퀘스트 완료 버튼 클릭 시 현재 진행도를 1씩 증가
+   * 퀘스트 완료 처리: API 호출 후, 클라이언트 상태에서 progress만 1 증가
    */
-  const handleCompleteQuest = (questId: number) => {
-    setQuests((prevQuests) =>
-      prevQuests.map((quest) =>
-        quest.id === questId && quest.progress < quest.goal
-          ? { ...quest, progress: quest.progress + 1 }
-          : quest
-      )
-    );
-    console.log(`퀘스트 ID ${questId} 진행 중...`);
+  const handleCompleteQuest = async (questId: number) => {
+    try {
+      // 1) 서버에 퀘스트 완료 처리 요청
+      const result: CompleteQuestResult = await QuestApi.completeQuest(questId);
+      console.log(
+        `[QuestPage] 퀘스트 ${result.questId} 완료 처리: isCompleted=${result.isCompleted}`
+      );
+      // 2) 클라이언트 상태에서 progress 증가
+      setQuests((prevQuests) =>
+        prevQuests.map((q) =>
+          q.id === questId && q.progress < q.goal
+            ? { ...q, progress: q.progress + 1 }
+            : q
+        )
+      );
+    } catch (error) {
+      console.error(
+        `[QuestPage] 퀘스트 ID ${questId} 완료 처리 중 오류:`,
+        error
+      );
+    }
   };
 
   /**
-   * 보상받기 버튼 클릭 시 모달을 띄우고 보상 수령 상태를 업데이트
+   * 퀘스트 보상 수령 처리: API 호출 후, 클라이언트 상태에서 rewardClaimed를 true로
    */
-  const handleClaimReward = (questId: number) => {
-    const quest = quests.find((q) => q.id === questId);
-    if (quest) {
-      setModalContent(`축하합니다! ${quest.reward}을(를) 획득하셨습니다!`);
+  const handleClaimReward = async (questId: number) => {
+    try {
+      // 1) 서버에 보상 수령 요청 (userId는 예시: 1번 유저)
+      const rewardResult: QuestRewardResult = await QuestApi.claimQuestReward({
+        userId: 1,
+        questId,
+      });
+      console.log(
+        `[QuestPage] 퀘스트 ${questId} 보상 획득: reward=${rewardResult.reward}`
+      );
+
+      // 2) 모달 띄우기
+      setModalContent(
+        `축하합니다! ${rewardResult.reward}냥을(를) 획득하셨습니다!`
+      );
       setModalVisible(true);
+
+      // 3) 클라이언트 상태에서 rewardClaimed를 true로 변경
       setQuests((prevQuests) =>
         prevQuests.map((q) =>
           q.id === questId ? { ...q, rewardClaimed: true } : q
         )
       );
-      console.log(`퀘스트 ID ${questId} 보상 수령 완료`);
+    } catch (error) {
+      console.error(
+        `[QuestPage] 퀘스트 ID ${questId} 보상 수령 중 오류:`,
+        error
+      );
     }
   };
 
   /**
    * 초(seconds)를 "HH시간 MM분 SS초" 형태의 문자열로 변환
-   * padStart를 이용하여 자리수를 보완해 가독성을 높임
    */
   const formatSecondsToHMS = (seconds: number): string => {
     const h = String(Math.floor(seconds / 3600)).padStart(2, '0');
@@ -207,7 +231,6 @@ const QuestPage: React.FC = () => {
         <HeaderSubTitle>일일 미션은 매일 00:00에 초기화돼요 ★</HeaderSubTitle>
       </Header>
 
-      {/* QuestList는 Container 내 남은 영역을 차지하며 내용이 많을 경우 스크롤됩니다 */}
       <QuestList>
         {quests.map((quest) => (
           <QuestItem key={quest.id}>
@@ -277,11 +300,10 @@ const QuestPage: React.FC = () => {
 
 export default QuestPage;
 
-/* =========================
-   스타일 컴포넌트 정의 (가독성을 위해 효율적으로 재정렬)
-========================= */
+/* ==========================
+   Styled Components 정의
+========================== */
 
-// 애니메이션 정의
 const slideIn = keyframes`
   from {
     opacity: 0;
@@ -304,7 +326,6 @@ const modalFadeIn = keyframes`
   }
 `;
 
-// 컨테이너 스타일 (600px로 고정)
 const Container = styled.div`
   width: 800px;
   height: 600px;
@@ -319,7 +340,6 @@ const Container = styled.div`
   flex-direction: column;
 `;
 
-// 헤더 스타일
 const Header = styled.div`
   text-align: center;
   padding: 0.8rem;
@@ -342,7 +362,6 @@ const HeaderSubTitle = styled.p`
   font-size: 0.9rem;
 `;
 
-// QuestList: 남은 영역을 모두 차지하며 스크롤이 발생하도록 함
 const QuestList = styled.div`
   flex: 1;
   overflow-y: auto;
@@ -350,6 +369,7 @@ const QuestList = styled.div`
   flex-direction: column;
   gap: 1rem;
   padding-right: 0.5rem;
+
   &::-webkit-scrollbar {
     width: 8px;
   }
@@ -363,7 +383,6 @@ const QuestList = styled.div`
   }
 `;
 
-// 퀘스트 아이템 레이아웃
 const QuestItem = styled.div`
   display: flex;
   gap: 1rem;
@@ -414,7 +433,6 @@ const CoinBox = styled.div`
   font-weight: bold;
 `;
 
-// 콘텐츠 및 정보 레이아웃
 const ContentWrapper = styled.div`
   display: flex;
   flex-direction: column;
@@ -446,7 +464,6 @@ const RowReward = styled.div`
   color: #333;
 `;
 
-// 하단 정보 및 버튼 레이아웃
 const BottomRow = styled.div`
   display: flex;
   justify-content: space-between;
@@ -500,7 +517,6 @@ const TimeLeft = styled.div`
   align-items: center;
 `;
 
-// 액션 버튼 (transient prop $buttonType 사용)
 const ActionButton = styled.button<{
   $buttonType: 'complete' | 'claim' | 'claimed';
 }>`
@@ -537,7 +553,6 @@ const ActionButton = styled.button<{
   }
 `;
 
-// 모달 관련 스타일
 const ModalOverlay = styled.div`
   position: fixed;
   top: 0;

@@ -1,5 +1,5 @@
-// src/page/Shop/ShopList.tsx
-import React, { useState } from 'react';
+// src/pages/Shop/ShopList.tsx
+import React, { useState, useEffect } from 'react';
 import styled, { keyframes } from 'styled-components';
 import {
   FaUserAlt,
@@ -35,6 +35,12 @@ import TeamIcon15 from '../../assets/ShopIcon/TeamIcon15.svg';
 import TeamIcon16 from '../../assets/ShopIcon/TeamIcon16.svg';
 import TeamIcon17 from '../../assets/ShopIcon/TeamIcon17.svg';
 
+import { ShopApi } from '../../api/shop/shop'; // shop.ts 경로에 맞게 수정
+import type {
+  ShopItem as APIShopItem,
+  MyItem as APIMyItem,
+} from '../../api/shop/shop';
+
 /* ------------------- 타입 정의 ------------------- */
 export type CategoryType = '전체' | '팀 아이콘' | '테두리';
 
@@ -54,7 +60,7 @@ interface MyBoxState {
   avatarUrl?: string;
 }
 
-/* ------------------- 더미 아이템 데이터 ------------------- */
+/* ------------------- 더미 아이템 데이터 (아이콘 & 카테고리 매핑용) ------------------- */
 const dummyShopItems: ShopItem[] = [
   {
     id: 1,
@@ -175,8 +181,7 @@ const dummyShopItems: ShopItem[] = [
     icon: <img src={TeamIcon17} alt='TeamIcon17' width={64} height={64} />,
     category: '팀 아이콘',
   },
-
-  // ─── 새로운 캐릭터 아바타 10개 ───
+  // 캐릭터 아바타 10개
   {
     id: 101,
     name: '친구들 아바타',
@@ -248,7 +253,7 @@ const dummyShopItems: ShopItem[] = [
     category: '팀 아이콘',
   },
 
-  // ─── 테두리 기존 9개 ───
+  // 테두리 9개
   {
     id: 10,
     name: '기본 실선 테두리',
@@ -288,7 +293,7 @@ const dummyShopItems: ShopItem[] = [
     id: 15,
     name: '그라데이션 테두리',
     price: 3000,
-    icon: <FaBorderStyle size={64} color='url(#grad)' />,
+    icon: <FaBorderStyle size={64} color='#999' />,
     category: '테두리',
   },
   {
@@ -313,7 +318,7 @@ const dummyShopItems: ShopItem[] = [
     category: '테두리',
   },
 
-  // ─── 추가 테두리 10개 ───
+  // 추가 테두리 10개
   {
     id: 201,
     name: '펄스 테두리',
@@ -408,7 +413,13 @@ const ShopWithPreview: React.FC = () => {
     appliedBorder: null,
     avatarUrl: '',
   });
+
+  // API에서 불러온 상점 아이템 리스트
+  const [items, setItems] = useState<ShopItem[]>([]);
+
+  // 내 소유 아이템 리스트
   const [myItems, setMyItems] = useState<ShopItem[]>([]);
+
   const [selectedCategory, setSelectedCategory] =
     useState<CategoryType>('전체');
   const [purchaseModalVisible, setPurchaseModalVisible] = useState(false);
@@ -417,25 +428,94 @@ const ShopWithPreview: React.FC = () => {
   const [purchaseSuccessItem, setPurchaseSuccessItem] =
     useState<ShopItem | null>(null);
 
+  /* ------------------- API 호출: 초기 로드 ------------------- */
+  useEffect(() => {
+    // 1) 상점 전체 아이템 가져오기
+    ShopApi.getItems()
+      .then((apiItems: APIShopItem[]) => {
+        // API에서 받아온 아이템에 아이콘/카테고리 매핑
+        const mapped = apiItems.map((apiItem) => {
+          const dummy = dummyShopItems.find((d) => d.id === apiItem.id);
+          return {
+            id: apiItem.id,
+            name: apiItem.name,
+            price: apiItem.cost,
+            icon: dummy?.icon ?? <FaUserAlt size={64} color='#888' />,
+            category: dummy?.category ?? '전체',
+          } as ShopItem;
+        });
+        setItems(mapped);
+      })
+      .catch((err) => {
+        console.error('[ShopList] 상점 아이템 조회 실패:', err);
+      });
+
+    // 2) 내 소유 아이템 목록 가져오기
+    ShopApi.getMyItems()
+      .then((apiMyItems: APIMyItem[]) => {
+        const mappedMy = apiMyItems.map((apiItem) => {
+          const dummy = dummyShopItems.find((d) => d.id === apiItem.id);
+          return {
+            id: apiItem.id,
+            name: apiItem.name,
+            price: apiItem.cost,
+            icon: dummy?.icon ?? <FaUserAlt size={64} color='#888' />,
+            category: dummy?.category ?? '전체',
+          } as ShopItem;
+        });
+        setMyItems(mappedMy);
+      })
+      .catch((err) => {
+        console.error('[ShopList] 내 아이템 조회 실패:', err);
+      });
+  }, []);
+
+  /* ------------------- 카테고리 필터링 ------------------- */
+  const filteredItems =
+    selectedCategory === '전체'
+      ? items
+      : items.filter((item) => item.category === selectedCategory);
+
+  /* ------------------- 카테고리 선택 ------------------- */
   const handleCategoryClick = (cat: CategoryType) => setSelectedCategory(cat);
-  const handleBuyItemConfirm = (item: ShopItem) =>
-    setMyItems((prev) =>
-      prev.find((x) => x.id === item.id) ? prev : [...prev, item]
-    );
+
+  /* ------------------- 구매 프로세스 ------------------- */
   const handleBuyItem = (item: ShopItem) => {
     setSelectedPurchaseItem(item);
     setPurchaseModalVisible(true);
   };
+
   const confirmPurchase = () => {
-    if (selectedPurchaseItem) handleBuyItemConfirm(selectedPurchaseItem);
-    setPurchaseSuccessItem(selectedPurchaseItem);
-    setSelectedPurchaseItem(null);
-    setPurchaseModalVisible(false);
+    if (!selectedPurchaseItem) return;
+
+    // 1) 구매 API 호출
+    ShopApi.buyItem({ itemId: selectedPurchaseItem.id })
+      .then((result) => {
+        // 2) 성공 화면
+        setPurchaseSuccessItem(selectedPurchaseItem);
+
+        // 3) 내 아이템 상태 업데이트 (리스트에 없으면 추가)
+        setMyItems((prev) => {
+          if (prev.find((x) => x.id === selectedPurchaseItem.id)) return prev;
+          return [...prev, selectedPurchaseItem];
+        });
+      })
+      .catch((err) => {
+        console.error('[ShopList] 아이템 구매 실패:', err);
+        // 필요 시 에러 모달 띄우기
+      })
+      .finally(() => {
+        setSelectedPurchaseItem(null);
+        setPurchaseModalVisible(false);
+      });
   };
+
   const cancelPurchase = () => {
     setSelectedPurchaseItem(null);
     setPurchaseModalVisible(false);
   };
+
+  /* ------------------- 미리보기 관련 ------------------- */
   const handlePreviewItem = (item: ShopItem) => {
     if (item.category === '팀 아이콘') {
       setMyBox((prev) => ({ ...prev, appliedTeamIcon: item }));
@@ -443,6 +523,7 @@ const ShopWithPreview: React.FC = () => {
       setMyBox((prev) => ({ ...prev, appliedBorder: item }));
     }
   };
+
   const handleResetPreview = () =>
     setMyBox({
       nickname: '내 닉네임',
@@ -452,11 +533,7 @@ const ShopWithPreview: React.FC = () => {
       avatarUrl: '',
     });
 
-  const filteredItems =
-    selectedCategory === '전체'
-      ? dummyShopItems
-      : dummyShopItems.filter((item) => item.category === selectedCategory);
-
+  /* ------------------- BattleBox 테두리 스타일 결정 ------------------- */
   const getBoxBorderStyle = () => {
     if (!myBox.appliedBorder) return '2px solid #999';
     const n = myBox.appliedBorder.name;
@@ -702,6 +779,7 @@ const AvatarContainer = styled.div`
     object-fit: contain;
   }
 `;
+
 const ActionButton = styled.button`
   background-color: #eee;
   border: 1px solid #999;
