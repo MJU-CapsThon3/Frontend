@@ -32,21 +32,17 @@ type Quest = {
 };
 
 const QuestPage: React.FC = () => {
-  // 클라이언트 상태로 퀘스트 배열 관리
   const [quests, setQuests] = useState<Quest[]>([]);
   const [modalVisible, setModalVisible] = useState<boolean>(false);
   const [modalContent, setModalContent] = useState<string>('');
 
-  // 초기 로딩: API 호출하여 퀘스트 목록을 받아온 다음,
-  // 클라이언트 로직으로 progress/goal/claim 상태를 지정
+  // 1) 최초 렌더링 시 서버에서 퀘스트 목록 가져와서 state 세팅
   useEffect(() => {
     (async () => {
       try {
-        // 1) 서버에서 전체 퀘스트 목록 조회
         const apiList: APIQuest[] = await QuestApi.getQuestList();
-        // 2) 클라이언트 로직으로 추가 필드를 채워서 상태로 저장
         const mapped: Quest[] = apiList.map((item) => {
-          // id에 따라 목표치(goal)를 정하는 예시 로직
+          // 예시 로직: id별 목표치 지정
           let goalCount = 1;
           switch (item.id) {
             case 2:
@@ -64,7 +60,6 @@ const QuestPage: React.FC = () => {
             default:
               goalCount = 1;
           }
-
           return {
             id: item.id,
             title: item.name,
@@ -83,39 +78,30 @@ const QuestPage: React.FC = () => {
     })();
   }, []);
 
-  /**
-   * 자정까지 남은 시간을 매초 업데이트하며,
-   * 만약 자정을 지났으면 서버에 일일 리셋 API를 호출하고
-   * 클라이언트 로직으로도 progress, rewardClaimed 상태를 리셋
-   */
+  // 2) 매초마다 남은 시간 업데이트, 자정 지나면 서버 및 클라이언트 동시 reset
   useEffect(() => {
     const timer = setInterval(async () => {
       const newTime = getTimeUntilMidnight();
 
-      // 만약 자정을 지났다면 (남은 시간이 1초 이하라면)
       if (newTime <= 1) {
+        // 자정 지나면
         try {
-          // 서버에 일일 퀘스트 초기화 요청
           await QuestApi.resetDailyQuests();
         } catch (error) {
           console.error('[QuestPage] 일일 퀘스트 초기화 오류:', error);
         }
-        // 클라이언트 상태도 리셋
         setQuests((prevQuests) =>
-          prevQuests.map((quest) => ({
-            ...quest,
+          prevQuests.map((q) => ({
+            ...q,
             timeLeft: newTime,
             progress: 0,
             rewardClaimed: false,
           }))
         );
       } else {
-        // 그 외에는 단순히 남은 시간만 업데이트
+        // 자정 이전엔 남은 시간만 갱신
         setQuests((prevQuests) =>
-          prevQuests.map((quest) => ({
-            ...quest,
-            timeLeft: newTime,
-          }))
+          prevQuests.map((q) => ({ ...q, timeLeft: newTime }))
         );
       }
     }, 1000);
@@ -124,62 +110,96 @@ const QuestPage: React.FC = () => {
   }, []);
 
   /**
-   * 퀘스트 완료 처리: API 호출 후, 클라이언트 상태에서 progress만 1 증가
+   * 퀘스트 완료 처리
+   * 1) 서버에 퀘스트 완료 API 호출 → 성공하면 result 반환
+   * 2) local state에서 해당 퀘스트 progress +1 (최대 goal까지만)
    */
   const handleCompleteQuest = async (questId: number) => {
     try {
-      // 1) 서버에 퀘스트 완료 처리 요청
+      // 1) 서버에 퀘스트 완료 요청
       const result: CompleteQuestResult = await QuestApi.completeQuest(questId);
       console.log(
-        `[QuestPage] 퀘스트 ${result.questId} 완료 처리: isCompleted=${result.isCompleted}`
+        `[QuestPage] 퀘스트 ${result.questId} isCompleted=${result.isCompleted}`
       );
-      // 2) 클라이언트 상태에서 progress 증가
+
+      // 2) local state에서 해당 퀘스트 progress +1 (최대 goal까지만)
       setQuests((prevQuests) =>
-        prevQuests.map((q) =>
-          q.id === questId && q.progress < q.goal
-            ? { ...q, progress: q.progress + 1 }
-            : q
-        )
+        prevQuests.map((q) => {
+          if (q.id === questId) {
+            const newProg = Math.min(q.progress + 1, q.goal);
+            return { ...q, progress: newProg };
+          }
+          return q;
+        })
       );
     } catch (error) {
       console.error(
         `[QuestPage] 퀘스트 ID ${questId} 완료 처리 중 오류:`,
         error
       );
+      setModalContent('퀘스트 완료 처리 중 오류가 발생했습니다.');
+      setModalVisible(true);
     }
   };
 
   /**
-   * 퀘스트 보상 수령 처리: API 호출 후, 클라이언트 상태에서 rewardClaimed를 true로
+   * 퀘스트 보상 수령 처리
+   * 1) local state에서 progress가 goal 이상인지 확인 → 아니면 모달로 이유 표시
+   * 2) 서버에 보상 수령 API 호출 → 성공 시 rewardClaimed=true, 모달로 보상액 표시
+   *    실패 시 오류 메시지 모달
    */
   const handleClaimReward = async (questId: number) => {
+    // 해당 퀘스트 상태 조회
+    const targetQuest = quests.find((q) => q.id === questId);
+    if (!targetQuest) return;
+
+    // progress가 목표치 미달성인 경우
+    if (targetQuest.progress < targetQuest.goal) {
+      setModalContent('퀘스트 목표를 먼저 달성해야 보상을 받을 수 있습니다.');
+      setModalVisible(true);
+      return;
+    }
+    // 이미 보상받은 경우
+    if (targetQuest.rewardClaimed) {
+      setModalContent('이미 보상을 받았습니다.');
+      setModalVisible(true);
+      return;
+    }
+
+    // 보상 수령 시도
     try {
-      // 1) 서버에 보상 수령 요청 (userId는 예시: 1번 유저)
       const rewardResult: QuestRewardResult = await QuestApi.claimQuestReward({
-        userId: 1,
+        userId: 1, // 실제로는 로그인된 유저 ID를 전달해야 합니다.
         questId,
       });
       console.log(
-        `[QuestPage] 퀘스트 ${questId} 보상 획득: reward=${rewardResult.reward}`
+        `[QuestPage] 퀘스트 ${questId} 보상 획득: ${rewardResult.reward}냥`
       );
 
-      // 2) 모달 띄우기
-      setModalContent(
-        `축하합니다! ${rewardResult.reward}냥을(를) 획득하셨습니다!`
-      );
-      setModalVisible(true);
-
-      // 3) 클라이언트 상태에서 rewardClaimed를 true로 변경
+      // local state에서 rewardClaimed=true 로 변경
       setQuests((prevQuests) =>
         prevQuests.map((q) =>
           q.id === questId ? { ...q, rewardClaimed: true } : q
         )
       );
-    } catch (error) {
-      console.error(
-        `[QuestPage] 퀘스트 ID ${questId} 보상 수령 중 오류:`,
-        error
+
+      // 보상 모달 열기
+      setModalContent(
+        `축하합니다! ${rewardResult.reward}냥을(를) 획득하셨습니다!`
       );
+      setModalVisible(true);
+    } catch (claimError: any) {
+      console.error(
+        `[QuestPage] 퀘스트 ${questId} 보상 수령 중 오류:`,
+        claimError
+      );
+      // 서버에서 받은 오류 메시지가 있으면, 그대로 띄워주고 없으면 기본 메시지
+      const errMsg =
+        claimError instanceof Error && claimError.message
+          ? claimError.message
+          : '보상 수령 중 오류가 발생했습니다.';
+      setModalContent(errMsg);
+      setModalVisible(true);
     }
   };
 
@@ -194,10 +214,11 @@ const QuestPage: React.FC = () => {
   };
 
   /**
-   * 퀘스트 진행 상황에 따라 액션 버튼을 렌더링
+   * 퀘스트 진행 상황에 따라 버튼 텍스트 및 동작을 결정
    */
   const renderActionButton = (quest: Quest) => {
     if (quest.progress < quest.goal) {
+      // 목표 미달성 → "퀘스트 완료" 버튼
       return (
         <ActionButton
           onClick={() => handleCompleteQuest(quest.id)}
@@ -207,6 +228,7 @@ const QuestPage: React.FC = () => {
         </ActionButton>
       );
     } else if (quest.progress >= quest.goal && !quest.rewardClaimed) {
+      // 목표 달성했으나 보상 미수령 → "보상받기" 버튼
       return (
         <ActionButton
           onClick={() => handleClaimReward(quest.id)}
@@ -216,6 +238,7 @@ const QuestPage: React.FC = () => {
         </ActionButton>
       );
     } else {
+      // 보상을 이미 받은 경우 → "보상완료" 비활성화 버튼
       return (
         <ActionButton disabled $buttonType='claimed'>
           보상완료
@@ -284,7 +307,7 @@ const QuestPage: React.FC = () => {
       {modalVisible && (
         <ModalOverlay onClick={() => setModalVisible(false)}>
           <ModalContent onClick={(e) => e.stopPropagation()}>
-            <ModalHeader>보상 수령</ModalHeader>
+            <ModalHeader>알림</ModalHeader>
             <ModalBody>{modalContent}</ModalBody>
             <ModalFooter>
               <ModalButton onClick={() => setModalVisible(false)}>
@@ -531,14 +554,16 @@ const ActionButton = styled.button<{
   font-size: 0.95rem;
   padding: 0.3rem 0.8rem;
   border-radius: 6px;
-  cursor: pointer;
-  box-shadow: 0 2px 0
-    ${({ $buttonType }) =>
-      $buttonType === 'complete'
-        ? '#388e3c'
-        : $buttonType === 'claim'
-          ? '#f57c00'
-          : '#555'};
+  cursor: ${({ $buttonType }) =>
+    $buttonType === 'complete' || $buttonType === 'claim'
+      ? 'pointer'
+      : 'not-allowed'};
+  box-shadow: ${({ $buttonType }) =>
+    $buttonType === 'complete'
+      ? '0 2px 0 #388e3c'
+      : $buttonType === 'claim'
+        ? '0 2px 0 #f57c00'
+        : 'none'};
   transition: background-color 0.2s ease;
 
   &:active {
