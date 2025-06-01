@@ -422,6 +422,7 @@ const QuestItem = styled.div`
   animation: ${slideIn} 0.3s ease-out forwards;
   border: 2px solid #000;
   border-radius: 4px;
+  background: #dcdcdc;
 `;
 
 const CoinBoxWrapper = styled.div`

@@ -381,7 +381,7 @@ const RightColumn = styled.div`
 `;
 
 const CardSection = styled.section`
-  background: #fff;
+  background: #dcdcdc;
   border: 2px solid #000;
   border-radius: 6px;
   padding: 0.6rem;
