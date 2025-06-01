@@ -1,4 +1,5 @@
 // src/pages/Login.tsx
+
 import React, {
   useState,
   useEffect,
@@ -6,7 +7,7 @@ import React, {
   useCallback,
   FormEvent,
 } from 'react';
-import { Link, useNavigate } from 'react-router-dom'; // useNavigate 추가
+import { Link, useNavigate } from 'react-router-dom';
 import EyeIcon from '../../assets/EyeIcon';
 import EyeClosedIcon from '../../assets/EyeClosedIcon';
 import { useLoginValidation } from '../../hooks/Validation';
@@ -23,17 +24,18 @@ import {
   buttonStyle as loginButtonStyle,
 } from '../../components/Auth/styles';
 
-// 로그인 API import
-import { login, LoginRequest } from '../../api/user/userAuth';
+// login 함수 import: ApiResponse<string> 반환
+import { login, LoginRequest } from '../../api/user/userApi';
 
 const Login: React.FC = () => {
-  const navigate = useNavigate(); // ← 추가
+  const navigate = useNavigate();
   const responsiveWidth = useResponsiveWidth();
   const loginContainerStyle = useMemo(
     () => ({ ...baseLoginContainerStyle, width: responsiveWidth }),
     [responsiveWidth]
   );
 
+  // savedEmail이 있으면 초기값에 세팅
   const [email, setEmail] = useState(localStorage.getItem('savedEmail') || '');
   const [password, setPassword] = useState('');
   const [saveEmail, setSaveEmail] = useState(
@@ -45,10 +47,12 @@ const Login: React.FC = () => {
 
   const { validate } = useLoginValidation();
 
+  // 입력 필드를 벗어났을 때 touched 상태 업데이트
   const handleBlur = (field: string) => () => {
     setTouched((prev) => ({ ...prev, [field]: true }));
   };
 
+  // 이메일/비밀번호가 바뀔 때마다 유효성 검사
   useEffect(() => {
     const validateForm = async () => {
       const validationErrors = await validate({ email, password });
@@ -57,6 +61,7 @@ const Login: React.FC = () => {
     validateForm();
   }, [email, password, validate]);
 
+  // 폼 제출 핸들러
   const handleSubmit = useCallback(
     async (e: FormEvent<HTMLFormElement>) => {
       e.preventDefault();
@@ -72,21 +77,24 @@ const Login: React.FC = () => {
 
       try {
         const reqData: LoginRequest = { email, password };
+        // login()이 ApiResponse<string>을 반환
         const res = await login(reqData);
         console.log('login response →', res);
 
         if (res.isSuccess && res.result) {
-          // 이메일 저장 로직
+          // 이메일 저장 여부 처리
           if (saveEmail) {
             localStorage.setItem('savedEmail', email);
           } else {
             localStorage.removeItem('savedEmail');
           }
-          // 토큰 저장
-          localStorage.setItem('token', res.result.token);
+
+          // userApi.login() 안에서 이미 accessToken을 저장했으므로
+          // 여기서는 중복 저장하지 않아도 됩니다.
+          // localStorage.setItem('accessToken', res.result);
 
           alert('로그인 성공!');
-          navigate('/battle-list'); // ← 리다이렉트
+          navigate('/battle-list');
         } else {
           alert(`로그인 실패: ${res.message}`);
         }
@@ -98,18 +106,19 @@ const Login: React.FC = () => {
     [email, password, saveEmail, validate, navigate]
   );
 
+  // 비밀번호 가시성 토글
   const togglePasswordVisibility = useCallback(
     () => setShowPassword((prev) => !prev),
     []
   );
 
+  // 버튼 호버 시 확대/축소 효과
   const handleMouseEnter = useCallback(
     (e: React.MouseEvent<HTMLButtonElement>) => {
       e.currentTarget.style.transform = 'scale(1.05)';
     },
     []
   );
-
   const handleMouseLeave = useCallback(
     (e: React.MouseEvent<HTMLButtonElement>) => {
       e.currentTarget.style.transform = 'scale(1)';
