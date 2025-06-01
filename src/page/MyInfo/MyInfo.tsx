@@ -1,4 +1,5 @@
 // src/pages/MyInfo/MyInfo.tsx
+
 import React, { useState, useMemo, useCallback, FormEvent } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { FaUserAlt, FaBorderStyle, FaCoins } from 'react-icons/fa';
@@ -13,9 +14,6 @@ import MasterIcon from '../../assets/Master.svg';
 import GrandMasterIcon from '../../assets/GrandMaster.svg';
 import ChallengerIcon from '../../assets/Challenger.svg';
 
-//
-// 타입 정의 (icon 타입을 React.ReactElement로 수정)
-//
 type ShopItem = {
   id: number;
   name: string;
@@ -47,7 +45,6 @@ const getTierByRank = (
     silver: Math.ceil(totalPlayers * 0.8),
     bronze: totalPlayers,
   };
-
   if (rank <= thresholds.challenger) return 'challenger';
   if (rank <= thresholds.grandmaster) return 'grandmaster';
   if (rank <= thresholds.master) return 'master';
@@ -63,37 +60,37 @@ const tierMapping: {
 } = {
   bronze: {
     label: '브론즈',
-    icon: <img src={BronzeIcon} alt='브론즈' width={40} height={40} />,
+    icon: <img src={BronzeIcon} alt='브론즈' width={32} height={32} />,
   },
   silver: {
     label: '실버',
-    icon: <img src={SilverIcon} alt='실버' width={40} height={40} />,
+    icon: <img src={SilverIcon} alt='실버' width={32} height={32} />,
   },
   gold: {
     label: '골드',
-    icon: <img src={GoldIcon} alt='골드' width={40} height={40} />,
+    icon: <img src={GoldIcon} alt='골드' width={32} height={32} />,
   },
   platinum: {
     label: '플래티넘',
-    icon: <img src={PlatinumIcon} alt='플래티넘' width={40} height={40} />,
+    icon: <img src={PlatinumIcon} alt='플래티넘' width={32} height={32} />,
   },
   diamond: {
     label: '다이아',
-    icon: <img src={DiamondIcon} alt='다이아' width={40} height={40} />,
+    icon: <img src={DiamondIcon} alt='다이아' width={32} height={32} />,
   },
   master: {
     label: '마스터',
-    icon: <img src={MasterIcon} alt='마스터' width={40} height={40} />,
+    icon: <img src={MasterIcon} alt='마스터' width={32} height={32} />,
   },
   grandmaster: {
     label: '그랜드마스터',
     icon: (
-      <img src={GrandMasterIcon} alt='그랜드마스터' width={40} height={40} />
+      <img src={GrandMasterIcon} alt='그랜드마스터' width={32} height={32} />
     ),
   },
   challenger: {
     label: '챌린저',
-    icon: <img src={ChallengerIcon} alt='챌린저' width={40} height={40} />,
+    icon: <img src={ChallengerIcon} alt='챌린저' width={32} height={32} />,
   },
 };
 
@@ -124,49 +121,49 @@ const MyInfo: React.FC = () => {
       id: 1,
       name: '스타 팀 아이콘',
       price: 9900,
-      icon: <FaUserAlt size={32} color='#888888' />,
+      icon: <FaUserAlt size={24} color='#888888' />,
       category: '팀 아이콘',
     },
     {
       id: 2,
       name: '클래식 팀 아이콘',
       price: 8500,
-      icon: <FaUserAlt size={32} color='#aaa' />,
+      icon: <FaUserAlt size={24} color='#aaa' />,
       category: '팀 아이콘',
     },
     {
       id: 3,
       name: '모던 팀 아이콘',
       price: 9200,
-      icon: <FaUserAlt size={32} color='#bbb' />,
+      icon: <FaUserAlt size={24} color='#bbb' />,
       category: '팀 아이콘',
     },
     {
       id: 6,
       name: '빛나는 테두리',
       price: 2000,
-      icon: <FaBorderStyle size={32} color='#ffff66' />,
+      icon: <FaBorderStyle size={24} color='#ffff66' />,
       category: '테두리',
     },
     {
       id: 7,
       name: '네온 테두리',
       price: 2500,
-      icon: <FaBorderStyle size={32} color='#ff33cc' />,
+      icon: <FaBorderStyle size={24} color='#ff33cc' />,
       category: '테두리',
     },
     {
       id: 8,
       name: '메탈 테두리',
       price: 2200,
-      icon: <FaBorderStyle size={32} color='#999999' />,
+      icon: <FaBorderStyle size={24} color='#999999' />,
       category: '테두리',
     },
     {
       id: 9,
-      name: '메탈 테두리',
+      name: '클래식 테두리',
       price: 2200,
-      icon: <FaBorderStyle size={32} color='#999999' />,
+      icon: <FaBorderStyle size={24} color='#555' />,
       category: '테두리',
     },
   ]);
@@ -192,11 +189,11 @@ const MyInfo: React.FC = () => {
   };
 
   const getBoxBorderStyle = () => {
-    if (!myBox.appliedBorder) return '2px solid #999';
-    if (myBox.appliedBorder.name.includes('네온')) return '4px dashed #ff33cc';
-    if (myBox.appliedBorder.name.includes('메탈')) return '4px solid #999';
-    if (myBox.appliedBorder.name.includes('빛나는')) return '4px solid yellow';
-    return '4px solid #ffa000';
+    if (!myBox.appliedBorder) return '2px solid #0095f4';
+    if (myBox.appliedBorder.name.includes('네온')) return '3px dashed #ff33cc';
+    if (myBox.appliedBorder.name.includes('메탈')) return '3px solid #999';
+    if (myBox.appliedBorder.name.includes('빛나는')) return '3px solid yellow';
+    return '2px solid #0095f4';
   };
 
   const [currentPassword, setCurrentPassword] = useState('');
@@ -220,11 +217,11 @@ const MyInfo: React.FC = () => {
   );
 
   return (
-    <PageContainer>
+    <Container>
       <LeftColumn>
         {/* 내 정보 */}
-        <Section>
-          <SectionTitle>내 정보</SectionTitle>
+        <CardSection>
+          <SectionHeader>내 정보</SectionHeader>
           <InfoRow>
             <InfoLabel>닉네임:</InfoLabel>
             <InfoValue>{userInfo.username}</InfoValue>
@@ -233,25 +230,23 @@ const MyInfo: React.FC = () => {
             <InfoLabel>이메일:</InfoLabel>
             <InfoValue>{userInfo.email}</InfoValue>
           </InfoRow>
-        </Section>
+        </CardSection>
 
         {/* 내 랭킹 */}
-        <Section>
-          <SectionTitle>내 랭킹</SectionTitle>
+        <CardSection>
+          <SectionHeader>내 랭킹</SectionHeader>
           <TierCard>
-            <TierIcon>
-              <>{userTier.icon}</>
-            </TierIcon>
+            <TierIcon>{userTier.icon}</TierIcon>
             <TierDetail>
               <TierName>{userTier.label}</TierName>
               <TierRank>랭킹 {userInfo.rank}등</TierRank>
             </TierDetail>
           </TierCard>
-        </Section>
+        </CardSection>
 
         {/* 비밀번호 변경 */}
-        <Section>
-          <SectionTitle>비밀번호 변경</SectionTitle>
+        <CardSection>
+          <SectionHeader>비밀번호 변경</SectionHeader>
           <Form onSubmit={handlePasswordChange}>
             <FormRow>
               <FormLabel>현재 비밀번호</FormLabel>
@@ -286,173 +281,155 @@ const MyInfo: React.FC = () => {
             {pwError && <ErrorText>{pwError}</ErrorText>}
             <SubmitButton type='submit'>비밀번호 변경</SubmitButton>
           </Form>
-        </Section>
+        </CardSection>
       </LeftColumn>
 
       <RightColumn>
-        {/* 내 냥포인트 영역: "내포인트" 제목과 포인트 값 */}
-        <PointsSection>
-          <PointsTitle>내포인트</PointsTitle>
+        {/* 내 냥포인트 영역 */}
+        <CardSection>
+          <SectionHeader style={{ marginBottom: '0.3rem' }}>
+            내 포인트
+          </SectionHeader>
           <PointsDisplay>
             <PointsIcon>
               <FaCoins size={18} />
             </PointsIcon>
             <PointsValue>1000냥</PointsValue>
           </PointsDisplay>
-        </PointsSection>
+        </CardSection>
 
         {/* 내 박스 미리보기 및 내 아이템 */}
-        <PreviewSection>
-          <SectionTitle>내 박스 미리보기</SectionTitle>
-          <BattleBox customBorder={getBoxBorderStyle()}>
-            <Nickname>{myBox.nickname}</Nickname>
-            {myBox.appliedTeamIcon ? (
-              <AvatarContainer>
-                <>{myBox.appliedTeamIcon.icon}</>
-              </AvatarContainer>
-            ) : myBox.avatarUrl ? (
-              <Avatar src={myBox.avatarUrl} alt='avatar' />
-            ) : (
-              <DefaultAvatar>
-                <FaUserAlt size={32} color='#888' />
-              </DefaultAvatar>
-            )}
-          </BattleBox>
-          <ActionButton onClick={handleResetPreview}>원래대로</ActionButton>
-          <SectionTitle>내 아이템</SectionTitle>
-          <MyItemsGridVertical>
-            {myItems.map((item) => (
-              <MyItemCard key={item.id} onClick={() => handlePreviewItem(item)}>
-                <MyItemIcon>
-                  <>{item.icon}</>
-                </MyItemIcon>
-                <MyItemName>{item.name}</MyItemName>
-              </MyItemCard>
-            ))}
-          </MyItemsGridVertical>
-        </PreviewSection>
+        <CardSection>
+          <SectionHeader>내 박스 미리보기</SectionHeader>
+
+          {/* Preview Box */}
+          <PreviewRow>
+            <BattleBox customBorder={getBoxBorderStyle()}>
+              <Nickname>{myBox.nickname}</Nickname>
+              {myBox.appliedTeamIcon ? (
+                <AvatarContainer>{myBox.appliedTeamIcon.icon}</AvatarContainer>
+              ) : myBox.avatarUrl ? (
+                <Avatar src={myBox.avatarUrl} alt='avatar' />
+              ) : (
+                <DefaultAvatar>
+                  <FaUserAlt size={24} color='#888' />
+                </DefaultAvatar>
+              )}
+            </BattleBox>
+          </PreviewRow>
+
+          {/* Reset Button */}
+          <PreviewRow>
+            <PreviewButton onClick={handleResetPreview}>원래대로</PreviewButton>
+          </PreviewRow>
+
+          {/* My Items Grid */}
+          <PreviewRow>
+            <MyItemsGrid>
+              {myItems.map((item) => (
+                <MyItemCard
+                  key={item.id}
+                  onClick={() => handlePreviewItem(item)}
+                >
+                  <MyItemIcon>{item.icon}</MyItemIcon>
+                  <MyItemName>{item.name}</MyItemName>
+                </MyItemCard>
+              ))}
+            </MyItemsGrid>
+          </PreviewRow>
+        </CardSection>
       </RightColumn>
-    </PageContainer>
+    </Container>
   );
 };
 
 export default MyInfo;
 
-//
-// Styled Components
-//
+// ========== Styled Components ==========
 
-const PageContainer = styled.div`
-  display: flex;
-  margin: 20px auto 2rem;
-  padding: 1rem;
-  gap: 1rem;
-  background: #f8f8f8;
-  border: 1px solid #ddd;
+// 상단 컨테이너
+const Container = styled.div`
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 900px;
+  height: 650px;
+  background: linear-gradient(to bottom, #3aa7f0, #63c8ff);
+  border: 5px solid #000;
   border-radius: 8px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  padding: 1rem;
+  display: flex;
+  gap: 1rem;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+  overflow-y: auto;
 `;
 
 const LeftColumn = styled.div`
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 2rem;
-`;
-
-const RightColumn = styled.div`
-  width: 430px;
-  height: 850px;
-  display: flex;
-  flex-direction: column;
   gap: 1rem;
 `;
 
-// 내 냥포인트 섹션
-const PointsSection = styled.section`
-  background: #fff;
-  padding: 0.8rem;
-  border: 2px solid #ff9900;
-  border-radius: 8px;
-  text-align: center;
-`;
-
-const PointsTitle = styled.h3`
-  margin: 0;
-  font-size: 1.2rem;
-  color: #ff9900;
-  font-weight: bold;
-`;
-
-const PointsDisplay = styled.div`
+const RightColumn = styled.div`
+  width: 380px;
   display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 0.25rem;
-  font-size: 1rem;
-  font-weight: bold;
-  color: #ff9900;
-  margin-top: 0.5rem;
+  flex-direction: column;
+  gap: 0.8rem;
 `;
 
-const PointsIcon = styled.span`
-  display: inline-flex;
-  align-items: center;
-  font-size: 1.2rem;
-`;
-
-const PointsValue = styled.span`
-  font-size: 1rem;
-  font-weight: bold;
-  color: #ff9900;
-`;
-
-const Section = styled.section`
+const CardSection = styled.section`
   background: #fff;
-  padding: 1rem;
-  border: 2px solid #ff9900;
-  border-radius: 8px;
+  border: 2px solid #000;
+  border-radius: 6px;
+  padding: 0.6rem;
+  display: flex;
+  flex-direction: column;
 `;
 
-const SectionTitle = styled.h2`
-  margin-bottom: 1rem;
-  font-size: 1.4rem;
-  color: #333;
-  border-bottom: 2px solid #ff9900;
-  padding-bottom: 0.3rem;
+const SectionHeader = styled.h2`
+  margin: 0 0 1rem 0;
   text-align: center;
+  color: #004a66;
+  font-size: 1.2rem;
+  font-weight: bold;
+  border-bottom: 1.5px solid #004a66;
+  padding-bottom: 0.2rem;
 `;
 
 const InfoRow = styled.div`
   display: flex;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.4rem;
 `;
 
 const InfoLabel = styled.div`
-  width: 100px;
+  width: 80px;
   font-weight: bold;
-  color: #555;
+  color: #004a66;
+  font-size: 0.9rem;
 `;
 
 const InfoValue = styled.div`
   flex: 1;
   color: #333;
   text-align: left;
+  font-size: 0.9rem;
 `;
 
 const TierCard = styled.div`
   display: flex;
   align-items: center;
-  padding: 1rem;
-  border: 2px solid #ddd;
-  border-radius: 8px;
-  background-color: #fff;
+  padding: 0.8rem;
+  border: 2px solid #000000;
+  border-radius: 6px;
+  background-color: #f0f8ff;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 `;
 
 const TierIcon = styled.div`
-  margin-right: 1rem;
+  margin-right: 0.6rem;
 `;
 
 const TierDetail = styled.div`
@@ -461,20 +438,21 @@ const TierDetail = styled.div`
 `;
 
 const TierName = styled.span`
-  font-size: 1.4rem;
+  font-size: 1.2rem;
   font-weight: bold;
+  color: #004a66;
 `;
 
 const TierRank = styled.span`
-  font-size: 1rem;
-  color: #666;
-  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  color: #555;
+  margin-top: 0.2rem;
 `;
 
 const Form = styled.form`
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.8rem;
 `;
 
 const FormRow = styled.div`
@@ -483,41 +461,44 @@ const FormRow = styled.div`
 `;
 
 const FormLabel = styled.label`
-  margin-bottom: 0.3rem;
+  margin-bottom: 0.2rem;
   font-weight: bold;
-  color: #333;
+  color: #004a66;
+  font-size: 0.9rem;
   text-align: left;
 `;
 
 const FormInput = styled.input`
-  padding: 0.5rem;
-  font-size: 1rem;
-  border: 1px solid #aaa;
+  padding: 0.4rem;
+  font-size: 0.9rem;
+  border: 1.5px solid #999;
   border-radius: 4px;
   &:focus {
     outline: none;
-    border-color: #ff9900;
+    border-color: #004a66;
   }
 `;
 
 const SubmitButton = styled.button`
-  padding: 0.6rem 1.2rem;
-  font-size: 1.1rem;
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
   font-weight: bold;
-  background: #ff9900;
+  background: #004a66;
   color: #fff;
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  transition: background 0.3s ease;
+  transition: background 0.2s ease;
   &:hover {
-    background: #1664a2;
+    background: #002f4c;
   }
+  border: 2px solid #000;
+  border-radius: 6px;
 `;
 
 const ErrorText = styled.span`
   color: #f44336;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
 `;
 
 const fadeIn = keyframes`
@@ -525,26 +506,43 @@ const fadeIn = keyframes`
   to { opacity: 1; transform: scale(1); }
 `;
 
-const PreviewSection = styled.div`
-  background: #fffdd0;
-  border: 2px solid #ff9900;
-  border-radius: 8px;
-  padding: 1rem;
+const PointsDisplay = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 1rem;
+  font-weight: bold;
+  color: #004a66;
+`;
+
+const PointsIcon = styled.span`
+  display: inline-flex;
+  align-items: center;
+  font-size: 1rem;
+`;
+
+const PointsValue = styled.span`
+  font-size: 1rem;
+  font-weight: bold;
+  color: #004a66;
+`;
+
+const PreviewRow = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  height: 800px;
+  align-items: center;
+  margin-bottom: 1rem;
 `;
 
 const BattleBox = styled.div<{ customBorder?: string }>`
   position: relative;
-  width: 180px;
-  height: 150px;
-  margin: 0 auto;
-  border: ${({ customBorder }) => customBorder || '2px solid #999'};
-  border-radius: 6px;
-  overflow: hidden;
-  background-color: #ccc;
+  width: 140px;
+  height: 120px;
+  border-radius: 4px;
+  border: 2px solid #000000;
+
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 `;
 
 const Nickname = styled.div`
@@ -554,8 +552,8 @@ const Nickname = styled.div`
   background-color: rgba(0, 0, 0, 0.6);
   color: #fff;
   font-weight: bold;
-  font-size: 0.8rem;
-  padding: 0.3rem 0.6rem;
+  font-size: 0.7rem;
+  padding: 0.2rem 0.5rem;
   border-bottom-right-radius: 6px;
   z-index: 2;
 `;
@@ -578,33 +576,44 @@ const DefaultAvatar = styled.div`
 const AvatarContainer = styled.div`
   width: 100%;
   height: 100%;
+  background: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #fff;
 `;
 
-const ActionButton = styled.button`
-  background-color: #eee;
-  border: 1px solid #999;
-  border-radius: 4px;
+const PreviewButton = styled.button`
+  background-color: #004a66;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
   padding: 0.3rem 0.8rem;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
+  font-weight: bold;
   cursor: pointer;
+  transition: background-color 0.2s ease;
   &:hover {
-    background-color: #ddd;
+    background-color: #63c8ff;
+    color: #004a66;
   }
+
+  border: 2px solid #000;
+  border-radius: 6px;
 `;
 
-const MyItemsGridVertical = styled.div`
+const MyItemsGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  padding: 10px;
-  max-height: 230px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  padding: 1rem;
+  width: 300px;
+  max-height: 210px;
   overflow-y: auto;
+  border: 2px solid #000000;
+  border-radius: 4px;
+
   &::-webkit-scrollbar {
-    width: 8px;
+    width: 6px;
   }
   &::-webkit-scrollbar-thumb {
     background-color: #ccc;
@@ -613,35 +622,37 @@ const MyItemsGridVertical = styled.div`
 `;
 
 const MyItemCard = styled.div`
-  width: 100px;
-  height: 100px;
   background-color: #fff;
-  border: 2px solid #ffa000;
-  border-radius: 6px;
-  padding: 0.3rem;
-  text-align: center;
-  cursor: pointer;
-  transition:
-    transform 0.3s,
-    background-color 0.3s;
+  border: 2px solid #000000;
+  border-radius: 4px;
+  aspect-ratio: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  animation: ${fadeIn} 0.5s ease-out;
+  padding: 0.3rem;
+  font-size: 0.8rem;
+  text-align: center;
+  cursor: pointer;
+  animation: ${fadeIn} 0.3s ease-out;
+  transition:
+    transform 0.2s,
+    background-color 0.2s;
+
   &:hover {
-    transform: scale(1.05);
-    background-color: #fffae6;
+    transform: translateY(-2px);
+    background-color: #f0f8ff;
   }
 `;
 
 const MyItemIcon = styled.div`
-  font-size: 24px;
-  margin-bottom: 0.3rem;
+  font-size: 20px;
+  margin-bottom: 0.2rem;
 `;
 
 const MyItemName = styled.span`
-  font-size: 0.9rem;
-  color: #333;
+  font-size: 0.8rem;
+  color: #004a66;
   font-weight: 500;
+  text-align: center;
 `;
