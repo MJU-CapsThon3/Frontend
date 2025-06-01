@@ -448,11 +448,11 @@ const BattleDetail: React.FC = () => {
         <HeaderButtons>
           <SubjectButton onClick={handleRandomSubject}>
             <FaRandom style={{ marginRight: '0.3rem' }} />
-            랜덤 주제생성기
+            랜덤 주제생성
           </SubjectButton>
           <SubjectButton onClick={handleDirectSubject}>
             <FaEdit style={{ marginRight: '0.3rem' }} />
-            직접 주제 생성하기
+            직접 주제 생성
           </SubjectButton>
         </HeaderButtons>
         {ownerData && ownerData.id === OWNER_ID ? (
@@ -632,7 +632,7 @@ const Header = styled.header`
 // Header 내부 타이틀
 const Title = styled.div`
   flex: 1;
-  font-size: 1.3rem;
+  font-size: 1.5rem;
   font-weight: bold;
   text-shadow: 1px 1px #333;
   overflow: hidden;
@@ -697,7 +697,7 @@ const ChatMessages = styled.div`
   font-size: 0.85rem;
   display: flex;
   flex-direction: column;
-  background-color: #f0f0f0; /* 연한 그레이 배경 */
+  background-color: #ddd; /* 연한 그레이 배경 */
   border-radius: 6px 6px 0 0; /* 모서리 둥글게 */
 `;
 
@@ -705,7 +705,7 @@ const ChatMessages = styled.div`
 const ChatForm = styled.form`
   display: flex;
   align-items: center;
-  border-top: 1px solid #ddd;
+  border-top: 1px solid #000000;
   padding: 0.5rem;
   background-color: #fff;
 `;
@@ -713,7 +713,7 @@ const ChatForm = styled.form`
 // 채팅 인풋
 const ChatInput = styled.input`
   flex: 1;
-  border: 1px solid #ccc;
+  border: 1px solid #000000;
   border-radius: 4px;
   padding: 0.3rem;
   outline: none;
@@ -940,7 +940,7 @@ const ModalContent = styled.div`
 const ModalTitle = styled.h3`
   margin: 0;
   padding-bottom: 0.5rem;
-  border-bottom: 1px solid #ddd;
+  border-bottom: 1px solid #000000;
   font-size: 1.1rem;
   color: #333;
 `;
@@ -957,7 +957,7 @@ const ModalText = styled.p`
 // 모달 인풋
 const ModalInput = styled.input`
   padding: 0.5rem;
-  border: 1px solid #ccc;
+  border: 1px solid #000;
   border-radius: 4px;
   font-size: 1rem;
 `;
@@ -1039,6 +1039,8 @@ const ModalSubmitButton = styled.button`
   cursor: pointer;
   width: 100%;
   transition: transform 0.2s;
+  border: 2px solid #000;
+  border-radius: 4px;
 
   &:hover {
     transform: translateY(-2px);
@@ -1054,6 +1056,8 @@ const ModalCancelButton = styled.button`
   cursor: pointer;
   width: 100%;
   transition: transform 0.2s;
+  border: 2px solid #000;
+  border-radius: 4px;
 
   &:hover {
     transform: translateY(-2px);
