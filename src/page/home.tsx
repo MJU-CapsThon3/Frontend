@@ -352,7 +352,7 @@ const Home: React.FC = () => {
 
       {/* Main Service 섹션 */}
       <AnimatedSection>
-        <SectionTitle>▼ Main Service ▼</SectionTitle>
+        <SectionTitle>Main Service</SectionTitle>
         <ServiceCards>
           {mainServices.map((service, idx) => (
             <ServiceCard key={idx}>
@@ -369,7 +369,7 @@ const Home: React.FC = () => {
 
       {/* Gamification 섹션 */}
       <AnimatedSection>
-        <SectionTitle>▼ Gamification Factor ▼</SectionTitle>
+        <SectionTitle>Gamification Factor</SectionTitle>
         <GameCards>
           {gameFeatures.map((game, idx) => (
             <GameCard key={idx}>
