@@ -144,8 +144,7 @@ const HeaderContainer = styled.header`
   background: rgba(0, 0, 0, 0.95);
 
   z-index: 1000;
-  border: 5px solid #000; /* 검은색 테두리 */
-  border-radius: 8px; /* 둥근 테두리 */
+  border-bottom: 2px solid #ffffff; /* 검은색 테두리 */
 `;
 
 const HeaderWrapper = styled.div`
