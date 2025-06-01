@@ -1,4 +1,3 @@
-// src/pages/Shop/ShopList.tsx
 import React, { useState, useEffect } from 'react';
 import styled, { keyframes } from 'styled-components';
 import {
@@ -35,13 +34,12 @@ import TeamIcon15 from '../../assets/ShopIcon/TeamIcon15.svg';
 import TeamIcon16 from '../../assets/ShopIcon/TeamIcon16.svg';
 import TeamIcon17 from '../../assets/ShopIcon/TeamIcon17.svg';
 
-import { ShopApi } from '../../api/shop/shop'; // shop.ts 경로에 맞게 수정
+import { ShopApi } from '../../api/shop/shop';
 import type {
   ShopItem as APIShopItem,
   MyItem as APIMyItem,
 } from '../../api/shop/shop';
 
-/* ------------------- 타입 정의 ------------------- */
 export type CategoryType = '전체' | '팀 아이콘' | '테두리';
 
 export interface ShopItem {
@@ -60,8 +58,8 @@ interface MyBoxState {
   avatarUrl?: string;
 }
 
-/* ------------------- 더미 아이템 데이터 (아이콘 & 카테고리 매핑용) ------------------- */
 const dummyShopItems: ShopItem[] = [
+  // 팀 아이콘 17개
   {
     id: 1,
     name: '커스텀 팀 아이콘',
@@ -252,8 +250,7 @@ const dummyShopItems: ShopItem[] = [
     icon: <FaCat size={64} color='#fd79a8' />,
     category: '팀 아이콘',
   },
-
-  // 테두리 9개
+  // 테두리 10개
   {
     id: 10,
     name: '기본 실선 테두리',
@@ -317,8 +314,6 @@ const dummyShopItems: ShopItem[] = [
     icon: <FaBorderStyle size={64} color='#27ae60' />,
     category: '테두리',
   },
-
-  // 추가 테두리 10개
   {
     id: 201,
     name: '펄스 테두리',
@@ -391,20 +386,11 @@ const dummyShopItems: ShopItem[] = [
   },
 ];
 
-/* ------------------- 애니메이션 ------------------- */
 const fadeIn = keyframes`
   from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
+  to   { opacity: 1; transform: scale(1); }
 `;
 
-/* ------------------- 구매 모달 버튼 스타일 ------------------- */
-const modalButtonsStyle: React.CSSProperties = {
-  display: 'flex',
-  justifyContent: 'flex-end',
-  gap: '0.5rem',
-};
-
-/* ------------------- 상점 메인 컴포넌트 ------------------- */
 const ShopWithPreview: React.FC = () => {
   const [myBox, setMyBox] = useState<MyBoxState>({
     nickname: '내 닉네임',
@@ -413,13 +399,8 @@ const ShopWithPreview: React.FC = () => {
     appliedBorder: null,
     avatarUrl: '',
   });
-
-  // API에서 불러온 상점 아이템 리스트
   const [items, setItems] = useState<ShopItem[]>([]);
-
-  // 내 소유 아이템 리스트
   const [myItems, setMyItems] = useState<ShopItem[]>([]);
-
   const [selectedCategory, setSelectedCategory] =
     useState<CategoryType>('전체');
   const [purchaseModalVisible, setPurchaseModalVisible] = useState(false);
@@ -428,12 +409,9 @@ const ShopWithPreview: React.FC = () => {
   const [purchaseSuccessItem, setPurchaseSuccessItem] =
     useState<ShopItem | null>(null);
 
-  /* ------------------- API 호출: 초기 로드 ------------------- */
   useEffect(() => {
-    // 1) 상점 전체 아이템 가져오기
     ShopApi.getItems()
       .then((apiItems: APIShopItem[]) => {
-        // API에서 받아온 아이템에 아이콘/카테고리 매핑
         const mapped = apiItems.map((apiItem) => {
           const dummy = dummyShopItems.find((d) => d.id === apiItem.id);
           return {
@@ -450,7 +428,6 @@ const ShopWithPreview: React.FC = () => {
         console.error('[ShopList] 상점 아이템 조회 실패:', err);
       });
 
-    // 2) 내 소유 아이템 목록 가져오기
     ShopApi.getMyItems()
       .then((apiMyItems: APIMyItem[]) => {
         const mappedMy = apiMyItems.map((apiItem) => {
@@ -470,16 +447,13 @@ const ShopWithPreview: React.FC = () => {
       });
   }, []);
 
-  /* ------------------- 카테고리 필터링 ------------------- */
   const filteredItems =
     selectedCategory === '전체'
       ? items
       : items.filter((item) => item.category === selectedCategory);
 
-  /* ------------------- 카테고리 선택 ------------------- */
   const handleCategoryClick = (cat: CategoryType) => setSelectedCategory(cat);
 
-  /* ------------------- 구매 프로세스 ------------------- */
   const handleBuyItem = (item: ShopItem) => {
     setSelectedPurchaseItem(item);
     setPurchaseModalVisible(true);
@@ -487,14 +461,9 @@ const ShopWithPreview: React.FC = () => {
 
   const confirmPurchase = () => {
     if (!selectedPurchaseItem) return;
-
-    // 1) 구매 API 호출
     ShopApi.buyItem({ itemId: selectedPurchaseItem.id })
-      .then((result) => {
-        // 2) 성공 화면
+      .then(() => {
         setPurchaseSuccessItem(selectedPurchaseItem);
-
-        // 3) 내 아이템 상태 업데이트 (리스트에 없으면 추가)
         setMyItems((prev) => {
           if (prev.find((x) => x.id === selectedPurchaseItem.id)) return prev;
           return [...prev, selectedPurchaseItem];
@@ -502,7 +471,6 @@ const ShopWithPreview: React.FC = () => {
       })
       .catch((err) => {
         console.error('[ShopList] 아이템 구매 실패:', err);
-        // 필요 시 에러 모달 띄우기
       })
       .finally(() => {
         setSelectedPurchaseItem(null);
@@ -515,7 +483,6 @@ const ShopWithPreview: React.FC = () => {
     setPurchaseModalVisible(false);
   };
 
-  /* ------------------- 미리보기 관련 ------------------- */
   const handlePreviewItem = (item: ShopItem) => {
     if (item.category === '팀 아이콘') {
       setMyBox((prev) => ({ ...prev, appliedTeamIcon: item }));
@@ -533,9 +500,8 @@ const ShopWithPreview: React.FC = () => {
       avatarUrl: '',
     });
 
-  /* ------------------- BattleBox 테두리 스타일 결정 ------------------- */
   const getBoxBorderStyle = () => {
-    if (!myBox.appliedBorder) return '2px solid #999';
+    if (!myBox.appliedBorder) return '2px solid #000';
     const n = myBox.appliedBorder.name;
     if (n.includes('대시드')) return '4px dashed #ff33cc';
     if (n.includes('더블')) return '4px double #34495e';
@@ -554,13 +520,13 @@ const ShopWithPreview: React.FC = () => {
     if (n.includes('위브')) return '4px solid #e17055';
     if (n.includes('하이라이트')) return '4px solid #fd79a8';
     if (n.includes('네온')) return '4px solid #00cec9';
-    return '2px solid #999';
+    return '2px solid #000';
   };
 
   return (
-    <PageContainer>
+    <Container>
       <ShopSection>
-        <SectionTitle>상점</SectionTitle>
+        <SectionHeader>상점</SectionHeader>
         <CategoryContainer>
           {(['전체', '팀 아이콘', '테두리'] as CategoryType[]).map((cat) => (
             <CategoryButton
@@ -575,19 +541,20 @@ const ShopWithPreview: React.FC = () => {
         <ShopItemsContainer>
           <ItemGrid>
             {filteredItems.map((item) => (
-              <ShopItemCard
-                key={item.id}
-                item={item}
-                onPreview={handlePreviewItem}
-                onBuy={handleBuyItem}
-              />
+              <ItemCardWrapper key={item.id}>
+                <ShopItemCard
+                  item={item}
+                  onPreview={() => handlePreviewItem(item)}
+                  onBuy={() => handleBuyItem(item)}
+                />
+              </ItemCardWrapper>
             ))}
           </ItemGrid>
         </ShopItemsContainer>
       </ShopSection>
 
       <PreviewSection>
-        <SectionTitle>내 박스 미리보기</SectionTitle>
+        <SectionHeader>내 박스 미리보기</SectionHeader>
         <BattleBox customBorder={getBoxBorderStyle()}>
           <Nickname>{myBox.nickname}</Nickname>
           {myBox.appliedTeamIcon ? (
@@ -600,9 +567,9 @@ const ShopWithPreview: React.FC = () => {
             </DefaultAvatar>
           )}
         </BattleBox>
-        <ActionButton onClick={handleResetPreview}>원래대로</ActionButton>
+        <PreviewButton onClick={handleResetPreview}>원래대로</PreviewButton>
         <MyItemsSection>
-          <SectionTitle>내 아이템</SectionTitle>
+          <SectionHeader>내 아이템</SectionHeader>
           <MyItemsGrid>
             {myItems.map((item) => (
               <MyItemCard key={item.id} onClick={() => handlePreviewItem(item)}>
@@ -616,91 +583,102 @@ const ShopWithPreview: React.FC = () => {
 
       {purchaseModalVisible && selectedPurchaseItem && (
         <Modal title='구매 확인'>
-          <p>
+          <ModalBody>
             <strong>{selectedPurchaseItem.name}</strong> 아이템을{' '}
             <strong>{selectedPurchaseItem.price}원</strong>에 구매하시겠습니까?
-          </p>
-          <div style={modalButtonsStyle}>
+          </ModalBody>
+          <ModalFooter>
             <ModalCancelButton onClick={cancelPurchase}>취소</ModalCancelButton>
             <ModalSubmitButton onClick={confirmPurchase}>
               구매
             </ModalSubmitButton>
-          </div>
+          </ModalFooter>
         </Modal>
       )}
       {purchaseSuccessItem && (
         <Modal title='구매 완료'>
-          <p>
+          <ModalBody>
             <strong>{purchaseSuccessItem.name}</strong> 아이템을{' '}
             <strong>{purchaseSuccessItem.price}원</strong>에 구매했습니다!
-          </p>
-          <div style={modalButtonsStyle}>
+          </ModalBody>
+          <ModalFooter>
             <ModalCancelButton onClick={() => setPurchaseSuccessItem(null)}>
               닫기
             </ModalCancelButton>
-          </div>
+          </ModalFooter>
         </Modal>
       )}
-    </PageContainer>
+    </Container>
   );
 };
 
 export default ShopWithPreview;
 
-/* ------------------- Styled Components ------------------- */
+/* ========================
+   Styled Components
+======================== */
 
-const PageContainer = styled.div`
-  width: 1000px;
-  margin: 20px auto 2rem;
+const Container = styled.div`
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 900px;
+  height: 650px;
+  background: linear-gradient(to bottom, #3aa7f0, #63c8ff);
+  border: 5px solid #000;
+  border-radius: 8px;
+  padding: 1rem;
   display: flex;
   gap: 1rem;
-  padding: 1rem;
-  background: #fff;
-  border: 2px solid #ff9900;
-  border-radius: 10px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+`;
+
+const SectionHeader = styled.h2`
+  margin: 0;
+  text-align: center;
+  color: #fff;
+  font-size: 1.2rem;
+  font-weight: bold;
+  text-shadow: 1px 1px #000;
 `;
 
 const ShopSection = styled.div`
   flex: 2;
-  background: #fff;
-  border: 2px solid #ff9900;
+  background: #a0e7ff;
+  border: 3px solid #000;
   border-radius: 8px;
   padding: 1rem;
   display: flex;
   flex-direction: column;
 `;
 
-const SectionTitle = styled.h2`
-  margin: 0 0 1rem 0;
-  text-align: center;
-  color: #333;
-  font-size: 1.2rem;
-  font-weight: bold;
-`;
-
 const CategoryContainer = styled.div`
   display: flex;
   gap: 0.5rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.8rem;
 `;
 
 const CategoryButton = styled.button<{ active?: boolean }>`
   flex: 1;
-  padding: 0.3rem;
-  background-color: ${({ active }) => (active ? '#fff' : '#d8ebff')};
-  border: 1px solid #ff9900;
-  border-radius: 4px;
+  padding: 0.5rem;
+  background-color: ${({ active }) => (active ? '#48b0ff' : '#d8ebff')};
+  border: 2px solid #000;
+  border-radius: 6px;
   font-size: 0.9rem;
   font-weight: ${({ active }) => (active ? 'bold' : 'normal')};
+  color: #004a66;
   cursor: pointer;
+  transition: background-color 0.2s ease;
   &:hover {
-    background-color: #fff;
+    background-color: #48b0ff;
+    color: #fff;
   }
 `;
 
 const ShopItemsContainer = styled.div`
   flex: 1;
-  max-height: 500px;
   overflow-y: auto;
 `;
 
@@ -708,16 +686,16 @@ const ItemGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 1rem;
-  background-color: #fff;
-  border: 1px solid #ff9900;
-  border-radius: 4px;
-  padding: 0.5rem;
+`;
+
+const ItemCardWrapper = styled.div`
+  animation: ${fadeIn} 0.4s ease-out;
 `;
 
 const PreviewSection = styled.div`
   flex: 1;
-  background: #fff;
-  border: 2px solid #ff9900;
+  background: #a0e7ff;
+  border: 3px solid #000;
   border-radius: 8px;
   padding: 1rem;
   display: flex;
@@ -727,13 +705,13 @@ const PreviewSection = styled.div`
 
 const BattleBox = styled.div<{ customBorder?: string }>`
   position: relative;
-  width: 180px;
-  height: 150px;
+  width: 140px;
+  height: 120px;
   margin: 0 auto;
-  border: ${({ customBorder }) => customBorder || '2px solid #999'};
+  border: ${({ customBorder }) => customBorder || '2px solid #000'};
   border-radius: 6px;
-  overflow: hidden;
-  background-color: #ccc;
+  background-color: #fff;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 `;
 
 const Nickname = styled.div`
@@ -743,8 +721,8 @@ const Nickname = styled.div`
   background-color: rgba(0, 0, 0, 0.6);
   color: #fff;
   font-weight: bold;
-  font-size: 0.8rem;
-  padding: 0.3rem 0.6rem;
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
   border-bottom-right-radius: 6px;
   z-index: 2;
 `;
@@ -767,11 +745,10 @@ const DefaultAvatar = styled.div`
 const AvatarContainer = styled.div`
   width: 100%;
   height: 100%;
+  background: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #fff;
-
   & > img,
   & > svg {
     width: 100% !important;
@@ -780,62 +757,68 @@ const AvatarContainer = styled.div`
   }
 `;
 
-const ActionButton = styled.button`
-  background-color: #eee;
-  border: 1px solid #999;
-  border-radius: 4px;
-  padding: 0.3rem 0.8rem;
-  font-size: 0.8rem;
+const PreviewButton = styled.button`
+  background-color: #48b0ff;
+  color: #fff;
+  border: 2px solid #000;
+  border-radius: 6px;
+  padding: 0.4rem 1rem;
+  font-size: 0.85rem;
+  font-weight: bold;
   cursor: pointer;
+  align-self: center;
+  transition: background-color 0.2s ease;
   &:hover {
-    background-color: #ddd;
+    background-color: #63c8ff;
   }
 `;
 
 const MyItemsSection = styled.div`
-  padding-top: 0.5rem;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  background-color: #f7f7f7;
-  height: 270px;
+  flex: 1;
+  background: #d0f0ff;
+  border: 2px solid #000;
+  border-radius: 6px;
+  padding: 0.5rem;
   overflow-y: auto;
 `;
 
 const MyItemsGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  padding: 10px;
+  gap: 0.8rem;
+  padding: 0.5rem;
 `;
 
 const MyItemCard = styled.div`
-  width: 80px;
-  height: 80px;
   background-color: #fff;
-  border: 2px solid #ff9900;
+  border: 3px solid #000;
   border-radius: 6px;
-  padding: 0.3rem;
+  padding: 0.5rem;
   text-align: center;
   cursor: pointer;
+  animation: ${fadeIn} 0.4s ease-out;
+  transition:
+    transform 0.2s,
+    background-color 0.2s;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  animation: ${fadeIn} 0.5s ease-out;
+
   &:hover {
-    transform: scale(1.05);
-    background-color: #fffae6;
+    transform: translateY(-3px);
+    background-color: #f0f8ff;
   }
 `;
 
 const MyItemIcon = styled.div`
-  font-size: 20px;
+  font-size: 28px;
   margin-bottom: 0.3rem;
 `;
 
 const MyItemName = styled.span`
   font-size: 0.8rem;
-  color: #333;
+  color: #004a66;
   font-weight: 500;
 `;
 
@@ -851,6 +834,8 @@ const ModalSubmitButton = styled.button`
   &:hover {
     transform: translateY(-2px);
   }
+  border: 2px solid #000;
+  border-radius: 4px;
 `;
 
 const ModalCancelButton = styled.button`
@@ -865,4 +850,19 @@ const ModalCancelButton = styled.button`
   &:hover {
     transform: translateY(-2px);
   }
+  border: 2px solid #000;
+  border-radius: 4px;
+`;
+
+const ModalBody = styled.div`
+  padding: 1rem;
+  font-size: 1rem;
+  text-align: center;
+`;
+
+const ModalFooter = styled.div`
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  padding: 0.5rem;
 `;
