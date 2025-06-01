@@ -156,13 +156,20 @@ const BattleList: React.FC = () => {
 export default BattleList;
 
 const Container = styled.div`
-  width: 100%;
-  background: linear-gradient(to bottom, #3aa7f0, #63c8ff);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 900px;
+  height: 700px;
+  padding: 1rem;
+  background: #3aa7f0;
   border: 5px solid #000;
   border-radius: 4px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+  font-family: 'Malgun Gothic', 'Arial', sans-serif;
   display: flex;
   flex-direction: column;
-  padding: 1rem;
 `;
 
 const Header = styled.header`

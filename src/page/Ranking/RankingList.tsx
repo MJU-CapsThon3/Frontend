@@ -201,18 +201,12 @@ const RankingPage: React.FC = () => {
 
   return (
     <Container>
-      {/* Header: 배틀방 스타일과 유사하게 적용 */}
       <Header>
-        <HeaderLeft>
-          <HeaderTitle>랭킹</HeaderTitle>
-        </HeaderLeft>
-        <HeaderRight>
-          <HelpIcon onClick={() => setIsModalOpen(true)}>
-            <FaQuestionCircle color='#fff' size={20} />
-          </HelpIcon>
-        </HeaderRight>
+        <HeaderTitle>랭킹</HeaderTitle>
+        <HelpIcon onClick={() => setIsModalOpen(true)}>
+          <FaQuestionCircle color='#fff' size={20} />
+        </HelpIcon>
       </Header>
-
       {/* 리스트 영역 (내부 스크롤) */}
       <ListWrapper ref={listWrapperRef}>
         {loading && rankingData.length === 0 ? (
@@ -288,53 +282,56 @@ const fadeIn = keyframes`
 // Styled Components (배틀방과 동일한 디자인 요소)
 
 const Container = styled.div`
-  width: 100%;
-  max-width: 1000px;
-  margin: 20px auto;
-  background: linear-gradient(to bottom, #3aa7f0, #63c8ff);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 900px;
+  height: 700px;
+  padding: 1rem;
+  background: #3aa7f0;
   border: 5px solid #000;
   border-radius: 4px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+  font-family: 'Malgun Gothic', 'Arial', sans-serif;
   display: flex;
   flex-direction: column;
-  padding: 1rem;
-  overflow: hidden;
 `;
 
-// Header 구조: 왼쪽에 타이틀, 오른쪽에 도움말 아이콘
 const Header = styled.header`
+  position: relative;
+  height: 3rem; /* 필요에 따라 높이 조정 */
+  background-color: #48b0ff;
+  border: 2px solid #000;
+  border-radius: 4px;
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  padding: 0 1rem;
   margin-bottom: 0.5rem;
 `;
 
-const HeaderLeft = styled.div`
-  display: flex;
-  align-items: center;
-`;
-
-const HeaderRight = styled.div`
-  display: flex;
-  align-items: center;
-`;
-
+// HeaderTitle은 절대 위치로 가운데 정렬
 const HeaderTitle = styled.div`
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
   font-weight: bold;
   color: #fff;
   font-size: 1.5rem;
   text-shadow: 1px 1px #000;
 `;
 
+// HelpIcon은 부모(Header) 내에서 오른쪽 끝에 배치
 const HelpIcon = styled.div`
+  margin-left: auto;
   cursor: pointer;
   background-color: #0050b3;
   padding: 0.3rem;
+  border: 2px solid #000;
   border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid #000;
-  border-radius: 4px;
 `;
 
 // 리스트 영역: 내부 스크롤 + 카드 간 간격 유지
