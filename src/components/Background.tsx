@@ -17,7 +17,7 @@ const BackgroundContainer = styled.section`
   transform: translate(-50%, -50%);
   z-index: -1;
   overflow: hidden;
-  animation: ${rotate} 180s linear infinite;
+  animation: ${rotate} 1000s linear infinite;
 `;
 
 const Background: React.FC = () => {
