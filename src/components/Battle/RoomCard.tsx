@@ -1,3 +1,5 @@
+// src/components/Battle/RoomCard.tsx
+
 import React from 'react';
 import styled, { keyframes } from 'styled-components';
 import { FaSkullCrossbones, FaUserFriends } from 'react-icons/fa';
@@ -28,6 +30,9 @@ const Card = styled.div`
   cursor: pointer;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
   border: 3px solid #0095f4;
+  &:hover {
+    transform: translateY(-4px);
+  }
 `;
 
 const IconSection = styled.div`
