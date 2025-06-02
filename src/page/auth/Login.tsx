@@ -93,8 +93,7 @@ const Login: React.FC = () => {
           // 여기서는 중복 저장하지 않아도 됩니다.
           // localStorage.setItem('accessToken', res.result);
 
-          alert('로그인 성공!');
-          navigate('/battle-list');
+          navigate('/home');
         } else {
           alert(`로그인 실패: ${res.message}`);
         }
