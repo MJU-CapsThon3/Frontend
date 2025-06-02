@@ -173,12 +173,21 @@ const BattleDetail: React.FC = () => {
   const [players, setPlayers] = useState<PlayerData[]>(initialPlayers);
   const [chatInput, setChatInput] = useState('');
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+
+  // 기본 subject: “사자 vs 코끼리”
   const [subject, setSubject] = useState<string>('사자 vs 코끼리');
-  const [sideAOption, setSideAOption] = useState<string>('찬성');
-  const [sideBOption, setSideBOption] = useState<string>('반대');
+
+  // subject를 “A vs B”로 분리해서 초기값 할당
+  const splitInitial = subject.split(/vs/i).map((s) => s.trim());
+  const [sideAOption, setSideAOption] = useState<string>(
+    splitInitial.length === 2 ? splitInitial[0] : ''
+  );
+  const [sideBOption, setSideBOption] = useState<string>(
+    splitInitial.length === 2 ? splitInitial[1] : ''
+  );
+
   const [modalVisible, setModalVisible] = useState<boolean>(false);
-  const [keywordOne, setKeywordOne] = useState<string>('');
-  const [keywordTwo, setKeywordTwo] = useState<string>('');
+  const [subjectInput, setSubjectInput] = useState<string>(''); // ← 직접 주제 입력용 상태 추가
   const [startModalVisible, setStartModalVisible] = useState(false);
   const [warningModalVisible, setWarningModalVisible] = useState(false);
   const [kickModalVisible, setKickModalVisible] = useState(false);
@@ -227,22 +236,38 @@ const BattleDetail: React.FC = () => {
   };
   // ─────────────────────────────────────────────────────────────
 
+  // ─── 직접 주제 생성 핸들러 ───────────────────
   const handleDirectSubject = () => {
+    setSubjectInput(''); // 입력값 초기화
     setModalVisible(true);
-    setKeywordOne('');
-    setKeywordTwo('');
   };
 
   const handleModalSubmit = () => {
-    if (!keywordOne.trim() || !keywordTwo.trim()) {
-      alert('두 개의 키워드를 모두 입력해주세요.');
+    const trimmed = subjectInput.trim();
+    if (!trimmed) {
+      alert('주제를 입력해주세요. 예시: 사자 vs 코끼리');
       return;
     }
-    setSubject(`${keywordOne.trim()} vs ${keywordTwo.trim()}`);
-    setSideAOption(keywordOne.trim());
-    setSideBOption(keywordTwo.trim());
+    // 'vs' 기준으로 분리하여 A와 B를 추출
+    const parts = trimmed.split(/vs/i); // 대소문자 구분 없이 'vs'로 분리
+    if (parts.length !== 2) {
+      alert(
+        '입력 형식이 잘못되었습니다. “주제A vs 주제B” 형식으로 입력해주세요.'
+      );
+      return;
+    }
+    const a = parts[0].trim();
+    const b = parts[1].trim();
+    if (!a || !b) {
+      alert('“vs” 양쪽에 반드시 텍스트가 있어야 합니다.');
+      return;
+    }
+    setSubject(`${a} vs ${b}`);
+    setSideAOption(a);
+    setSideBOption(b);
     setModalVisible(false);
   };
+  // ─────────────────────────────────────────────────────────────
 
   // ─── 채팅 내역 불러오기 ─────────────────────
   useEffect(() => {
@@ -568,18 +593,13 @@ const BattleDetail: React.FC = () => {
       )}
 
       {modalVisible && (
-        <ModalComponent title='직접 주제 생성하기'>
+        <ModalComponent title='주제 입력 (예: 사자 vs 코끼리)'>
+          {/* 하나의 입력창에서 “A vs B” 형식으로 입력받도록 수정 */}
           <ModalInput
             type='text'
-            placeholder='첫번째 키워드'
-            value={keywordOne}
-            onChange={(e) => setKeywordOne(e.target.value)}
-          />
-          <ModalInput
-            type='text'
-            placeholder='두번째 키워드'
-            value={keywordTwo}
-            onChange={(e) => setKeywordTwo(e.target.value)}
+            placeholder='주제를 입력하세요. 예: 사자 vs 코끼리'
+            value={subjectInput}
+            onChange={(e) => setSubjectInput(e.target.value)}
           />
           <ModalButtons>
             <ModalSubmitButton onClick={handleModalSubmit}>
