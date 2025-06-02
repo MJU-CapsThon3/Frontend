@@ -13,7 +13,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 
 // ───── API import ──────────────────────────────
 import BattleChatApi, { ChatMessage } from '../../api/chat/chatApi';
-import AiApi from '../../api/Ai/AiApi'; // ← 추가: AiApi import
+import AiApi from '../../api/Ai/AiApi'; // ← AiApi import
 
 // ───── 아이콘 임포트 ──────────────────────────────
 import BronzeIcon from '../../assets/Bronze.svg';
@@ -162,7 +162,6 @@ const BattleDetail: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>();
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
-  // roomId가 없으면 렌더링을 중단
   if (!roomId) {
     return <div>유효하지 않은 방 ID입니다.</div>;
   }
@@ -178,6 +177,8 @@ const BattleDetail: React.FC = () => {
   const [chatInput, setChatInput] = useState('');
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [subject, setSubject] = useState<string>('사자 vs 코끼리');
+  const [sideAOption, setSideAOption] = useState<string>('찬성');
+  const [sideBOption, setSideBOption] = useState<string>('반대');
   const [modalVisible, setModalVisible] = useState<boolean>(false);
   const [keywordOne, setKeywordOne] = useState<string>('');
   const [keywordTwo, setKeywordTwo] = useState<string>('');
@@ -186,8 +187,6 @@ const BattleDetail: React.FC = () => {
   const [kickModalVisible, setKickModalVisible] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerData | null>(null);
   const [isSpectatorsCollapsed, setIsSpectatorsCollapsed] = useState(false);
-
-  const [leftKeyword, rightKeyword] = subject.split(' vs ');
 
   const ownerData = players.find((p) => p.id === OWNER_ID);
   const nonOwnerParticipants = players.filter(
@@ -207,15 +206,19 @@ const BattleDetail: React.FC = () => {
   // ─── 수정: handleRandomSubject → AiApi.generateTopic 호출 ─────────────────────
   const handleRandomSubject = async () => {
     try {
+      // API에서 topic, option_a, option_b 반환
       const res = await AiApi.generateTopic();
-      // API에서 반환된 topic 문자열로 subject 업데이트
-      setSubject(res.result.topic);
+      const { topic, option_a, option_b } = res.result as any;
+      setSubject(topic);
+      setSideAOption(option_a);
+      setSideBOption(option_b);
     } catch (err) {
       console.error('랜덤 토론 주제 생성 오류:', err);
       // 폴백: 키워드 풀에서 랜덤 주제 생성
       const shuffled = [...keywordPool].sort(() => 0.5 - Math.random());
-      const newSubject = `${shuffled[0]} vs ${shuffled[1]}`;
-      setSubject(newSubject);
+      setSubject(`${shuffled[0]} vs ${shuffled[1]}`);
+      setSideAOption(shuffled[0]);
+      setSideBOption(shuffled[1]);
     }
   };
   // ───────────────────────────────────────────────────────────────
@@ -231,8 +234,9 @@ const BattleDetail: React.FC = () => {
       alert('두 개의 키워드를 모두 입력해주세요.');
       return;
     }
-    const newSubject = `${keywordOne.trim()} vs ${keywordTwo.trim()}`;
-    setSubject(newSubject);
+    setSubject(`${keywordOne.trim()} vs ${keywordTwo.trim()}`);
+    setSideAOption(keywordOne.trim());
+    setSideBOption(keywordTwo.trim());
     setModalVisible(false);
   };
 
@@ -241,7 +245,6 @@ const BattleDetail: React.FC = () => {
     (async () => {
       try {
         const res = await BattleChatApi.getChatMessages(roomId);
-        // sideA, sideB를 합쳐서 생성 시점(createdAt) 순으로 정렬
         const merged = [...res.result.sideA, ...res.result.sideB];
         merged.sort(
           (a, b) =>
@@ -258,14 +261,10 @@ const BattleDetail: React.FC = () => {
   const handleChatSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
-
-    // 현재 사용자는 owner이므로, left side → 'A', right side → 'B'
     const side = ownerSide === 'left' ? 'A' : 'B';
-
     try {
       const payload = { side, message: chatInput.trim() };
       const res = await BattleChatApi.postChatMessage(roomId, payload);
-      // 전송 성공 후 반환된 메시지를 배열 뒤에 추가
       setChatMessages((prev) => [...prev, res.result]);
       setChatInput('');
     } catch (err) {
@@ -312,7 +311,7 @@ const BattleDetail: React.FC = () => {
         );
       }
       setOwnerSpectatorSlot(index);
-    } else if (area === 'participant') {
+    } else {
       if (ownerData.role === 'spectator') {
         setPlayers((prev) =>
           prev.map((p) =>
@@ -335,14 +334,12 @@ const BattleDetail: React.FC = () => {
     isOwner?: boolean;
     isSpectator?: boolean;
   }> = ({ player, isOwner = false, isSpectator = false }) => {
-    // 팀 컬러가 없으면 흰색
     const bgColor =
       player.team === 'blue'
         ? '#33bfff'
         : player.team === 'red'
           ? '#ff6b6b'
           : '#fff';
-
     return (
       <StyledPlayerCard $bgColor={bgColor}>
         <Nickname>
@@ -372,52 +369,46 @@ const BattleDetail: React.FC = () => {
   };
 
   // ─── 왼쪽 슬롯 렌더링 ─────────────────────
-  const renderLeftSlot = () => {
-    return (
-      <CenteredDiv>
-        <ParticipantKeyword>{leftKeyword}</ParticipantKeyword>
-        {ownerData &&
-        ownerData.id === OWNER_ID &&
-        ownerData.role === 'participant' &&
-        ownerSide === 'left' ? (
-          <PlayerCard player={ownerData} isOwner />
-        ) : (
-          <CommonCard
-            onClick={() =>
-              setPendingMoveSlot({ area: 'participant', index: 0 })
-            }
-          >
-            <EmptySlotText>플레이어 대기중</EmptySlotText>
-          </CommonCard>
-        )}
-      </CenteredDiv>
-    );
-  };
+  const renderLeftSlot = () => (
+    <CenteredDiv>
+      <ParticipantKeyword>{sideAOption}</ParticipantKeyword>
+      {ownerData &&
+      ownerData.id === OWNER_ID &&
+      ownerData.role === 'participant' &&
+      ownerSide === 'left' ? (
+        <PlayerCard player={ownerData} isOwner />
+      ) : nonOwnerParticipants.length > 0 && ownerSide !== 'left' ? (
+        <PlayerCard player={nonOwnerParticipants[0]} />
+      ) : (
+        <CommonCard
+          onClick={() => setPendingMoveSlot({ area: 'participant', index: 0 })}
+        >
+          <EmptySlotText>플레이어 대기중</EmptySlotText>
+        </CommonCard>
+      )}
+    </CenteredDiv>
+  );
 
   // ─── 오른쪽 슬롯 렌더링 ─────────────────────
-  const renderRightSlot = () => {
-    return (
-      <CenteredDiv>
-        <ParticipantKeyword>{rightKeyword}</ParticipantKeyword>
-        {ownerData &&
-        ownerData.id === OWNER_ID &&
-        ownerData.role === 'participant' &&
-        ownerSide === 'right' ? (
-          <PlayerCard player={ownerData} isOwner />
-        ) : nonOwnerParticipants.length > 0 ? (
-          <PlayerCard player={nonOwnerParticipants[0]} />
-        ) : (
-          <CommonCard
-            onClick={() =>
-              setPendingMoveSlot({ area: 'participant', index: 1 })
-            }
-          >
-            <EmptySlotText>플레이어 대기중</EmptySlotText>
-          </CommonCard>
-        )}
-      </CenteredDiv>
-    );
-  };
+  const renderRightSlot = () => (
+    <CenteredDiv>
+      <ParticipantKeyword>{sideBOption}</ParticipantKeyword>
+      {ownerData &&
+      ownerData.id === OWNER_ID &&
+      ownerData.role === 'participant' &&
+      ownerSide === 'right' ? (
+        <PlayerCard player={ownerData} isOwner />
+      ) : nonOwnerParticipants.length > 0 && ownerSide !== 'right' ? (
+        <PlayerCard player={nonOwnerParticipants[0]} />
+      ) : (
+        <CommonCard
+          onClick={() => setPendingMoveSlot({ area: 'participant', index: 1 })}
+        >
+          <EmptySlotText>플레이어 대기중</EmptySlotText>
+        </CommonCard>
+      )}
+    </CenteredDiv>
+  );
 
   // ─── 관전자 그리드 렌더링 ─────────────────────
   const renderSpectatorGrid = () => {
@@ -481,20 +472,18 @@ const BattleDetail: React.FC = () => {
   const ModalComponent = ({
     title,
     children,
-  }: PropsWithChildren<ModalComponentProps>) => {
-    return (
-      <ModalOverlay>
-        <ModalContent>
-          <ModalTitle>{title}</ModalTitle>
-          {children}
-        </ModalContent>
-      </ModalOverlay>
-    );
-  };
+  }: PropsWithChildren<ModalComponentProps>) => (
+    <ModalOverlay>
+      <ModalContent>
+        <ModalTitle>{title}</ModalTitle>
+        {children}
+      </ModalContent>
+    </ModalOverlay>
+  );
 
   return (
     <Container>
-      {/* Header: 뒤로가기 버튼과 방 제목만 남김 */}
+      {/* Header */}
       <Header>
         <ExitButton onClick={handleExit}>
           <FaSignOutAlt style={{ marginRight: '0.3rem' }} />
@@ -529,7 +518,6 @@ const BattleDetail: React.FC = () => {
       </TopSection>
 
       <SpectatorsSection>
-        {/* SpectatorsHeader: 왼쪽에 랜덤/직접 주제 버튼, 가운데 타이틀, 오른쪽에 접기/펼치기 + 시작 버튼 */}
         <SpectatorsHeader>
           <LeftButtonGroup>
             <SubjectButton onClick={handleRandomSubject}>
@@ -665,32 +653,28 @@ export default BattleDetail;
    Styled Components 정의
 ========================== */
 
-// Container (기본 박스)
 const Container = styled.div`
   width: 1000px;
   margin: 0 auto;
-  border: 5px solid #000; /* 검은색 테두리 */
-  border-radius: 8px; /* 둥근 테두리 */
-  background-color: #3aa7f0; /* 밝은 블루 배경 */
-  font-family: 'Malgun Gothic', 'Arial', sans-serif; /* 폰트 통일 */
+  border: 5px solid #000;
+  border-radius: 8px;
+  background-color: #3aa7f0;
+  font-family: 'Malgun Gothic', 'Arial', sans-serif;
   overflow: hidden;
   position: relative;
   animation: ${fadeIn} 0.5s ease-in-out forwards;
 `;
 
-// Header 영역
 const Header = styled.header`
-  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background-color: #2e8bc0; /* 헤더 배경색 */
+  background-color: #2e8bc0;
   color: #fff;
   padding: 0.6rem 1rem;
-  border-bottom: 2px solid #000; /* 검은색 하단 테두리 */
+  border-bottom: 2px solid #000;
 `;
 
-// Header 내부 타이틀
 const Title = styled.div`
   flex: 1;
   font-size: 1.5rem;
@@ -702,7 +686,6 @@ const Title = styled.div`
   margin: 0 1rem;
 `;
 
-// Top 섹션
 const TopSection = styled.div`
   display: flex;
   justify-content: space-between;
@@ -711,20 +694,25 @@ const TopSection = styled.div`
   gap: 1rem;
 `;
 
-// 참가자 컨테이너
 const ParticipantContainer = styled.div`
   flex: 1 1 200px;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
 `;
 
-// 중앙 정렬 div (예, 플레이어 슬롯)
+const SideLabel = styled.div`
+  font-weight: bold;
+  font-size: 1rem;
+  color: #000;
+  margin-bottom: 0.5rem;
+`;
+
 const CenteredDiv = styled.div`
   text-align: center;
 `;
 
-// 참가자 키워드 (왼쪽/오른쪽)
 const ParticipantKeyword = styled.div`
   font-weight: bold;
   margin-bottom: 0.5rem;
@@ -734,18 +722,16 @@ const ParticipantKeyword = styled.div`
   background-color: #fff;
 `;
 
-// 채팅 영역
 const ChatSection = styled.div`
   flex: 2 1 600px;
   display: flex;
   flex-direction: column;
-  border: 2px solid #000; /* 검은색 테두리 */
-  border-radius: 6px; /* 모서리 둥글게 */
-  background-color: #fff; /* 흰색 배경 */
-  box-shadow: inset 0 1px 0 #cee3f8; /* 내부 그림자 */
+  border: 2px solid #000;
+  border-radius: 6px;
+  background-color: #fff;
+  box-shadow: inset 0 1px 0 #cee3f8;
 `;
 
-// 채팅 메시지 컨테이너
 const ChatMessages = styled.div`
   height: 400px;
   overflow-y: auto;
@@ -753,39 +739,35 @@ const ChatMessages = styled.div`
   font-size: 0.85rem;
   display: flex;
   flex-direction: column;
-  background-color: #ddd; /* 연한 그레이 배경 */
-  border-radius: 6px 6px 0 0; /* 모서리 둥글게 */
+  background-color: #ddd;
+  border-radius: 6px 6px 0 0;
 `;
 
-// 채팅 폼
 const ChatForm = styled.form`
   display: flex;
   align-items: center;
-  border-top: 1px solid #000000;
+  border-top: 1px solid #000;
   padding: 0.5rem;
   background-color: #fff;
 `;
 
-// 채팅 인풋
 const ChatInput = styled.input`
   flex: 1;
-  border: 1px solid #000000;
+  border: 1px solid #000;
   border-radius: 4px;
   padding: 0.3rem;
   outline: none;
 `;
 
-// 관전자 영역
 const SpectatorsSection = styled.div`
-  border-top: 2px solid #000; /* 검은색 상단 테두리 */
+  border-top: 2px solid #000;
   padding: 1rem;
-  background-color: #cce6f4; /* 연-블루 배경 */
+  background-color: #cce6f4;
   display: flex;
   flex-direction: column;
   align-items: center;
 `;
 
-// SpectatorsHeader: 왼쪽 버튼 그룹, 중앙 타이틀, 오른쪽 버튼 그룹
 const SpectatorsHeader = styled.div`
   display: flex;
   align-items: center;
@@ -794,23 +776,20 @@ const SpectatorsHeader = styled.div`
   padding-bottom: 0.5rem;
 `;
 
-// 왼쪽 버튼 그룹
 const LeftButtonGroup = styled.div`
   display: flex;
   gap: 0.5rem;
 `;
 
-// 오른쪽 버튼 그룹
 const RightButtonGroup = styled.div`
   display: flex;
   gap: 0.5rem;
 `;
 
-// toggle + start 버튼
 const ToggleButton = styled.button`
   background-color: #0057a8;
   color: #fff;
-  border: none;
+  border: 2px solid #000;
   border-radius: 6px;
   padding: 0.3rem 0.6rem;
   font-size: 1rem;
@@ -819,13 +798,12 @@ const ToggleButton = styled.button`
   &:hover {
     background-color: #004080;
   }
-  border: 2px solid #000; /* 검은색 테두리 */
 `;
 
 const StartButton = styled.button`
   background-color: #f06292;
   color: #fff;
-  border: 2px solid #000; /* 검은색 테두리 */
+  border: 2px solid #000;
   border-radius: 6px;
   padding: 0.5rem 1.5rem;
   font-weight: bold;
@@ -836,7 +814,6 @@ const StartButton = styled.button`
   }
 `;
 
-// 관전자 그리드 (8칸 배치)
 const SpectatorsGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -846,24 +823,21 @@ const SpectatorsGrid = styled.div`
   margin-top: 1rem;
 `;
 
-// 관전자 슬롯 (Transient prop `$occupied` 사용)
 const SpectatorSlotContainer = styled.div<{ $occupied: boolean }>`
   width: ${BOX_SIZE};
   height: ${BOX_SIZE};
-  background-color: #fff; /* 흰색 배경 */
+  background-color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: ${(props) => (props.$occupied ? 'default' : 'pointer')};
   box-shadow: 0 3px 5px rgba(0, 0, 0, 0.1);
   transition: transform 0.2s;
-
   &:hover {
     transform: ${(props) => (props.$occupied ? 'none' : 'scale(1.03)')};
   }
 `;
 
-// 빈 박스 (관전자 슬롯 내)
 const EmptyBox = styled.div`
   width: 100%;
   height: 100%;
@@ -872,35 +846,29 @@ const EmptyBox = styled.div`
   border-radius: 4px;
 `;
 
-// CommonCard (참가자/관전자 카드)
 const CommonCard = styled.div`
   width: ${BOX_SIZE};
   height: ${BOX_SIZE};
-
   background-color: #fff;
   position: relative;
   border: 2px solid #000;
   border-radius: 4px;
-
   box-sizing: border-box;
   text-align: center;
   transition:
     transform 0.3s,
     box-shadow 0.3s;
   cursor: pointer;
-
   &:hover {
     transform: scale(1.03);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
   }
 `;
 
-// StyledPlayerCard (Transient prop `$bgColor` 사용)
 const StyledPlayerCard = styled(CommonCard)<{ $bgColor: string }>`
   background-color: ${(props) => props.$bgColor};
 `;
 
-// 플레이어 이미지 (일반 참가자)
 const PlayerImage = styled.img`
   width: 100%;
   height: 100%;
@@ -908,7 +876,6 @@ const PlayerImage = styled.img`
   border-radius: 4px;
 `;
 
-// 기본 아바타 (이미지 없을 경우)
 const DefaultAvatar = styled.div`
   width: 100%;
   height: 100%;
@@ -919,7 +886,6 @@ const DefaultAvatar = styled.div`
   border-radius: 4px;
 `;
 
-// 닉네임 영역
 const Nickname = styled.div`
   position: absolute;
   top: 0.3rem;
@@ -933,7 +899,6 @@ const Nickname = styled.div`
   z-index: 2;
 `;
 
-// 티어 아이콘
 const TierIcon = styled.img`
   position: absolute;
   top: 0.3rem;
@@ -941,11 +906,10 @@ const TierIcon = styled.img`
   width: 32px;
   height: 32px;
   z-index: 3;
-  border: 2px solid #000; /* 검은색 테두리 */
+  border: 2px solid #000;
   border-radius: 6px;
 `;
 
-// 순위 영역 (카드 하단)
 const RankArea = styled.div`
   position: absolute;
   bottom: 0;
@@ -953,17 +917,15 @@ const RankArea = styled.div`
   transform: translateX(-50%);
   width: 100%;
   text-align: center;
-
   background-color: rgba(0, 0, 0, 0.4);
   display: flex;
   justify-content: center;
   align-items: center;
-  border-top: 2px solid #000; /* 검은색 테두리 */
+  border-top: 2px solid #000;
 `;
 
-// 방장 뱃지
 const OwnerBadge = styled.div`
-  background-color: #4caf50; /* 녹색 */
+  background-color: #4caf50;
   color: #fff;
   font-size: 0.8rem;
   font-weight: bold;
@@ -972,9 +934,8 @@ const OwnerBadge = styled.div`
   border-bottom-left-radius: 4px;
 `;
 
-// 준비 뱃지
 const ReadyBadge = styled.div`
-  background-color: #ff9800; /* 주황색 */
+  background-color: #ff9800;
   color: #fff;
   font-size: 0.8rem;
   font-weight: bold;
@@ -983,7 +944,6 @@ const ReadyBadge = styled.div`
   border-bottom-left-radius: 4px;
 `;
 
-// 관전자용 아바타 이미지
 const SpectatorImage = styled.img`
   width: 100%;
   height: 60px;
@@ -991,7 +951,6 @@ const SpectatorImage = styled.img`
   border-radius: 4px;
 `;
 
-// 채팅 버블 컨테이너
 const ChatBubbleContainer = styled.div<{
   isOwnerMsg: boolean;
   isNotice: boolean;
@@ -1007,14 +966,12 @@ const ChatBubbleContainer = styled.div<{
   word-break: break-word;
 `;
 
-// 채팅 버블 텍스트
 const ChatBubbleText = styled.p<{ isNotice: boolean }>`
   font-size: 0.9rem;
   color: ${(props) => (props.isNotice ? 'red' : '#000')};
   margin: 0;
 `;
 
-// 모달 오버레이
 const ModalOverlay = styled.div`
   position: fixed;
   top: 0;
@@ -1028,7 +985,6 @@ const ModalOverlay = styled.div`
   z-index: 1000;
 `;
 
-// 모달 콘텐츠
 const ModalContent = styled.div`
   width: 400px;
   background-color: #fff;
@@ -1041,16 +997,14 @@ const ModalContent = styled.div`
   box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.3);
 `;
 
-// 모달 타이틀
 const ModalTitle = styled.h3`
   margin: 0;
   padding-bottom: 0.5rem;
-  border-bottom: 1px solid #000000;
+  border-bottom: 1px solid #000;
   font-size: 1.1rem;
   color: #333;
 `;
 
-// 모달 본문 텍스트
 const ModalText = styled.p`
   font-size: 1rem;
   color: #333;
@@ -1059,7 +1013,6 @@ const ModalText = styled.p`
   text-align: center;
 `;
 
-// 모달 인풋
 const ModalInput = styled.input`
   padding: 0.5rem;
   border: 1px solid #000;
@@ -1067,14 +1020,12 @@ const ModalInput = styled.input`
   font-size: 1rem;
 `;
 
-// 모달 버튼 컨테이너
 const ModalButtons = styled.div`
   display: flex;
   justify-content: flex-end;
   gap: 0.5rem;
 `;
 
-// 플레이어가 없는 슬롯의 텍스트
 const EmptySlotText = styled.div`
   color: #aaa;
   text-align: center;
@@ -1082,11 +1033,10 @@ const EmptySlotText = styled.div`
   font-size: 0.9rem;
 `;
 
-// Header 뒤로가기 버튼
 const ExitButton = styled.button`
   background-color: #fff;
   color: #333;
-  border: 2px solid #000; /* 검은색 테두리 */
+  border: 2px solid #000;
   border-radius: 4px;
   padding: 0.3rem 0.8rem;
   cursor: pointer;
@@ -1097,11 +1047,10 @@ const ExitButton = styled.button`
   }
 `;
 
-// 주제 생성 버튼
 const SubjectButton = styled.button`
   background-color: #f06292;
   color: #fff;
-  border: 2px solid #000; /* 검은색 테두리 */
+  border: 2px solid #000;
   border-radius: 6px;
   padding: 0.4rem 0.8rem;
   cursor: pointer;
@@ -1112,35 +1061,31 @@ const SubjectButton = styled.button`
   }
 `;
 
-// 모달 제출 버튼
 const ModalSubmitButton = styled.button`
   background-color: #4caf50;
   color: #fff;
-  border: none;
+  border: 2px solid #000;
   border-radius: 4px;
   padding: 0.4rem 0.8rem;
   cursor: pointer;
   width: 100%;
+  font-weight: bold;
   transition: transform 0.2s;
-  border: 2px solid #000;
-  border-radius: 4px;
   &:hover {
     transform: translateY(-2px);
   }
 `;
 
-// 모달 취소 버튼
 const ModalCancelButton = styled.button`
   background-color: #f06292;
   color: #fff;
-  border: none;
+  border: 2px solid #000;
   border-radius: 4px;
   padding: 0.4rem 0.8rem;
   cursor: pointer;
   width: 100%;
+  font-weight: bold;
   transition: transform 0.2s;
-  border: 2px solid #000;
-  border-radius: 4px;
   &:hover {
     transform: translateY(-2px);
   }
