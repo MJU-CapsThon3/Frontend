@@ -1,3 +1,5 @@
+// src/pages/Battle/BattleDetail.tsx
+
 import React, { useState, useEffect, useRef, PropsWithChildren } from 'react';
 import styled, { keyframes } from 'styled-components';
 import {
@@ -7,7 +9,10 @@ import {
   FaRandom,
   FaEdit,
 } from 'react-icons/fa';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
+
+// ───── API import ──────────────────────────────
+import BattleChatApi, { ChatMessage } from '../../api/chat/chatApi';
 
 // ───── 아이콘 임포트 ──────────────────────────────
 import BronzeIcon from '../../assets/Bronze.svg';
@@ -149,12 +154,17 @@ const scaleUp = keyframes`
 `;
 
 // ───── BattleDetail 컴포넌트 ──────────────────────────────
-
 type TargetSlot = { area: 'participant' | 'spectator'; index: number };
 
 const BattleDetail: React.FC = () => {
   const navigate = useNavigate();
+  const { roomId } = useParams<{ roomId: string }>();
   const chatContainerRef = useRef<HTMLDivElement>(null);
+
+  // roomId가 없으면 렌더링을 중단
+  if (!roomId) {
+    return <div>유효하지 않은 방 ID입니다.</div>;
+  }
 
   const [ownerSide, setOwnerSide] = useState<'left' | 'right'>('left');
   const [ownerSpectatorSlot, setOwnerSpectatorSlot] = useState<number | null>(
@@ -165,9 +175,7 @@ const BattleDetail: React.FC = () => {
   );
   const [players, setPlayers] = useState<PlayerData[]>(initialPlayers);
   const [chatInput, setChatInput] = useState('');
-  const [chatMessages, setChatMessages] = useState<string[]>([
-    '[공지] 환영합니다',
-  ]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [subject, setSubject] = useState<string>('사자 vs 코끼리');
   const [modalVisible, setModalVisible] = useState<boolean>(false);
   const [keywordOne, setKeywordOne] = useState<string>('');
@@ -204,7 +212,6 @@ const BattleDetail: React.FC = () => {
     const [first, second] = getRandomKeywords();
     const newSubject = `${first} vs ${second}`;
     setSubject(newSubject);
-    setChatMessages((prev) => [...prev, `[타이틀 변경] ${newSubject}`]);
   };
 
   const handleDirectSubject = () => {
@@ -221,16 +228,46 @@ const BattleDetail: React.FC = () => {
     const newSubject = `${keywordOne.trim()} vs ${keywordTwo.trim()}`;
     setSubject(newSubject);
     setModalVisible(false);
-    setChatMessages((prev) => [...prev, `[타이틀 변경] ${newSubject}`]);
   };
 
-  const handleChatSubmit = (e: React.FormEvent) => {
+  // ─── 채팅 내역 불러오기 ─────────────────────
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await BattleChatApi.getChatMessages(roomId);
+        // sideA, sideB를 합쳐서 생성 시점(createdAt) 순으로 정렬
+        const merged = [...res.result.sideA, ...res.result.sideB];
+        merged.sort(
+          (a, b) =>
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        );
+        setChatMessages(merged);
+      } catch (err) {
+        console.error('채팅 내역 조회 오류:', err);
+      }
+    })();
+  }, [roomId]);
+
+  // ─── 채팅 전송 ─────────────────────────────
+  const handleChatSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
-    setChatMessages((prev) => [...prev, `유저${OWNER_ID}: ${chatInput}`]);
-    setChatInput('');
+
+    // 현재 사용자는 owner이므로, left side → 'A', right side → 'B'
+    const side = ownerSide === 'left' ? 'A' : 'B';
+
+    try {
+      const payload = { side, message: chatInput.trim() };
+      const res = await BattleChatApi.postChatMessage(roomId, payload);
+      // 전송 성공 후 반환된 메시지를 배열 뒤에 추가
+      setChatMessages((prev) => [...prev, res.result]);
+      setChatInput('');
+    } catch (err) {
+      console.error('채팅 메시지 전송 오류:', err);
+    }
   };
 
+  // ─── 채팅 스크롤 자동 최하단 유지 ─────────────────────
   useEffect(() => {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop =
@@ -286,19 +323,22 @@ const BattleDetail: React.FC = () => {
     setPendingMoveSlot(null);
   };
 
+  // ─── PlayerCard 컴포넌트 ─────────────────────
   const PlayerCard: React.FC<{
     player: PlayerData;
     isOwner?: boolean;
     isSpectator?: boolean;
   }> = ({ player, isOwner = false, isSpectator = false }) => {
+    // 팀 컬러가 없으면 흰색
     const bgColor =
       player.team === 'blue'
         ? '#33bfff'
         : player.team === 'red'
           ? '#ff6b6b'
           : '#fff';
+
     return (
-      <StyledPlayerCard bgColor={bgColor}>
+      <StyledPlayerCard $bgColor={bgColor}>
         <Nickname>
           {player.nickname} {isOwner && '(나)'}
         </Nickname>
@@ -325,6 +365,7 @@ const BattleDetail: React.FC = () => {
     );
   };
 
+  // ─── 왼쪽 슬롯 렌더링 ─────────────────────
   const renderLeftSlot = () => {
     return (
       <CenteredDiv>
@@ -347,6 +388,7 @@ const BattleDetail: React.FC = () => {
     );
   };
 
+  // ─── 오른쪽 슬롯 렌더링 ─────────────────────
   const renderRightSlot = () => {
     return (
       <CenteredDiv>
@@ -356,7 +398,7 @@ const BattleDetail: React.FC = () => {
         ownerData.role === 'participant' &&
         ownerSide === 'right' ? (
           <PlayerCard player={ownerData} isOwner />
-        ) : nonOwnerParticipants[0] ? (
+        ) : nonOwnerParticipants.length > 0 ? (
           <PlayerCard player={nonOwnerParticipants[0]} />
         ) : (
           <CommonCard
@@ -371,6 +413,7 @@ const BattleDetail: React.FC = () => {
     );
   };
 
+  // ─── 관전자 그리드 렌더링 ─────────────────────
   const renderSpectatorGrid = () => {
     const cells = [];
     for (let i = 0; i < TOTAL_SLOTS; i++) {
@@ -384,14 +427,15 @@ const BattleDetail: React.FC = () => {
       } else if (i < nonOwnerSpectators.length) {
         occupant = nonOwnerSpectators[i];
       }
+
       cells.push(
         <SpectatorSlotContainer
           key={`spectator-slot-${i}`}
-          occupied={!!occupant}
+          $occupied={!!occupant}
           onClick={
-            !occupant
-              ? () => setPendingMoveSlot({ area: 'spectator', index: i })
-              : undefined
+            occupant
+              ? undefined
+              : () => setPendingMoveSlot({ area: 'spectator', index: i })
           }
         >
           {occupant ? (
@@ -409,12 +453,17 @@ const BattleDetail: React.FC = () => {
     return cells;
   };
 
-  const ChatBubble: React.FC<{ msg: string }> = ({ msg }) => {
-    const isOwnerMsg = msg.startsWith(`유저${OWNER_ID}:`);
-    const isNotice = msg.startsWith('[공지]');
+  // ─── 채팅 버블 ─────────────────────
+  const ChatBubble: React.FC<{ msg: ChatMessage }> = ({ msg }) => {
+    const isOwnerMsg = Number(msg.userId) === OWNER_ID;
+    const isNotice = msg.message.startsWith('[공지]');
     return (
       <ChatBubbleContainer isOwnerMsg={isOwnerMsg} isNotice={isNotice}>
-        <ChatBubbleText isNotice={isNotice}>{msg}</ChatBubbleText>
+        <ChatBubbleText isNotice={isNotice}>
+          {isNotice
+            ? msg.message
+            : `[${msg.side}] 유저${msg.userId}: ${msg.message}`}
+        </ChatBubbleText>
       </ChatBubbleContainer>
     );
   };
@@ -466,9 +515,11 @@ const BattleDetail: React.FC = () => {
         <ParticipantContainer>{renderLeftSlot()}</ParticipantContainer>
         <ChatSection>
           <ChatMessages ref={chatContainerRef}>
-            {chatMessages.map((msg, idx) => (
-              <ChatBubble key={idx} msg={msg} />
-            ))}
+            {chatMessages
+              .filter((m): m is ChatMessage => m !== null)
+              .map((msg) => (
+                <ChatBubble key={msg.id} msg={msg} />
+              ))}
           </ChatMessages>
           <ChatForm onSubmit={handleChatSubmit}>
             <FaCommentDots
@@ -601,7 +652,6 @@ export default BattleDetail;
 
 /* ==========================
    Styled Components 정의
-   (위 코드들 디자인 요소 그대로 적용)
 ========================== */
 
 // Container (기본 박스)
@@ -623,7 +673,7 @@ const Header = styled.header`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background-color: #2e8bc0; /* 퀘스트 페이지 헤더 배경색과 동일 */
+  background-color: #2e8bc0; /* 헤더 배경색 */
   color: #fff;
   padding: 0.6rem 1rem;
   border-bottom: 2px solid #000; /* 검은색 하단 테두리 */
@@ -738,20 +788,20 @@ const SpectatorsGrid = styled.div`
   width: calc(4 * ${BOX_SIZE} + 3 * 10px);
 `;
 
-// 관전자 슬롯 (동적으로 커서 변경)
-const SpectatorSlotContainer = styled.div<{ occupied: boolean }>`
+// 관전자 슬롯 (Transient prop `$occupied` 사용)
+const SpectatorSlotContainer = styled.div<{ $occupied: boolean }>`
   width: ${BOX_SIZE};
   height: ${BOX_SIZE};
   background-color: #fff; /* 흰색 배경 */
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: ${(props) => (props.occupied ? 'default' : 'pointer')};
+  cursor: ${(props) => (props.$occupied ? 'default' : 'pointer')};
   box-shadow: 0 3px 5px rgba(0, 0, 0, 0.1);
   transition: transform 0.2s;
 
   &:hover {
-    transform: ${(props) => (props.occupied ? 'none' : 'scale(1.03)')};
+    transform: ${(props) => (props.$occupied ? 'none' : 'scale(1.03)')};
   }
 `;
 
@@ -787,9 +837,9 @@ const CommonCard = styled.div`
   }
 `;
 
-// StyledPlayerCard (동적 배경색 적용)
-const StyledPlayerCard = styled(CommonCard)<{ bgColor: string }>`
-  background-color: ${(props) => props.bgColor};
+// StyledPlayerCard (Transient prop `$bgColor` 사용)
+const StyledPlayerCard = styled(CommonCard)<{ $bgColor: string }>`
+  background-color: ${(props) => props.$bgColor};
 `;
 
 // 플레이어 이미지 (일반 참가자)
@@ -856,9 +906,7 @@ const RankArea = styled.div`
 // 방장 뱃지
 const OwnerBadge = styled.div`
   background-color: #4caf50; /* 녹색 */
-
   color: #fff;
-
   font-size: 0.8rem;
   font-weight: bold;
   width: 100%;
@@ -870,7 +918,6 @@ const OwnerBadge = styled.div`
 const ReadyBadge = styled.div`
   background-color: #ff9800; /* 주황색 */
   color: #fff;
-
   font-size: 0.8rem;
   font-weight: bold;
   width: 100%;
@@ -978,7 +1025,6 @@ const EmptySlotText = styled.div`
 `;
 
 // ───── 기존 버튼 styled-components ──────────────────────────────
-
 const ExitButton = styled.button`
   background-color: #fff;
   color: #333;
@@ -987,9 +1033,7 @@ const ExitButton = styled.button`
   padding: 0.3rem 0.8rem;
   cursor: pointer;
   font-weight: bold;
-
   transition: transform 0.2s;
-
   &:hover {
     transform: translateY(-2px);
   }
@@ -1003,9 +1047,7 @@ const SubjectButton = styled.button`
   padding: 0.4rem 0.8rem;
   cursor: pointer;
   font-weight: bold;
-
   transition: transform 0.2s;
-
   &:hover {
     transform: translateY(-2px);
   }
@@ -1021,10 +1063,8 @@ const StartButton = styled.button`
   color: #fff;
   border: 2px solid #000; /* 검은색 테두리 */
   font-weight: bold;
-
   cursor: pointer;
   transition: transform 0.2s;
-
   &:hover {
     transform: translateY(-2px);
   }
@@ -1041,7 +1081,6 @@ const ModalSubmitButton = styled.button`
   transition: transform 0.2s;
   border: 2px solid #000;
   border-radius: 4px;
-
   &:hover {
     transform: translateY(-2px);
   }
@@ -1058,7 +1097,6 @@ const ModalCancelButton = styled.button`
   transition: transform 0.2s;
   border: 2px solid #000;
   border-radius: 4px;
-
   &:hover {
     transform: translateY(-2px);
   }
@@ -1090,7 +1128,6 @@ const ToggleButton = styled.button`
   font-size: 1rem;
   cursor: pointer;
   transition: background-color 0.2s;
-
   &:hover {
     background-color: #004080;
   }
