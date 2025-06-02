@@ -129,6 +129,16 @@ export interface StartBattleResponse {
 }
 
 /**
+ * /battle/rooms/{roomId}/end (POST) 응답 타입
+ */
+export interface EndBattleResponse {
+  isSuccess: boolean;
+  code: number | string;
+  message: string;
+  result: string | null;
+}
+
+/**
  * BattleRoomApi 객체: 배틀방 관련 API 호출 함수들
  */
 export const BattleRoomApi = {
@@ -259,6 +269,33 @@ export const BattleRoomApi = {
     } catch (error) {
       console.error(
         `[BattleRoomApi.startBattle] 방 ID ${roomId} 배틀 시작 중 오류:`,
+        error
+      );
+      throw error;
+    }
+  },
+
+  /**
+   * 토론(배틀) 종료
+   * POST /battle/rooms/{roomId}/end
+   */
+  async endBattle(
+    roomId: number | string,
+    axiosInstance: AxiosInstance = Axios
+  ): Promise<EndBattleResponse['result']> {
+    try {
+      const response = await axiosInstance.post<EndBattleResponse>(
+        `/battle/rooms/${roomId}/end`
+      );
+      const data = response.data;
+      if (data.isSuccess) {
+        return data.result!;
+      } else {
+        throw new Error(data.message || '토론 종료 실패');
+      }
+    } catch (error) {
+      console.error(
+        `[BattleRoomApi.endBattle] 방 ID ${roomId} 토론 종료 중 오류:`,
         error
       );
       throw error;
