@@ -13,6 +13,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 
 // ───── API import ──────────────────────────────
 import BattleChatApi, { ChatMessage } from '../../api/chat/chatApi';
+import AiApi from '../../api/Ai/AiApi'; // ← 추가: AiApi import
 
 // ───── 아이콘 임포트 ──────────────────────────────
 import BronzeIcon from '../../assets/Bronze.svg';
@@ -203,16 +204,21 @@ const BattleDetail: React.FC = () => {
     nonOwnerParticipants.length >= 1 &&
     nonOwnerParticipants[0].isReady;
 
-  const getRandomKeywords = (): [string, string] => {
-    const shuffled = [...keywordPool].sort(() => 0.5 - Math.random());
-    return [shuffled[0], shuffled[1]];
+  // ─── 수정: handleRandomSubject → AiApi.generateTopic 호출 ─────────────────────
+  const handleRandomSubject = async () => {
+    try {
+      const res = await AiApi.generateTopic();
+      // API에서 반환된 topic 문자열로 subject 업데이트
+      setSubject(res.result.topic);
+    } catch (err) {
+      console.error('랜덤 토론 주제 생성 오류:', err);
+      // 폴백: 키워드 풀에서 랜덤 주제 생성
+      const shuffled = [...keywordPool].sort(() => 0.5 - Math.random());
+      const newSubject = `${shuffled[0]} vs ${shuffled[1]}`;
+      setSubject(newSubject);
+    }
   };
-
-  const handleRandomSubject = () => {
-    const [first, second] = getRandomKeywords();
-    const newSubject = `${first} vs ${second}`;
-    setSubject(newSubject);
-  };
+  // ───────────────────────────────────────────────────────────────
 
   const handleDirectSubject = () => {
     setModalVisible(true);
@@ -488,27 +494,13 @@ const BattleDetail: React.FC = () => {
 
   return (
     <Container>
+      {/* Header: 뒤로가기 버튼과 방 제목만 남김 */}
       <Header>
         <ExitButton onClick={handleExit}>
           <FaSignOutAlt style={{ marginRight: '0.3rem' }} />
           나가기
         </ExitButton>
         <Title>{subject}</Title>
-        <HeaderButtons>
-          <SubjectButton onClick={handleRandomSubject}>
-            <FaRandom style={{ marginRight: '0.3rem' }} />
-            랜덤 주제생성
-          </SubjectButton>
-          <SubjectButton onClick={handleDirectSubject}>
-            <FaEdit style={{ marginRight: '0.3rem' }} />
-            직접 주제 생성
-          </SubjectButton>
-        </HeaderButtons>
-        {ownerData && ownerData.id === OWNER_ID ? (
-          <StartButton onClick={handleStartGame}>시작</StartButton>
-        ) : (
-          <StartButton onClick={handleReadyToggle}>준비</StartButton>
-        )}
       </Header>
 
       <TopSection>
@@ -537,14 +529,33 @@ const BattleDetail: React.FC = () => {
       </TopSection>
 
       <SpectatorsSection>
+        {/* SpectatorsHeader: 왼쪽에 랜덤/직접 주제 버튼, 가운데 타이틀, 오른쪽에 접기/펼치기 + 시작 버튼 */}
         <SpectatorsHeader>
-          <SpectatorsTitle>관전자</SpectatorsTitle>
-          <ToggleButton
-            onClick={() => setIsSpectatorsCollapsed((prev) => !prev)}
-          >
-            {isSpectatorsCollapsed ? '펼치기' : '접기'}
-          </ToggleButton>
+          <LeftButtonGroup>
+            <SubjectButton onClick={handleRandomSubject}>
+              <FaRandom style={{ marginRight: '0.3rem' }} />
+              랜덤 주제생성
+            </SubjectButton>
+            <SubjectButton onClick={handleDirectSubject}>
+              <FaEdit style={{ marginRight: '0.3rem' }} />
+              직접 주제 생성
+            </SubjectButton>
+          </LeftButtonGroup>
+
+          <RightButtonGroup>
+            <ToggleButton
+              onClick={() => setIsSpectatorsCollapsed((prev) => !prev)}
+            >
+              {isSpectatorsCollapsed ? '관전자 보기' : '관전자 숨김'}
+            </ToggleButton>
+            {ownerData && ownerData.id === OWNER_ID ? (
+              <StartButton onClick={handleStartGame}>시작</StartButton>
+            ) : (
+              <StartButton onClick={handleReadyToggle}>준비</StartButton>
+            )}
+          </RightButtonGroup>
         </SpectatorsHeader>
+
         {!isSpectatorsCollapsed && (
           <SpectatorsGrid>{renderSpectatorGrid()}</SpectatorsGrid>
         )}
@@ -691,13 +702,6 @@ const Title = styled.div`
   margin: 0 1rem;
 `;
 
-// Header 버튼 컨테이너
-const HeaderButtons = styled.div`
-  display: flex;
-  flex-direction: row;
-  gap: 0.5rem;
-`;
-
 // Top 섹션
 const TopSection = styled.div`
   display: flex;
@@ -726,6 +730,8 @@ const ParticipantKeyword = styled.div`
   margin-bottom: 0.5rem;
   border: 2px solid #000;
   border-radius: 4px;
+  padding: 0.2rem 0.5rem;
+  background-color: #fff;
 `;
 
 // 채팅 영역
@@ -779,6 +785,57 @@ const SpectatorsSection = styled.div`
   align-items: center;
 `;
 
+// SpectatorsHeader: 왼쪽 버튼 그룹, 중앙 타이틀, 오른쪽 버튼 그룹
+const SpectatorsHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding-bottom: 0.5rem;
+`;
+
+// 왼쪽 버튼 그룹
+const LeftButtonGroup = styled.div`
+  display: flex;
+  gap: 0.5rem;
+`;
+
+// 오른쪽 버튼 그룹
+const RightButtonGroup = styled.div`
+  display: flex;
+  gap: 0.5rem;
+`;
+
+// toggle + start 버튼
+const ToggleButton = styled.button`
+  background-color: #0057a8;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.3rem 0.6rem;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  &:hover {
+    background-color: #004080;
+  }
+  border: 2px solid #000; /* 검은색 테두리 */
+`;
+
+const StartButton = styled.button`
+  background-color: #f06292;
+  color: #fff;
+  border: 2px solid #000; /* 검은색 테두리 */
+  border-radius: 6px;
+  padding: 0.5rem 1.5rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: transform 0.2s;
+  &:hover {
+    transform: translateY(-2px);
+  }
+`;
+
 // 관전자 그리드 (8칸 배치)
 const SpectatorsGrid = styled.div`
   display: grid;
@@ -786,6 +843,7 @@ const SpectatorsGrid = styled.div`
   grid-template-rows: repeat(2, 1fr);
   gap: 10px;
   width: calc(4 * ${BOX_SIZE} + 3 * 10px);
+  margin-top: 1rem;
 `;
 
 // 관전자 슬롯 (Transient prop `$occupied` 사용)
@@ -1024,7 +1082,7 @@ const EmptySlotText = styled.div`
   font-size: 0.9rem;
 `;
 
-// ───── 기존 버튼 styled-components ──────────────────────────────
+// Header 뒤로가기 버튼
 const ExitButton = styled.button`
   background-color: #fff;
   color: #333;
@@ -1039,6 +1097,7 @@ const ExitButton = styled.button`
   }
 `;
 
+// 주제 생성 버튼
 const SubjectButton = styled.button`
   background-color: #f06292;
   color: #fff;
@@ -1053,23 +1112,7 @@ const SubjectButton = styled.button`
   }
 `;
 
-const StartButton = styled.button`
-  position: absolute;
-  top: 5rem;
-  right: 0.5rem;
-  padding: 0.5rem 1.5rem;
-  border-radius: 6px;
-  background-color: #f06292;
-  color: #fff;
-  border: 2px solid #000; /* 검은색 테두리 */
-  font-weight: bold;
-  cursor: pointer;
-  transition: transform 0.2s;
-  &:hover {
-    transform: translateY(-2px);
-  }
-`;
-
+// 모달 제출 버튼
 const ModalSubmitButton = styled.button`
   background-color: #4caf50;
   color: #fff;
@@ -1086,6 +1129,7 @@ const ModalSubmitButton = styled.button`
   }
 `;
 
+// 모달 취소 버튼
 const ModalCancelButton = styled.button`
   background-color: #f06292;
   color: #fff;
@@ -1100,36 +1144,4 @@ const ModalCancelButton = styled.button`
   &:hover {
     transform: translateY(-2px);
   }
-`;
-
-// ───── 관전자 헤더 및 토글 버튼 ──────────────────────────────
-const SpectatorsHeader = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 1rem 0;
-  width: 100%;
-  gap: 10px;
-`;
-
-const SpectatorsTitle = styled.h2`
-  font-size: 1.1rem;
-  font-weight: bold;
-  margin: 0;
-  color: #0057a8;
-`;
-
-const ToggleButton = styled.button`
-  background-color: #0057a8;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  padding: 0.3rem 0.6rem;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  &:hover {
-    background-color: #004080;
-  }
-  border: 2px solid #000; /* 검은색 테두리 */
 `;
