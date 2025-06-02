@@ -162,10 +162,7 @@ const BattleDetail: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>();
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
-  if (!roomId) {
-    return <div>유효하지 않은 방 ID입니다.</div>;
-  }
-
+  // ─── Hooks는 컴포넌트 최상단에서만 호출 ────────────────────
   const [ownerSide, setOwnerSide] = useState<'left' | 'right'>('left');
   const [ownerSpectatorSlot, setOwnerSpectatorSlot] = useState<number | null>(
     null
@@ -187,6 +184,12 @@ const BattleDetail: React.FC = () => {
   const [kickModalVisible, setKickModalVisible] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerData | null>(null);
   const [isSpectatorsCollapsed, setIsSpectatorsCollapsed] = useState(false);
+  // ─────────────────────────────────────────────────────────────
+
+  // roomId가 없으면 렌더링을 중단 (Hooks 이후에)
+  if (!roomId) {
+    return <div>유효하지 않은 방 ID입니다.</div>;
+  }
 
   const ownerData = players.find((p) => p.id === OWNER_ID);
   const nonOwnerParticipants = players.filter(
@@ -203,12 +206,13 @@ const BattleDetail: React.FC = () => {
     nonOwnerParticipants.length >= 1 &&
     nonOwnerParticipants[0].isReady;
 
-  // ─── 수정: handleRandomSubject → AiApi.generateTopic 호출 ─────────────────────
+  // ─── 랜덤 토론 주제 생성 핸들러 ───────────────────
   const handleRandomSubject = async () => {
     try {
       // API에서 topic, option_a, option_b 반환
       const res = await AiApi.generateTopic();
-      const { topic, option_a, option_b } = res.result as any;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { topic, option_a, option_b } = (res as any).result;
       setSubject(topic);
       setSideAOption(option_a);
       setSideBOption(option_b);
@@ -221,7 +225,7 @@ const BattleDetail: React.FC = () => {
       setSideBOption(shuffled[1]);
     }
   };
-  // ───────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────
 
   const handleDirectSubject = () => {
     setModalVisible(true);
@@ -700,13 +704,6 @@ const ParticipantContainer = styled.div`
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-`;
-
-const SideLabel = styled.div`
-  font-weight: bold;
-  font-size: 1rem;
-  color: #000;
-  margin-bottom: 0.5rem;
 `;
 
 const CenteredDiv = styled.div`
