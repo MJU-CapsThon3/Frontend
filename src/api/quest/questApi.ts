@@ -26,20 +26,22 @@ export interface GetQuestListResponse {
 }
 
 /**
- * POST /quests/status/{questId} 응답 타입
- *
- * 주의: 서버가 찍어주는 필드가 success vs isSuccess 중 무엇인지 상황마다 달라질 수 있습니다.
+ * POST /quests/status/{questId} 응답 내부 result 타입
  */
 export interface CompleteQuestResult {
+  status: string; // 예: "success"
   questId: number;
   isCompleted: boolean;
+  progress: number;
+  goal: number;
 }
 
+/**
+ * POST /quests/status/{questId} 응답 타입
+ */
 export interface CompleteQuestResponse {
-  // 서버 리스폰스 예시:
-  // { "isSuccess": true, "code": 200, "message": "퀘스트를 성공적으로 완료했습니다.", "result": { "questId": 1, "isCompleted": true } }
-  success?: boolean;
   isSuccess?: boolean;
+  success?: boolean;
   code?: number;
   message: string;
   result: CompleteQuestResult | null;
@@ -54,12 +56,15 @@ export interface QuestRewardRequest {
 }
 
 /**
- * POST /quests/reward/{questId} 응답 타입
+ * POST /quests/reward/{questId} 내부 result 타입
  */
 export interface QuestRewardResult {
   reward: number;
 }
 
+/**
+ * POST /quests/reward/{questId} 응답 타입
+ */
 export interface QuestRewardResponse {
   isSuccess: boolean;
   code: number;
@@ -89,10 +94,11 @@ export const QuestApi = {
     try {
       const response =
         await axiosInstance.get<GetQuestListResponse>('/quests/list');
-      if (response.data.isSuccess) {
-        return response.data.result;
+      const data = response.data;
+      if (data.isSuccess) {
+        return data.result;
       } else {
-        throw new Error(`퀘스트 목록 조회 실패: ${response.data.message}`);
+        throw new Error(`퀘스트 목록 조회 실패: ${data.message}`);
       }
     } catch (error) {
       console.error('[QuestApi.getQuestList] API 호출 중 오류:', error);
@@ -105,9 +111,19 @@ export const QuestApi = {
    * POST /quests/status/{questId}
    * @param questId 완료 처리할 퀘스트 ID
    *
-   * **변경 사항 요약**
-   * - `response.data.success` 혹은 `response.data.isSuccess` 중 하나라도 true면 정상 처리
-   * - 정상 처리 시 반드시 `response.data.result`를 리턴하도록 수정
+   * 서버 응답 예시:
+   * {
+   *   "isSuccess": true,
+   *   "code": 200,
+   *   "message": "퀘스트를 성공했습니다.",
+   *   "result": {
+   *     "status": "success",
+   *     "questId": 1,
+   *     "isCompleted": true,
+   *     "progress": 5,
+   *     "goal": 5
+   *   }
+   * }
    */
   async completeQuest(
     questId: number,
@@ -119,36 +135,23 @@ export const QuestApi = {
       );
       const data = response.data;
 
-      // 둘 중 하나라도 true이면 정상 완료로 간주
-      if ((data.success === true || data.isSuccess === true) && data.result) {
+      // 정상 처리 여부 검사
+      if ((data.isSuccess === true || data.success === true) && data.result) {
         return data.result;
       }
 
-      // 성공 메시지가 메시지 필드에 담겨올 경우(예: success는 false인데 message에 “완료했습니다”가 남아있다면),
-      // data.result만 제대로 있으면 그것을 리턴
+      // 만약 결과 객체만 존재하면 그대로 반환
       if (data.result) {
         return data.result;
       }
 
-      // 이 외의 상황에는 에러로 처리
-      const msg = data.message || '퀘스트 완료 처리 실패';
-      throw new Error(msg);
+      throw new Error(data.message || '퀘스트 완료 처리 실패');
     } catch (error) {
-      // 만약 서버가 “퀘스트를 성공적으로 완료했습니다.”라는 message로 에러를 던진다면,
-      // 여기로 들어올 수 있으므로, 메시지에 “완료했습니다”가 포함돼 있으면 별도 처리를 하지 않고 dummy 반환도 가능
-      if (
-        error instanceof Error &&
-        error.message.includes('퀘스트를 성공적으로 완료했습니다')
-      ) {
-        // dummy로 completed 리턴 (프로그래밍 로직 상, 이 값을 활용해 클라이언트가 상태 업데이트하도록 한다)
-        return { questId, isCompleted: true };
-      } else {
-        console.error(
-          `[QuestApi.completeQuest] 퀘스트 ID ${questId} 완료 처리 중 오류:`,
-          error
-        );
-        throw error;
-      }
+      console.error(
+        `[QuestApi.completeQuest] 퀘스트 ID ${questId} 완료 처리 중 오류:`,
+        error
+      );
+      throw error;
     }
   },
 
@@ -156,6 +159,16 @@ export const QuestApi = {
    * 퀘스트 보상 수령
    * POST /quests/reward/{questId}
    * @param payload { userId, questId }
+   *
+   * 서버 응답 예시:
+   * {
+   *   "isSuccess": true,
+   *   "code": 200,
+   *   "message": "보상을 성공적으로 받았습니다.",
+   *   "result": {
+   *     "reward": 100
+   *   }
+   * }
    */
   async claimQuestReward(
     payload: QuestRewardRequest,
@@ -171,8 +184,7 @@ export const QuestApi = {
       if (data.isSuccess && data.result) {
         return data.result;
       } else {
-        const msg = data.message || '퀘스트 보상 수령 실패';
-        throw new Error(msg);
+        throw new Error(data.message || '퀘스트 보상 수령 실패');
       }
     } catch (error) {
       console.error(
@@ -195,8 +207,7 @@ export const QuestApi = {
       if (response.data.isSuccess) {
         return;
       } else {
-        const msg = response.data.message || '일일 퀘스트 초기화 실패';
-        throw new Error(msg);
+        throw new Error(response.data.message || '일일 퀘스트 초기화 실패');
       }
     } catch (error) {
       console.error(
