@@ -65,8 +65,8 @@ const BattleList: React.FC = () => {
   if (roomsToDisplay.length < ROOMS_PER_PAGE) {
     const empties = Array(ROOMS_PER_PAGE - roomsToDisplay.length).fill({
       id: 0,
-      name: '빈 방',
-      status: 'WAITING' as const,
+      name: '',
+      status: '' as const,
       current: 0,
       max: 8,
       hasReturningUser: false,
