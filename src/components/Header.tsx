@@ -19,20 +19,20 @@ const Header: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // 토큰 존재 여부로 로그인 상태 관리
+  // Axios 인터셉터에서 'accessToken' 키로 저장하고 있으므로, 여기서도 'accessToken'으로 체크
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(
-    !!localStorage.getItem('token')
+    !!localStorage.getItem('accessToken')
   );
 
   useEffect(() => {
-    // 라우트가 바뀔 때마다 토큰 상태 재확인
-    setIsLoggedIn(!!localStorage.getItem('token'));
+    // 라우트가 바뀔 때마다 (로그인 완료 후 리다이렉트 시) 상태 재확인
+    setIsLoggedIn(!!localStorage.getItem('accessToken'));
   }, [location]);
 
-  // 다른 탭에서 로그아웃/로그인 시에도 반영
+  // 다른 탭에서 accessToken이 바뀔 때에도 반영
   useEffect(() => {
     const handleStorage = (e: StorageEvent) => {
-      if (e.key === 'token') {
+      if (e.key === 'accessToken') {
         setIsLoggedIn(!!e.newValue);
       }
     };
@@ -43,7 +43,7 @@ const Header: React.FC = () => {
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
+    localStorage.removeItem('accessToken');
     setIsLoggedIn(false);
     navigate('/'); // SPA 내에서 홈으로 이동
   };
