@@ -1,7 +1,9 @@
+// src/components/Battle/StatusBadge.tsx
+
 import React from 'react';
 import styled from 'styled-components';
 
-export type RoomStatus = 'WAITING' | 'PLAYING' | 'FULL';
+export type RoomStatus = 'WAITING' | 'PLAYING' | 'FULL' | 'FINISHED';
 
 const getStatusBadgeColor = (status: RoomStatus): string => {
   switch (status) {
@@ -11,6 +13,8 @@ const getStatusBadgeColor = (status: RoomStatus): string => {
       return '#ff3b30';
     case 'FULL':
       return '#ffcc00';
+    case 'FINISHED':
+      return '#999999';
     default:
       return '#999';
   }

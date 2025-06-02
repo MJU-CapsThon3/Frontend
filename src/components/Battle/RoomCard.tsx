@@ -71,7 +71,6 @@ const Title = styled.div`
 const Id = styled.span`
   color: #ffcc00;
   text-shadow: 1px 1px #555;
-
   border-radius: 4px;
   background-color: skyblue;
   padding: 4px;
@@ -105,7 +104,6 @@ const UserIconWrapper = styled.div`
 
 const UserIcon = styled(FaUserFriends as any)`
   width: 20px;
-
   height: 20px;
   padding: 6px 8px;
   cursor: pointer;
