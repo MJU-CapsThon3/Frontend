@@ -19,6 +19,7 @@ import {
   GenerateAITopicsResponse,
   SetTopicsRequest,
 } from '../../api/battle/battleRoomApi';
+import VoteApi, { CreateVoteRequest } from '../../api/vote/voteApi'; // 투표 API
 
 // ───── 아이콘 임포트 ──────────────────────────────
 import BronzeIcon from '../../assets/Bronze.svg';
@@ -40,7 +41,6 @@ type Tier =
   | 'master'
   | 'grandmaster'
   | 'challenger';
-
 type Role = 'participant' | 'spectator';
 
 export type PlayerData = {
@@ -54,7 +54,7 @@ export type PlayerData = {
 };
 
 // ───── 상수 정의 ──────────────────────────────
-const OWNER_ID = 1; // 예시용: 현재 로그인된 사용자 ID
+const OWNER_ID = 1; // 현재 로그인된 사용자 ID (예시)
 const TOTAL_SLOTS = 8;
 const BOX_SIZE = '150px';
 
@@ -89,7 +89,6 @@ const BattleDetail: React.FC = () => {
   const [players, setPlayers] = useState<PlayerData[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [chatMessages, setChatMessages] = useState<any[]>([]);
-  // API에서 받아올 주제(질문)
   const [subject, setSubject] = useState<string>('');
   const [sideAOption, setSideAOption] = useState<string>('');
   const [sideBOption, setSideBOption] = useState<string>('');
@@ -101,12 +100,30 @@ const BattleDetail: React.FC = () => {
   const [isSpectatorsCollapsed, setIsSpectatorsCollapsed] = useState(false);
   const [isBattleStarted, setIsBattleStarted] = useState(false);
 
-  // roomId가 없으면 렌더링 중단
+  // ─── 게임 시작/종료 오버레이 상태 ─────────────────────
+  const [showStartOverlay, setShowStartOverlay] = useState(false);
+  const [showEndOverlay, setShowEndOverlay] = useState(false);
+
+  // ─── 투표 모달 관련 상태 ─────────────────────
+  const [voteModalVisible, setVoteModalVisible] = useState(false);
+  const [hasVoted, setHasVoted] = useState(false); // 이미 투표했는지 확인
+
+  // ─── 최종 결과 모달 관련 상태 ─────────────────────
+  const [resultModalVisible, setResultModalVisible] = useState(false);
+  const [battleResult, setBattleResult] = useState<{
+    voteCount: { A: number; B: number };
+    voteWinner: 'A' | 'B' | 'DRAW';
+    aiWinner: 'A' | 'B' | 'DRAW';
+    judgementReason: string;
+    aiAnalysis: string;
+    pointsAwarded: number;
+  } | null>(null);
+
   if (!roomId) {
     return <div>유효하지 않은 방 ID입니다.</div>;
   }
 
-  // 현재 소유자 정보
+  // 현재 OWNER 정보
   const ownerData = players.find((p) => p.id === OWNER_ID);
   const nonOwnerParticipants = players.filter(
     (p) => p.role === 'participant' && p.id !== OWNER_ID
@@ -122,7 +139,6 @@ const BattleDetail: React.FC = () => {
         parseInt(roomId, 10)
       );
 
-      // ➔ API 응답에 담긴 question, topicA, topicB를 바로 상태에 할당
       if (data.question) {
         setSubject(data.question);
         setSideAOption(data.topicA);
@@ -131,7 +147,6 @@ const BattleDetail: React.FC = () => {
 
       const fetchedPlayers: PlayerData[] = [];
 
-      // A팀 (팀 색상 blue)
       data.participantA.forEach((u) => {
         fetchedPlayers.push({
           id: Number(u.userId),
@@ -148,7 +163,6 @@ const BattleDetail: React.FC = () => {
         }
       });
 
-      // B팀 (팀 색상 red)
       data.participantB.forEach((u) => {
         fetchedPlayers.push({
           id: Number(u.userId),
@@ -165,7 +179,6 @@ const BattleDetail: React.FC = () => {
         }
       });
 
-      // 관전자
       data.spectators.forEach((u, idx) => {
         fetchedPlayers.push({
           id: Number(u.userId),
@@ -218,7 +231,7 @@ const BattleDetail: React.FC = () => {
     }
   }, [chatMessages]);
 
-  // ─── “방 나가기” 버튼에 leaveRoom API 연결 ─────────────────────
+  // ─── “방 나가기” 버튼 ─────────────────────
   const handleExit = async () => {
     try {
       await BattleRoomApi.leaveRoom(parseInt(roomId, 10));
@@ -229,22 +242,41 @@ const BattleDetail: React.FC = () => {
     }
   };
 
-  // ─── “시작/종료” 버튼 클릭 시 배틀 시작 or 종료 API 호출 ─────────────────────
+  // ─── “시작/종료” 버튼 클릭 ─────────────────────
   const handleToggleBattle = async () => {
     if (!isBattleStarted) {
+      // 배틀 시작
       try {
         await BattleRoomApi.startBattle(parseInt(roomId, 10));
         setIsBattleStarted(true);
-        alert('배틀이 시작되었습니다!');
+
+        // 시작 오버레이 보여주기 (3초 후 자동 사라짐)
+        setShowStartOverlay(true);
+        setTimeout(() => setShowStartOverlay(false), 3000);
       } catch (err) {
         console.error('배틀 시작 오류:', err);
         alert('배틀 시작 중 오류가 발생했습니다.');
       }
     } else {
+      // 배틀 종료
       try {
         await BattleRoomApi.endBattle(parseInt(roomId, 10));
         setIsBattleStarted(false);
-        alert('배틀이 종료되었습니다!');
+
+        // 종료 오버레이 보여주기 (3초 후 자동 사라짐 뒤 투표/결과 로직)
+        setShowEndOverlay(true);
+        setTimeout(() => {
+          setShowEndOverlay(false);
+
+          // 종료 아이콘이 사라진 시점에, 관전자 투표 또는 바로 결과 조회
+          if (ownerData && ownerData.role === 'spectator' && !hasVoted) {
+            setVoteModalVisible(true);
+          } else {
+            fetchBattleResult();
+          }
+        }, 3000);
+
+        alert('배틀이 종료되었습니다! 관전자 분들은 투표해주세요.');
       } catch (err) {
         console.error('배틀 종료 오류:', err);
         alert('배틀 종료 중 오류가 발생했습니다.');
@@ -252,6 +284,56 @@ const BattleDetail: React.FC = () => {
     }
   };
 
+  // ─── 최종 결과 조회 함수 ─────────────────────
+  const fetchBattleResult = async () => {
+    try {
+      const result = await BattleRoomApi.getBattleResult(parseInt(roomId, 10));
+      setBattleResult(result);
+      setResultModalVisible(true);
+    } catch (err) {
+      console.error('최종 결과 조회 오류:', err);
+      // 오류 시 모달 없이 넘어가도 무방
+    }
+  };
+
+  // ─── 투표 모달에서 “A팀” / “B팀” 클릭 시 호출 ─────────────────────
+  const handleVote = async (choice: 'A' | 'B') => {
+    if (!ownerData || hasVoted) return;
+
+    try {
+      const payload: CreateVoteRequest = { vote: choice };
+      await VoteApi.createVote(roomId, payload);
+      setHasVoted(true);
+      setVoteModalVisible(false);
+      alert(`투표 완료! ${choice}팀을 선택하셨습니다.`);
+      fetchBattleResult();
+    } catch (err: any) {
+      console.error(err.message);
+      alert('투표 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+      setVoteModalVisible(false);
+      fetchBattleResult();
+    }
+  };
+
+  // ─── 투표 모달 취소 / 자동 닫힘 로직 ─────────────────────
+  const handleVoteCancel = () => {
+    setVoteModalVisible(false);
+    fetchBattleResult();
+  };
+  useEffect(() => {
+    // 투표 모달이 켜지면 20초 후에 자동으로 닫고 결과 모달 띄우기
+    if (voteModalVisible) {
+      const timer = setTimeout(() => {
+        if (!hasVoted) {
+          setVoteModalVisible(false);
+          fetchBattleResult();
+        }
+      }, 20000);
+      return () => clearTimeout(timer);
+    }
+  }, [voteModalVisible, hasVoted]);
+
+  // ─── 플레이어 강퇴 ─────────────────────
   const handleKickPlayer = () => {
     if (selectedPlayer) {
       setPlayers((prev) => prev.filter((p) => p.id !== selectedPlayer.id));
@@ -265,12 +347,8 @@ const BattleDetail: React.FC = () => {
     if (!pendingMoveSlot || !ownerData) return;
 
     const { area, index } = pendingMoveSlot;
-    let newRoleValue: ChangeRoleRequest['role'];
-    if (area === 'spectator') {
-      newRoleValue = 'P';
-    } else {
-      newRoleValue = index === 0 ? 'A' : 'B';
-    }
+    let newRoleValue: ChangeRoleRequest['role'] =
+      area === 'spectator' ? 'P' : index === 0 ? 'A' : 'B';
 
     try {
       await BattleRoomApi.changeRole(parseInt(roomId, 10), {
@@ -312,12 +390,11 @@ const BattleDetail: React.FC = () => {
       setPendingMoveSlot(null);
     }
   };
-
   const handleCancelMove = () => {
     setPendingMoveSlot(null);
   };
 
-  // ─── 랜덤 토론 주제 생성 (AI 주제 생성 API 호출) ─────────────────────
+  // ─── 랜덤 주제 생성 ─────────────────────
   const handleRandomSubject = async () => {
     try {
       const res: GenerateAITopicsResponse['result'] =
@@ -329,7 +406,6 @@ const BattleDetail: React.FC = () => {
       }
     } catch (err) {
       console.error('랜덤 토론 주제 생성 오류:', err);
-      // API 실패 시 예시 키워드 풀로 대체
       const keywordPool = [
         '기린',
         '코끼리',
@@ -340,37 +416,33 @@ const BattleDetail: React.FC = () => {
         '토끼',
         '거북이',
       ];
-      const shuffled = [...keywordPool].sort(() => 0.5 - Math.random());
+      const shuffled = [...keywordPool].sort(() => Math.random() - 0.5);
       setSubject(`${shuffled[0]} vs ${shuffled[1]}`);
       setSideAOption(shuffled[0]);
       setSideBOption(shuffled[1]);
     }
   };
 
-  // ─── 직접 주제 생성 버튼 클릭 ─────────────────────
+  // ─── 직접 주제 생성 모달 오픈 ─────────────────────
   const handleDirectSubject = () => {
     setSubjectAInput('');
     setSubjectBInput('');
     setModalVisible(true);
   };
 
-  // ─── 직접 입력한 주제로 서버 API 호출하여 저장 ─────────────────────
+  // ─── 직접 주제 입력 제출 ─────────────────────
   const handleModalSubmit = async () => {
     const a = subjectAInput.trim();
     const b = subjectBInput.trim();
-
     if (!a || !b) {
       alert('주제 A와 주제 B를 모두 입력해주세요.');
       return;
     }
-
-    // API 요청 바디 생성
     const payload: SetTopicsRequest = {
       question: `${a} vs ${b}`,
       topicA: a,
       topicB: b,
     };
-
     try {
       const res = await BattleRoomApi.setTopics(parseInt(roomId, 10), payload);
       if (res) {
@@ -380,7 +452,6 @@ const BattleDetail: React.FC = () => {
       }
     } catch (err) {
       console.error('직접 주제 설정 오류:', err);
-      // 실패 시에도 사용자가 입력한 두 값을 화면에 반영
       setSubject(`${a} vs ${b}`);
       setSideAOption(a);
       setSideBOption(b);
@@ -430,7 +501,7 @@ const BattleDetail: React.FC = () => {
     );
   };
 
-  // ─── 왼쪽 슬롯 렌더링 ─────────────────────
+  // ─── 왼쪽 슬롯(A팀) ─────────────────────
   const renderLeftSlot = () => (
     <CenteredDiv>
       <ParticipantKeyword>{sideAOption}</ParticipantKeyword>
@@ -453,7 +524,7 @@ const BattleDetail: React.FC = () => {
     </CenteredDiv>
   );
 
-  // ─── 오른쪽 슬롯 렌더링 ─────────────────────
+  // ─── 오른쪽 슬롯(B팀) ─────────────────────
   const renderRightSlot = () => (
     <CenteredDiv>
       <ParticipantKeyword>{sideBOption}</ParticipantKeyword>
@@ -476,7 +547,7 @@ const BattleDetail: React.FC = () => {
     </CenteredDiv>
   );
 
-  // ─── 관전자 그리드 렌더링 ─────────────────────
+  // ─── 관전자 그리드 ─────────────────────
   const renderSpectatorGrid = () => {
     const cells = [];
     for (let i = 0; i < TOTAL_SLOTS; i++) {
@@ -560,6 +631,7 @@ const BattleDetail: React.FC = () => {
 
       <TopSection>
         <ParticipantContainer>{renderLeftSlot()}</ParticipantContainer>
+
         <ChatSection>
           <ChatMessages ref={chatContainerRef}>
             {chatMessages.map((msg, idx) => (
@@ -578,6 +650,7 @@ const BattleDetail: React.FC = () => {
             />
           </ChatForm>
         </ChatSection>
+
         <ParticipantContainer>{renderRightSlot()}</ParticipantContainer>
       </TopSection>
 
@@ -611,6 +684,7 @@ const BattleDetail: React.FC = () => {
         )}
       </SpectatorsSection>
 
+      {/* ─── 역할 이동 확인 모달 ───────────────────────────── */}
       {pendingMoveSlot !== null && (
         <ModalComponent title='이동 확인'>
           <ModalText>해당 슬롯으로 이동하시겠습니까?</ModalText>
@@ -625,6 +699,7 @@ const BattleDetail: React.FC = () => {
         </ModalComponent>
       )}
 
+      {/* ─── 직접 주제 입력 모달 ───────────────────────────── */}
       {modalVisible && (
         <ModalComponent title='주제 입력 (주제 A / 주제 B)'>
           <ColumnContainer>
@@ -645,17 +720,14 @@ const BattleDetail: React.FC = () => {
             <ModalSubmitButton onClick={handleModalSubmit}>
               생성
             </ModalSubmitButton>
-            <ModalCancelButton
-              onClick={() => {
-                setModalVisible(false);
-              }}
-            >
+            <ModalCancelButton onClick={() => setModalVisible(false)}>
               취소
             </ModalCancelButton>
           </ModalButtons>
         </ModalComponent>
       )}
 
+      {/* ─── 강퇴 확인 모달 ───────────────────────────── */}
       {kickModalVisible && selectedPlayer && (
         <ModalComponent title='플레이어 강퇴 확인'>
           <ModalText>
@@ -673,6 +745,80 @@ const BattleDetail: React.FC = () => {
             </ModalCancelButton>
           </ModalButtons>
         </ModalComponent>
+      )}
+
+      {/* ─── 투표 모달 (배틀 종료 후, 관전자용) ───────────────────────────── */}
+      {voteModalVisible &&
+        !hasVoted &&
+        ownerData &&
+        ownerData.role === 'spectator' && (
+          <ModalComponent title='승리팀을 투표해주세요'>
+            <ModalText>누가 이긴 것 같으신가요?</ModalText>
+            <VoteButtonGroup>
+              <VoteButton onClick={() => handleVote('A')}>A팀 투표</VoteButton>
+              <VoteButton onClick={() => handleVote('B')}>B팀 투표</VoteButton>
+            </VoteButtonGroup>
+            <ModalCancelButton onClick={handleVoteCancel}>
+              나중에 투표
+            </ModalCancelButton>
+          </ModalComponent>
+        )}
+
+      {/* ─── 최종 결과 모달 ───────────────────────────── */}
+      {resultModalVisible && battleResult && (
+        <ModalComponent title='토론 최종 결과 및 포인트'>
+          <ResultContainer>
+            <ResultRow>
+              <ResultLabel>투표 집계</ResultLabel>
+              <ResultValue>
+                A: {battleResult.voteCount.A}표&nbsp;&nbsp;B:{' '}
+                {battleResult.voteCount.B}표
+              </ResultValue>
+            </ResultRow>
+            <ResultRow>
+              <ResultLabel>투표 승자</ResultLabel>
+              <ResultValue>{battleResult.voteWinner}</ResultValue>
+            </ResultRow>
+            <ResultRow>
+              <ResultLabel>AI 분석 승자</ResultLabel>
+              <ResultValue>{battleResult.aiWinner}</ResultValue>
+            </ResultRow>
+            <SectionDivider />
+            <SectionTitle>판정 이유</SectionTitle>
+            <SectionText>{battleResult.judgementReason}</SectionText>
+            <SectionDivider />
+            <SectionTitle>AI 상세 분석</SectionTitle>
+            <SectionText style={{ whiteSpace: 'pre-wrap' }}>
+              {battleResult.aiAnalysis}
+            </SectionText>
+            <SectionDivider />
+            <ResultRow>
+              <ResultLabel>획득 포인트</ResultLabel>
+              <ResultValue>
+                {battleResult.pointsAwarded.toLocaleString()} P
+              </ResultValue>
+            </ResultRow>
+          </ResultContainer>
+          <ModalButtons style={{ marginTop: '1rem', justifyContent: 'center' }}>
+            <ModalSubmitButton onClick={() => setResultModalVisible(false)}>
+              확인
+            </ModalSubmitButton>
+          </ModalButtons>
+        </ModalComponent>
+      )}
+
+      {/* ─── 게임 시작 오버레이 (아이콘 제거) ───────────────────────────── */}
+      {showStartOverlay && (
+        <OverlayCenter>
+          <OverlayText>게임 시작</OverlayText>
+        </OverlayCenter>
+      )}
+
+      {/* ─── 게임 종료 오버레이 (아이콘 제거) ───────────────────────────── */}
+      {showEndOverlay && (
+        <OverlayCenter>
+          <OverlayText>게임 종료</OverlayText>
+        </OverlayCenter>
       )}
     </Container>
   );
@@ -695,6 +841,7 @@ const Container = styled.div`
   position: relative;
 `;
 
+/** 헤더 */
 const Header = styled.header`
   display: flex;
   align-items: center;
@@ -853,11 +1000,11 @@ const SpectatorSlotContainer = styled.div<{ $occupied: boolean }>`
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: ${(props) => (props.$occupied ? 'default' : 'pointer')};
+  cursor: ${({ $occupied }) => ($occupied ? 'default' : 'pointer')};
   box-shadow: 0 3px 5px rgba(0, 0, 0, 0.1);
   transition: transform 0.2s;
   &:hover {
-    transform: ${(props) => (props.$occupied ? 'none' : 'scale(1.03)')};
+    transform: ${({ $occupied }) => ($occupied ? 'none' : 'scale(1.03)')};
   }
 `;
 
@@ -889,7 +1036,7 @@ const CommonCard = styled.div`
 `;
 
 const StyledPlayerCard = styled(CommonCard)<{ $bgColor: string }>`
-  background-color: ${(props) => props.$bgColor};
+  background-color: ${({ $bgColor }) => $bgColor};
 `;
 
 const PlayerImage = styled.img`
@@ -982,19 +1129,20 @@ const ChatBubbleContainer = styled.div<{
   padding: 8px 12px;
   border-radius: 16px;
   margin: 4px 0;
-  background-color: ${(props) =>
-    props.isNotice ? '#ffe6e6' : props.isOwnerMsg ? '#dcf8c6' : '#fff'};
-  align-self: ${(props) => (props.isOwnerMsg ? 'flex-end' : 'flex-start')};
+  background-color: ${({ isOwnerMsg, isNotice }) =>
+    isNotice ? '#ffe6e6' : isOwnerMsg ? '#dcf8c6' : '#fff'};
+  align-self: ${({ isOwnerMsg }) => (isOwnerMsg ? 'flex-end' : 'flex-start')};
   box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
   word-break: break-word;
 `;
 
 const ChatBubbleText = styled.p<{ isNotice: boolean }>`
   font-size: 0.9rem;
-  color: ${(props) => (props.isNotice ? 'red' : '#000')};
+  color: ${({ isNotice }) => (isNotice ? 'red' : '#000')};
   margin: 0;
 `;
 
+/** 모달 오버레이(공통) ───────────────────────────── */
 const ModalOverlay = styled.div`
   position: fixed;
   top: 0;
@@ -1008,6 +1156,7 @@ const ModalOverlay = styled.div`
   z-index: 1000;
 `;
 
+/** 모달 콘텐츠(흰 배경 박스) */
 const ModalContent = styled.div`
   width: 400px;
   background-color: #fff;
@@ -1054,6 +1203,38 @@ const ModalButtons = styled.div`
   gap: 0.5rem;
 `;
 
+/** “네” 버튼 */
+const ModalSubmitButton = styled.button`
+  background-color: #4caf50;
+  color: #fff;
+  border: 2px solid #000;
+  border-radius: 4px;
+  padding: 0.4rem 0.8rem;
+  cursor: pointer;
+  width: 100%;
+  font-weight: bold;
+  transition: transform 0.2s;
+  &:hover {
+    transform: translateY(-2px);
+  }
+`;
+
+/** “아니요” 버튼 */
+const ModalCancelButton = styled.button`
+  background-color: #f06292;
+  color: #fff;
+  border: 2px solid #000;
+  border-radius: 4px;
+  padding: 0.4rem 0.8rem;
+  cursor: pointer;
+  width: 100%;
+  font-weight: bold;
+  transition: transform 0.2s;
+  &:hover {
+    transform: translateY(-2px);
+  }
+`;
+
 const EmptySlotText = styled.div`
   color: #aaa;
   text-align: center;
@@ -1089,32 +1270,94 @@ const SubjectButton = styled.button`
   }
 `;
 
-const ModalSubmitButton = styled.button`
-  background-color: #4caf50;
+const VoteButtonGroup = styled.div`
+  display: flex;
+  justify-content: space-around;
+  margin-top: 0.5rem;
+`;
+
+const VoteButton = styled.button`
+  background-color: #2196f3;
   color: #fff;
   border: 2px solid #000;
-  border-radius: 4px;
-  padding: 0.4rem 0.8rem;
-  cursor: pointer;
-  width: 100%;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
   font-weight: bold;
+  cursor: pointer;
   transition: transform 0.2s;
   &:hover {
     transform: translateY(-2px);
   }
 `;
 
-const ModalCancelButton = styled.button`
-  background-color: #f06292;
-  color: #fff;
-  border: 2px solid #000;
-  border-radius: 4px;
-  padding: 0.4rem 0.8rem;
-  cursor: pointer;
-  width: 100%;
+/** 최종 결과 모달 내부 컨테이너 */
+const ResultContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  max-height: 70vh;
+  overflow-y: auto;
+`;
+
+/** 결과 항목 가로 배치 */
+const ResultRow = styled<div>`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+`;
+
+/** 결과 레이블 */
+const ResultLabel = styled.span`
   font-weight: bold;
-  transition: transform 0.2s;
-  &:hover {
-    transform: translateY(-2px);
-  }
+  color: #333;
+`;
+
+/** 결과 값 */
+const ResultValue = styled.span`
+  color: #000;
+`;
+
+/** 구분선 */
+const SectionDivider = styled.hr`
+  border: none;
+  border-top: 1px solid #ddd;
+  margin: 0.5rem 0;
+`;
+
+/** 소제목 */
+const SectionTitle = styled.h4`
+  margin: 0;
+  font-size: 1rem;
+  font-weight: bold;
+  color: #333;
+`;
+
+/** 본문 텍스트 */
+const SectionText = styled.p`
+  font-size: 0.9rem;
+  color: #555;
+  margin: 0;
+`;
+
+/** 게임 시작/종료 오버레이 중앙 박스 */
+const OverlayCenter = styled.div`
+  position: absolute;
+  top: 30%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: rgba(0, 0, 0, 0.75);
+  border-radius: 8px;
+  padding: 1.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 2000;
+`;
+
+/** 오버레이 텍스트 (흰색) */
+const OverlayText = styled.span`
+  color: #fff;
+  font-size: 5rem;
+  font-weight: bold;
+  margin-top: 0.5rem;
 `;
