@@ -38,12 +38,20 @@ export interface CreateBattleRoomResponse {
 /**
  * 전체 배틀방 목록 조회 시 반환되는 방 요약 정보 타입
  * GET /battle/rooms
+ *
+ * 예시 응답:
+ * {
+ *   "roomId": "2",
+ *   "roomName": "두 번째 방",
+ *   "status": "PLAYING",
+ *   "spectatorCount": 5
+ * }
  */
 export interface RoomSummary {
-  roomId: number;
-  status: 'WAITING' | 'FULL' | 'PLAYING' | 'FINISHED';
-  topicA: string;
-  topicB: string;
+  roomId: string;
+  roomName: string;
+  status: 'WAITING' | 'FULL' | 'PLAYING' | 'FINISHED' | 'ENDED';
+  spectatorCount: number;
 }
 
 /**
@@ -51,7 +59,7 @@ export interface RoomSummary {
  */
 export interface GetBattleRoomsResponse {
   isSuccess: boolean;
-  code: string;
+  code: string | number;
   message: string;
   result: RoomSummary[] | null;
 }
@@ -59,13 +67,27 @@ export interface GetBattleRoomsResponse {
 /**
  * 특정 배틀방 정보 조회 타입 (간단조회)
  * GET /battle/rooms/{roomId}
+ *
+ * 예시 응답:
+ * {
+ *   "roomId": 1,
+ *   "adminId": 5,
+ *   "topicA": "사자",
+ *   "topicB": "코끼리",
+ *   "status": "WAITING",
+ *   "createdAt": "2025-05-25T12:00:00.000Z",
+ *   "participants": [
+ *     { "userId": 9, "role": "A", "joinedAt": "2025-05-25T12:01:00.000Z" }
+ *   ],
+ *   "spectatorCount": 3
+ * }
  */
 export interface RoomDetail {
   roomId: number;
   adminId: number;
   topicA: string;
   topicB: string;
-  status: 'WAITING' | 'FULL' | 'PLAYING' | 'FINISHED';
+  status: 'WAITING' | 'FULL' | 'PLAYING' | 'FINISHED' | 'ENDED';
   createdAt: string; // ISO 날짜 문자열
   participants: Array<{
     userId: number;
@@ -80,7 +102,7 @@ export interface RoomDetail {
  */
 export interface GetBattleRoomResponse {
   isSuccess: boolean;
-  code: string;
+  code: string | number;
   message: string;
   result: RoomDetail | null;
 }
@@ -88,13 +110,34 @@ export interface GetBattleRoomResponse {
 /**
  * 상세 조회 타입
  * GET /battle/rooms/{roomId}/detail
+ *
+ * 예시 응답:
+ * {
+ *   "roomId": "1",
+ *   "adminId": "5",
+ *   "question": "육지 맹수 중 가장 강력한 동물은 사자일까 호랑이일까?",
+ *   "topicA": "사자",
+ *   "topicB": "호랑이",
+ *   "status": "WAITING",
+ *   "createdAt": "2025-05-25T12:00:00.000Z",
+ *   "participantA": [
+ *     { "userId": "9", "joinedAt": "2025-05-25T12:01:00.000Z" }
+ *   ],
+ *   "participantB": [
+ *     { "userId": "10", "joinedAt": "2025-05-25T12:02:00.000Z" }
+ *   ],
+ *   "spectators": [
+ *     { "userId": "12", "joinedAt": "2025-05-25T12:04:00.000Z" }
+ *   ]
+ * }
  */
 export interface RoomDetailFull {
-  roomId: number;
-  adminId: number;
+  roomId: string;
+  adminId: string;
+  question: string;
   topicA: string;
   topicB: string;
-  status: 'WAITING' | 'FULL' | 'PLAYING' | 'FINISHED';
+  status: 'WAITING' | 'FULL' | 'PLAYING' | 'FINISHED' | 'ENDED';
   createdAt: string; // ISO 날짜 문자열
   participantA: Array<{
     userId: string;
@@ -115,7 +158,7 @@ export interface RoomDetailFull {
  */
 export interface GetBattleRoomDetailResponse {
   isSuccess: boolean;
-  code: string;
+  code: string | number;
   message: string;
   result: RoomDetailFull | null;
 }
@@ -123,10 +166,20 @@ export interface GetBattleRoomDetailResponse {
 /**
  * 방 참가 (관전자) 요청 바디는 없음
  * POST /battle/rooms/{roomId}/participants
+ *
+ * 예시 응답:
+ * {
+ *   "participantId": "10",
+ *   "roomId": "1",
+ *   "userId": "7",
+ *   "role": "P",
+ *   "joinedAt": "2025-05-25T12:35:00.000Z",
+ *   "side": "string"
+ * }
  */
 export interface JoinBattleRoomResponse {
   isSuccess: boolean;
-  code: string;
+  code: string | number;
   message: string;
   result: {
     participantId: string;
@@ -141,13 +194,15 @@ export interface JoinBattleRoomResponse {
 /**
  * 역할 변경 요청 바디 타입
  * POST /battle/rooms/{roomId}/participants/role
+ * Request body:
+ * { "role": "A" }
  */
 export interface ChangeRoleRequest {
   role: 'A' | 'B' | 'P';
 }
 export interface ChangeRoleResponse {
   isSuccess: boolean;
-  code: string;
+  code: string | number;
   message: string;
   result: {
     participantId: string;
@@ -161,17 +216,26 @@ export interface ChangeRoleResponse {
 /**
  * 주제 설정 요청 바디 타입
  * POST /battle/rooms/{roomId}/topics
+ *
+ * 예시 Request body:
+ * {
+ *   "question": "육지 맹수 중 가장 강력한 동물은?",
+ *   "topicA": "사자",
+ *   "topicB": "호랑이"
+ * }
  */
 export interface SetTopicsRequest {
+  question: string;
   topicA: string;
   topicB: string;
 }
 export interface SetTopicsResponse {
   isSuccess: boolean;
-  code: string;
+  code: string | number;
   message: string;
   result: {
     roomId: string;
+    question: string;
     topicA: string;
     topicB: string;
     updatedAt: string; // ISO 날짜 문자열
@@ -188,10 +252,21 @@ export interface SetTopicsResponse {
 /**
  * AI 주제 생성 후 저장
  * POST /battle/rooms/{roomId}/topics/ai
+ *
+ * 예시 응답(result 필드):
+ * {
+ *   "roomId": "1",
+ *   "topicA": "사자",
+ *   "topicB": "호랑이",
+ *   "updatedAt": "2025-06-03T02:43:13.293Z",
+ *   "titles": [
+ *     { "titleId": "18", "side": "B", "title": "호랑이", "suggestedBy": "ai", "createdAt": "2025-06-03T02:43:13.250Z" }
+ *   ]
+ * }
  */
 export interface GenerateAITopicsResponse {
   isSuccess: boolean;
-  code: string;
+  code: string | number;
   message: string;
   result: {
     roomId: string;
@@ -211,6 +286,12 @@ export interface GenerateAITopicsResponse {
 /**
  * 주제 수정 요청 바디 타입
  * POST /battle/rooms/{roomId}/topics/update
+ *
+ * 예시 Request body:
+ * {
+ *   "topicA": "사자 수정",
+ *   "topicB": "호랑이 수정"
+ * }
  */
 export interface UpdateTopicsRequest {
   topicA: string;
@@ -218,7 +299,7 @@ export interface UpdateTopicsRequest {
 }
 export interface UpdateTopicsResponse {
   isSuccess: boolean;
-  code: string;
+  code: string | number;
   message: string;
   result: {
     roomId: string;
@@ -230,10 +311,17 @@ export interface UpdateTopicsResponse {
 /**
  * 배틀 시작
  * POST /battle/rooms/{roomId}/start
+ *
+ * 예시 응답:
+ * {
+ *   "roomId": 1,
+ *   "status": "PLAYING",
+ *   "startedAt": "2025-05-25T12:34:56.000Z"
+ * }
  */
 export interface StartBattleResponse {
   isSuccess: boolean;
-  code: string;
+  code: string | number;
   message: string;
   result: {
     roomId: number;
@@ -245,10 +333,12 @@ export interface StartBattleResponse {
 /**
  * 토론(배틀) 종료
  * POST /battle/rooms/{roomId}/end
+ *
+ * 예시 응답: "string"
  */
 export interface EndBattleResponse {
   isSuccess: boolean;
-  code: string;
+  code: string | number;
   message: string;
   result: string | null;
 }
@@ -256,10 +346,12 @@ export interface EndBattleResponse {
 /**
  * 방 떠나기
  * POST /battle/rooms/{roomId}/leave
+ *
+ * 예시 응답: "string"
  */
 export interface LeaveBattleResponse {
   isSuccess: boolean;
-  code: string;
+  code: string | number;
   message: string;
   result: string | null;
 }
@@ -267,17 +359,31 @@ export interface LeaveBattleResponse {
 /**
  * 토론 최종 결과 조회 + 포인트 지급
  * GET /battle/rooms/{roomId}/result
+ *
+ * 예시 응답:
+ * {
+ *   "voteCount": { "A": 1, "B": 1 },
+ *   "voteWinner": "B",
+ *   "aiWinner": "B",
+ *   "judgementReason": "B가 A보다 …",
+ *   "aiAnalysis": "A: …\nB: …\n최종 승자: B\n판정 이유: …",
+ *   "pointsAwarded": 500
+ * }
  */
 export interface GetBattleResultResponse {
   isSuccess: boolean;
-  code: string;
+  code: string | number;
   message: string;
   result: {
-    winnerSide: 'A' | 'B' | 'DRAW';
-    pointsAwarded: Array<{
-      userId: string;
-      points: number;
-    }>;
+    voteCount: {
+      A: number;
+      B: number;
+    };
+    voteWinner: 'A' | 'B' | 'DRAW';
+    aiWinner: 'A' | 'B' | 'DRAW';
+    judgementReason: string;
+    aiAnalysis: string;
+    pointsAwarded: number;
   } | null;
 }
 
@@ -311,15 +417,17 @@ export const BattleRoomApi = {
   },
 
   /**
-   * 전체 배틀방 목록 조회
+   * 전체 배틀방 목록 조회 (페이지네이션: ?page=1 등 쿼리 가능)
    * GET /battle/rooms
    */
   async getAllRooms(
+    page: number = 1,
     axiosInstance: AxiosInstance = Axios
   ): Promise<RoomSummary[]> {
     try {
-      const response =
-        await axiosInstance.get<GetBattleRoomsResponse>('/battle/rooms');
+      const response = await axiosInstance.get<GetBattleRoomsResponse>(
+        `/battle/rooms?page=${page}`
+      );
       const data = response.data;
       if (data.isSuccess && data.result) {
         return data.result;

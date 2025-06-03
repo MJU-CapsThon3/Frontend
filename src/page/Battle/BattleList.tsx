@@ -16,58 +16,53 @@ const ROOMS_PER_PAGE = 10;
  * 실제 API에서 내려주는 JSON 형식에 맞춘 로컬 타입
  *  - API 응답 예시:
  *    {
- *      "id": "1",
+ *      "roomId": "1",
+ *      "roomName": "",
  *      "status": "ENDED",
- *      "topicA": "블리츠",
- *      "topicB": "브라움"
+ *      "spectatorCount": 3
  *    }
  */
 interface RawRoomSummary {
-  id: string;
+  roomId: string;
+  roomName: string;
   status: 'WAITING' | 'FULL' | 'PLAYING' | 'FINISHED' | 'ENDED';
-  topicA: string;
-  topicB: string;
+  spectatorCount: number;
 }
 
 const BattleList: React.FC = () => {
   const navigate = useNavigate();
 
-  // API에서 받아온 전체 방 목록 (RawRoomSummary[])
-  const [allRooms, setAllRooms] = useState<RawRoomSummary[]>([]);
+  // 해당 페이지의 방 목록 (RawRoomSummary[])
+  const [roomsThisPage, setRoomsThisPage] = useState<RawRoomSummary[]>([]);
   const [page, setPage] = useState(1);
   const [showRoomModal, setShowRoomModal] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState<RoomData | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  // 총 페이지 수 계산
-  const totalPages = Math.ceil(allRooms.length / ROOMS_PER_PAGE);
+  // 다음/이전 버튼 활성 여부
+  const hasPrev = page > 1;
+  const hasNext = roomsThisPage.length === ROOMS_PER_PAGE;
 
-  // 컴포넌트 마운트 시 API 호출하여 방 목록 받아오기
+  // 페이지가 바뀔 때마다 해당 페이지 데이터(API) 호출
   useEffect(() => {
     (async () => {
       try {
-        // getAllRooms()가 반환하는 타입(RoomSummary[])과 실제 응답 키(id)는 다르므로
-        // raw 타입을 any로 받아온 뒤, id 필드를 사용하도록 캐스팅할 것입니다.
-        const roomsFromApi: any[] = await BattleRoomApi.getAllRooms();
-        // roomsFromApi 배열의 각 원소가 { id: string, status, topicA, topicB } 형태인지 확인
-        setAllRooms(roomsFromApi as RawRoomSummary[]);
+        // 서버 API에 페이지 쿼리 파라미터 전달
+        const roomsFromApi: any[] = await BattleRoomApi.getAllRooms(page);
+        setRoomsThisPage(roomsFromApi as RawRoomSummary[]);
       } catch (error) {
         console.error('[BattleList] 전체 방 조회 오류:', error);
       }
     })();
-  }, []);
+  }, [page]);
 
-  // 현재 페이지에 표시할 방 데이터만 잘라냄
-  const startIndex = (page - 1) * ROOMS_PER_PAGE;
-  const pageSlice = allRooms.slice(startIndex, startIndex + ROOMS_PER_PAGE);
-
-  // RawRoomSummary → RoomData 매핑 (id: string → 숫자로 변환)
-  const roomsToDisplay: RoomData[] = pageSlice.map((r) => ({
-    id: Number(r.id),
-    name: `${r.topicA} vs ${r.topicB}`,
-    status: r.status as RoomData['status'], // RoomData.status 는 RoomStatus, 문자열 매핑
-    current: 0,
-    max: 8,
+  // RawRoomSummary → RoomData 매핑 (roomId: string → 숫자로 변환, roomName 사용)
+  const roomsToDisplay: RoomData[] = roomsThisPage.map((r) => ({
+    id: Number(r.roomId),
+    name: r.roomName || `[방 ${r.roomId}]`, // 빈 문자열일 경우 ID로 대체
+    status: r.status as RoomData['status'],
+    current: r.spectatorCount, // 현재 관전자 수
+    max: 8, // 최대 인원 고정
     hasReturningUser: false,
   }));
 
@@ -85,12 +80,12 @@ const BattleList: React.FC = () => {
   }
 
   const prev = () => {
-    if (page > 1) {
+    if (hasPrev) {
       setPage((p) => p - 1);
     }
   };
   const next = () => {
-    if (page < totalPages) {
+    if (hasNext) {
       setPage((p) => p + 1);
     }
   };
@@ -117,10 +112,20 @@ const BattleList: React.FC = () => {
     setShowRoomModal(true);
   };
 
-  /** 방 만들기 버튼 클릭 시 모달 열기 */
-  const handleCreateRoom = (name: string) => {
-    console.log('새 방 생성:', name);
-    // 실제 생성 로직: BattleRoomApi.createRoom({ roomName: name }) 후 allRooms 갱신
+  /**
+   * 방 만들기 버튼 클릭 시 모달 열기 → 방 생성 API 호출 후 1페이지를 다시 조회
+   */
+  const handleCreateRoom = async (name: string) => {
+    try {
+      await BattleRoomApi.createRoom({ roomName: name });
+      // 방 생성 후 항상 1페이지로 돌아가 새 목록 조회
+      setPage(1);
+      const updatedRooms: any[] = await BattleRoomApi.getAllRooms(1);
+      setRoomsThisPage(updatedRooms as RawRoomSummary[]);
+      setShowCreateModal(false);
+    } catch (error) {
+      console.error('[BattleList] 방 생성 오류:', error);
+    }
   };
 
   return (
@@ -149,7 +154,7 @@ const BattleList: React.FC = () => {
 
       <Pagination
         page={page}
-        totalPages={totalPages}
+        totalPages={hasNext ? page + 1 : page}
         onPrev={prev}
         onNext={next}
       />
