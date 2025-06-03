@@ -14,7 +14,11 @@ import { useNavigate, useParams } from 'react-router-dom';
 // ───── API import ──────────────────────────────
 import BattleChatApi, { ChatMessage } from '../../api/chat/chatApi';
 import AiApi from '../../api/Ai/AiApi';
-import { BattleRoomApi, RoomDetailFull } from '../../api/battle/battleRoomApi';
+import {
+  BattleRoomApi,
+  RoomDetailFull,
+  ChangeRoleRequest,
+} from '../../api/battle/battleRoomApi';
 
 // ───── 아이콘 임포트 ──────────────────────────────
 import BronzeIcon from '../../assets/Bronze.svg';
