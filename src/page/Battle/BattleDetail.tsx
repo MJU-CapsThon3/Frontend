@@ -1,20 +1,24 @@
-// src/pages/Battle/BattleDetail.tsx
-
-import React, { useState, useEffect, useRef, PropsWithChildren } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import styled, { keyframes } from 'styled-components';
-import {
-  FaCommentDots,
-  FaUserAlt,
-  FaSignOutAlt,
-  FaRandom,
-  FaEdit,
-} from 'react-icons/fa';
+import { FaSignOutAlt } from 'react-icons/fa';
 import { useNavigate, useParams } from 'react-router-dom';
 
 // ───── API import ──────────────────────────────
 import BattleChatApi, { ChatMessage } from '../../api/chat/chatApi';
 import AiApi from '../../api/Ai/AiApi';
 import { BattleRoomApi, RoomDetailFull } from '../../api/battle/battleRoomApi';
+
+// ───── 컴포넌트 import ──────────────────────────
+import PlayerCard from '../../components/BattleDetail/PlayerCard';
+import ChatSection from '../../components/BattleDetail/ChatSection';
+import SpectatorGrid from '../../components/BattleDetail/SpectatorGrid';
+import MoveConfirmModal from '../../components/BattleDetail/MoveConfirmModal';
+import SubjectModal from '../../components/BattleDetail/SubjectModal';
+import {
+  StartModal,
+  WarningModal,
+  KickModal,
+} from '../../components/BattleDetail/StartWarningModals';
 
 // ───── 아이콘 임포트 ──────────────────────────────
 import BronzeIcon from '../../assets/Bronze.svg';
@@ -55,7 +59,7 @@ const TOTAL_SLOTS = 8;
 const BOX_SIZE = '150px';
 
 // ───── 티어 아이콘 매핑 ──────────────────────────────
-const tierIcons: { [key in Tier]: string } = {
+export const tierIcons: { [key in Tier]: string } = {
   bronze: BronzeIcon,
   silver: SilverIcon,
   gold: GoldIcon,
@@ -72,12 +76,6 @@ const fadeIn = keyframes`
   100% { opacity: 1; }
 `;
 
-const scaleUp = keyframes`
-  0% { transform: scale(0.8); opacity: 0; }
-  100% { transform: scale(1); opacity: 1; }
-`;
-
-// ───── BattleDetail 컴포넌트 ──────────────────────────────
 type TargetSlot = { area: 'participant' | 'spectator'; index: number };
 
 const BattleDetail: React.FC = () => {
@@ -139,32 +137,27 @@ const BattleDetail: React.FC = () => {
   useEffect(() => {
     (async () => {
       try {
-        // 상세 조회 API 호출
         const data: RoomDetailFull =
           await BattleRoomApi.getRoomDetailFull(roomId);
 
-        // API에서 받아온 participantA, participantB, spectators를 PlayerData로 변환
         const fetchedPlayers: PlayerData[] = [];
 
-        // A팀 (팀 색상 blue)
-        data.participantA.forEach((u, idx) => {
+        data.participantA.forEach((u) => {
           fetchedPlayers.push({
             id: Number(u.userId),
             nickname: `유저${u.userId}`,
             avatarUrl: '',
-            isReady: true, // 실제 로직에 맞춰 변경
+            isReady: true,
             team: 'blue',
             role: 'participant',
-            tier: 'silver', // 예시값, 실제 등급 로직으로 수정
+            tier: 'silver',
           });
-          // 만약 OWNER_ID가 A팀이면 owner 위치를 왼쪽으로 설정
           if (Number(u.userId) === OWNER_ID) {
             setOwnerSide('left');
           }
         });
 
-        // B팀 (팀 색상 red)
-        data.participantB.forEach((u, idx) => {
+        data.participantB.forEach((u) => {
           fetchedPlayers.push({
             id: Number(u.userId),
             nickname: `유저${u.userId}`,
@@ -179,7 +172,6 @@ const BattleDetail: React.FC = () => {
           }
         });
 
-        // 관전자
         data.spectators.forEach((u, idx) => {
           fetchedPlayers.push({
             id: Number(u.userId),
@@ -263,9 +255,20 @@ const BattleDetail: React.FC = () => {
     }
   };
 
-  const handleConfirmMove = () => {
+  const handleConfirmMove = async () => {
     if (!pendingMoveSlot || !ownerData) return;
     const { area, index } = pendingMoveSlot;
+
+    // 역할 변경 API 호출
+    try {
+      // area가 spectator면 관전자로, participant면 참여자로 변경
+      const newRole = area === 'spectator' ? 'P' : 'A';
+      await BattleRoomApi.changeRole(roomId, { role: newRole });
+    } catch (err) {
+      console.error('역할 변경 API 호출 오류:', err);
+    }
+
+    // 클라이언트 로컬 상태 반영
     if (area === 'spectator') {
       if (ownerData.role === 'participant') {
         setPlayers((prev) =>
@@ -346,46 +349,6 @@ const BattleDetail: React.FC = () => {
     setModalVisible(false);
   };
 
-  // ─── PlayerCard 컴포넌트 ─────────────────────
-  const PlayerCard: React.FC<{
-    player: PlayerData;
-    isOwner?: boolean;
-    isSpectator?: boolean;
-  }> = ({ player, isOwner = false, isSpectator = false }) => {
-    const bgColor =
-      player.team === 'blue'
-        ? '#33bfff'
-        : player.team === 'red'
-          ? '#ff6b6b'
-          : '#fff';
-    return (
-      <StyledPlayerCard $bgColor={bgColor}>
-        <Nickname>
-          {player.nickname} {isOwner && '(나)'}
-        </Nickname>
-        <TierIcon src={tierIcons[player.tier]} alt={player.tier} />
-        {player.avatarUrl && player.avatarUrl.trim() !== '' ? (
-          isSpectator ? (
-            <SpectatorImage src={player.avatarUrl} alt='avatar' />
-          ) : (
-            <PlayerImage src={player.avatarUrl} alt='avatar' />
-          )
-        ) : (
-          <DefaultAvatar>
-            <FaUserAlt style={{ fontSize: '2rem', color: '#888' }} />
-          </DefaultAvatar>
-        )}
-        <RankArea>
-          {isOwner ? (
-            <OwnerBadge>방 장</OwnerBadge>
-          ) : player.isReady ? (
-            <ReadyBadge>준 비</ReadyBadge>
-          ) : null}
-        </RankArea>
-      </StyledPlayerCard>
-    );
-  };
-
   // ─── 왼쪽 슬롯 렌더링 ─────────────────────
   const renderLeftSlot = () => (
     <CenteredDiv>
@@ -428,77 +391,6 @@ const BattleDetail: React.FC = () => {
     </CenteredDiv>
   );
 
-  // ─── 관전자 그리드 렌더링 ─────────────────────
-  const renderSpectatorGrid = () => {
-    const cells = [];
-    for (let i = 0; i < TOTAL_SLOTS; i++) {
-      let occupant: PlayerData | null = null;
-      if (
-        ownerData &&
-        ownerData.role === 'spectator' &&
-        ownerSpectatorSlot === i
-      ) {
-        occupant = ownerData;
-      } else if (i < nonOwnerSpectators.length) {
-        occupant = nonOwnerSpectators[i];
-      }
-
-      cells.push(
-        <SpectatorSlotContainer
-          key={`spectator-slot-${i}`}
-          $occupied={!!occupant}
-          onClick={
-            occupant
-              ? undefined
-              : () => setPendingMoveSlot({ area: 'spectator', index: i })
-          }
-        >
-          {occupant ? (
-            occupant.id === OWNER_ID ? (
-              <PlayerCard player={occupant} isOwner isSpectator />
-            ) : (
-              <PlayerCard player={occupant} isSpectator />
-            )
-          ) : (
-            <EmptyBox />
-          )}
-        </SpectatorSlotContainer>
-      );
-    }
-    return cells;
-  };
-
-  // ─── 채팅 버블 ─────────────────────
-  const ChatBubble: React.FC<{ msg: ChatMessage }> = ({ msg }) => {
-    const isOwnerMsg = Number(msg.userId) === OWNER_ID;
-    const isNotice = msg.message.startsWith('[공지]');
-    return (
-      <ChatBubbleContainer isOwnerMsg={isOwnerMsg} isNotice={isNotice}>
-        <ChatBubbleText isNotice={isNotice}>
-          {isNotice
-            ? msg.message
-            : `[${msg.side}] 유저${msg.userId}: ${msg.message}`}
-        </ChatBubbleText>
-      </ChatBubbleContainer>
-    );
-  };
-
-  interface ModalComponentProps {
-    title: string;
-  }
-
-  const ModalComponent = ({
-    title,
-    children,
-  }: PropsWithChildren<ModalComponentProps>) => (
-    <ModalOverlay>
-      <ModalContent>
-        <ModalTitle>{title}</ModalTitle>
-        {children}
-      </ModalContent>
-    </ModalOverlay>
-  );
-
   return (
     <Container>
       {/* Header */}
@@ -512,26 +404,15 @@ const BattleDetail: React.FC = () => {
 
       <TopSection>
         <ParticipantContainer>{renderLeftSlot()}</ParticipantContainer>
-        <ChatSection>
-          <ChatMessages ref={chatContainerRef}>
-            {chatMessages
-              .filter((m): m is ChatMessage => m !== null)
-              .map((msg) => (
-                <ChatBubble key={msg.id} msg={msg} />
-              ))}
-          </ChatMessages>
-          <ChatForm onSubmit={handleChatSubmit}>
-            <FaCommentDots
-              style={{ fontSize: '1.2rem', marginRight: '0.5rem' }}
-            />
-            <ChatInput
-              type='text'
-              placeholder='메시지 입력...'
-              value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
-            />
-          </ChatForm>
-        </ChatSection>
+
+        <ChatSection
+          chatContainerRef={chatContainerRef}
+          chatMessages={chatMessages}
+          chatInput={chatInput}
+          setChatInput={setChatInput}
+          handleChatSubmit={handleChatSubmit}
+        />
+
         <ParticipantContainer>{renderRightSlot()}</ParticipantContainer>
       </TopSection>
 
@@ -539,11 +420,9 @@ const BattleDetail: React.FC = () => {
         <SpectatorsHeader>
           <LeftButtonGroup>
             <SubjectButton onClick={handleRandomSubject}>
-              <FaRandom style={{ marginRight: '0.3rem' }} />
               랜덤 주제생성
             </SubjectButton>
             <SubjectButton onClick={handleDirectSubject}>
-              <FaEdit style={{ marginRight: '0.3rem' }} />
               직접 주제 생성
             </SubjectButton>
           </LeftButtonGroup>
@@ -563,97 +442,52 @@ const BattleDetail: React.FC = () => {
         </SpectatorsHeader>
 
         {!isSpectatorsCollapsed && (
-          <SpectatorsGrid>{renderSpectatorGrid()}</SpectatorsGrid>
+          <SpectatorGrid
+            players={players}
+            ownerId={OWNER_ID}
+            ownerSide={ownerSide}
+            ownerSpectatorSlot={ownerSpectatorSlot}
+            nonOwnerSpectators={nonOwnerSpectators}
+            setPendingMoveSlot={setPendingMoveSlot}
+            BOX_SIZE={BOX_SIZE}
+            TOTAL_SLOTS={TOTAL_SLOTS}
+          />
         )}
       </SpectatorsSection>
 
       {pendingMoveSlot !== null && (
-        <ModalComponent title='이동 확인'>
-          <ModalText>해당 슬롯으로 이동하시겠습니까?</ModalText>
-          <ModalButtons>
-            <ModalSubmitButton onClick={handleConfirmMove}>
-              네
-            </ModalSubmitButton>
-            <ModalCancelButton onClick={handleCancelMove}>
-              아니요
-            </ModalCancelButton>
-          </ModalButtons>
-        </ModalComponent>
+        <MoveConfirmModal
+          onConfirm={handleConfirmMove}
+          onCancel={handleCancelMove}
+        />
       )}
 
       {modalVisible && (
-        <ModalComponent title='주제 입력 (예: 사자 vs 코끼리)'>
-          <ModalInput
-            type='text'
-            placeholder='주제를 입력하세요. 예: 사자 vs 코끼리'
-            value={subjectInput}
-            onChange={(e) => setSubjectInput(e.target.value)}
-          />
-          <ModalButtons>
-            <ModalSubmitButton onClick={handleModalSubmit}>
-              생성
-            </ModalSubmitButton>
-            <ModalCancelButton onClick={() => setModalVisible(false)}>
-              취소
-            </ModalCancelButton>
-          </ModalButtons>
-        </ModalComponent>
+        <SubjectModal
+          subjectInput={subjectInput}
+          setSubjectInput={setSubjectInput}
+          onSubmit={handleModalSubmit}
+          onClose={() => setModalVisible(false)}
+        />
       )}
 
       {startModalVisible && (
-        <ModalComponent title='게임 시작 확인'>
-          <ModalText>
-            모든 플레이어가 준비되었습니다.
-            <br />
-            게임을 시작하시겠습니까?
-          </ModalText>
-          <ModalButtons>
-            <ModalSubmitButton
-              onClick={() => {
-                setStartModalVisible(false);
-                alert('게임 시작!');
-              }}
-            >
-              네
-            </ModalSubmitButton>
-            <ModalCancelButton onClick={() => setStartModalVisible(false)}>
-              아니요
-            </ModalCancelButton>
-          </ModalButtons>
-        </ModalComponent>
+        <StartModal onClose={() => setStartModalVisible(false)} />
       )}
 
       {warningModalVisible && (
-        <ModalComponent title='경고'>
-          <ModalText>
-            참가자 2명이 모두 있고 준비 완료된 상태여야 게임을 시작할 수
-            있습니다.
-          </ModalText>
-          <ModalButtons>
-            <ModalSubmitButton onClick={() => setWarningModalVisible(false)}>
-              확인
-            </ModalSubmitButton>
-          </ModalButtons>
-        </ModalComponent>
+        <WarningModal onClose={() => setWarningModalVisible(false)} />
       )}
 
       {kickModalVisible && selectedPlayer && (
-        <ModalComponent title='플레이어 강퇴 확인'>
-          <ModalText>
-            {selectedPlayer.nickname} 플레이어를 강퇴하시겠습니까?
-          </ModalText>
-          <ModalButtons>
-            <ModalSubmitButton onClick={handleKickPlayer}>네</ModalSubmitButton>
-            <ModalCancelButton
-              onClick={() => {
-                setKickModalVisible(false);
-                setSelectedPlayer(null);
-              }}
-            >
-              아니요
-            </ModalCancelButton>
-          </ModalButtons>
-        </ModalComponent>
+        <KickModal
+          player={selectedPlayer}
+          onKick={handleKickPlayer}
+          onCancel={() => {
+            setKickModalVisible(false);
+            setSelectedPlayer(null);
+          }}
+        />
       )}
     </Container>
   );
@@ -727,43 +561,6 @@ const ParticipantKeyword = styled.div`
   background-color: #fff;
 `;
 
-const ChatSection = styled.div`
-  flex: 2 1 600px;
-  display: flex;
-  flex-direction: column;
-  border: 2px solid #000;
-  border-radius: 6px;
-  background-color: #fff;
-  box-shadow: inset 0 1px 0 #cee3f8;
-`;
-
-const ChatMessages = styled.div`
-  height: 400px;
-  overflow-y: auto;
-  padding: 0.5rem;
-  font-size: 0.85rem;
-  display: flex;
-  flex-direction: column;
-  background-color: #ddd;
-  border-radius: 6px 6px 0 0;
-`;
-
-const ChatForm = styled.form`
-  display: flex;
-  align-items: center;
-  border-top: 1px solid #000;
-  padding: 0.5rem;
-  background-color: #fff;
-`;
-
-const ChatInput = styled.input`
-  flex: 1;
-  border: 1px solid #000;
-  border-radius: 4px;
-  padding: 0.3rem;
-  outline: none;
-`;
-
 const SpectatorsSection = styled.div`
   border-top: 2px solid #000;
   padding: 1rem;
@@ -819,38 +616,6 @@ const StartButton = styled.button`
   }
 `;
 
-const SpectatorsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  grid-template-rows: repeat(2, 1fr);
-  gap: 10px;
-  width: calc(4 * ${BOX_SIZE} + 3 * 10px);
-  margin-top: 1rem;
-`;
-
-const SpectatorSlotContainer = styled.div<{ $occupied: boolean }>`
-  width: ${BOX_SIZE};
-  height: ${BOX_SIZE};
-  background-color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: ${(props) => (props.$occupied ? 'default' : 'pointer')};
-  box-shadow: 0 3px 5px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s;
-  &:hover {
-    transform: ${(props) => (props.$occupied ? 'none' : 'scale(1.03)')};
-  }
-`;
-
-const EmptyBox = styled.div`
-  width: 100%;
-  height: 100%;
-  background-color: #fff;
-  border: 2px solid #000;
-  border-radius: 4px;
-`;
-
 const CommonCard = styled.div`
   width: ${BOX_SIZE};
   height: ${BOX_SIZE};
@@ -868,167 +633,6 @@ const CommonCard = styled.div`
     transform: scale(1.03);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
   }
-`;
-
-const StyledPlayerCard = styled(CommonCard)<{ $bgColor: string }>`
-  background-color: ${(props) => props.$bgColor};
-`;
-
-const PlayerImage = styled.img`
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 4px;
-`;
-
-const DefaultAvatar = styled.div`
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: #eee;
-  border-radius: 4px;
-`;
-
-const Nickname = styled.div`
-  position: absolute;
-  top: 0.3rem;
-  left: 0.3rem;
-  background-color: rgba(0, 0, 0, 0.6);
-  color: #fff;
-  font-weight: bold;
-  font-size: 0.8rem;
-  padding: 0.3rem 0.6rem;
-  border-bottom-right-radius: 6px;
-  z-index: 2;
-`;
-
-const TierIcon = styled.img`
-  position: absolute;
-  top: 0.3rem;
-  right: 0.3rem;
-  width: 32px;
-  height: 32px;
-  z-index: 3;
-  border: 2px solid #000;
-  border-radius: 6px;
-`;
-
-const RankArea = styled.div`
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 100%;
-  text-align: center;
-  background-color: rgba(0, 0, 0, 0.4);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  border-top: 2px solid #000;
-`;
-
-const OwnerBadge = styled.div`
-  background-color: #4caf50;
-  color: #fff;
-  font-size: 0.8rem;
-  font-weight: bold;
-  width: 100%;
-  border-bottom-right-radius: 4px;
-  border-bottom-left-radius: 4px;
-`;
-
-const ReadyBadge = styled.div`
-  background-color: #ff9800;
-  color: #fff;
-  font-size: 0.8rem;
-  font-weight: bold;
-  width: 100%;
-  border-bottom-right-radius: 4px;
-  border-bottom-left-radius: 4px;
-`;
-
-const SpectatorImage = styled.img`
-  width: 100%;
-  height: 60px;
-  object-fit: cover;
-  border-radius: 4px;
-`;
-
-const ChatBubbleContainer = styled.div<{
-  isOwnerMsg: boolean;
-  isNotice: boolean;
-}>`
-  max-width: 70%;
-  padding: 8px 12px;
-  border-radius: 16px;
-  margin: 4px 0;
-  background-color: ${(props) =>
-    props.isNotice ? '#ffe6e6' : props.isOwnerMsg ? '#dcf8c6' : '#fff'};
-  align-self: ${(props) => (props.isOwnerMsg ? 'flex-end' : 'flex-start')};
-  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
-  word-break: break-word;
-`;
-
-const ChatBubbleText = styled.p<{ isNotice: boolean }>`
-  font-size: 0.9rem;
-  color: ${(props) => (props.isNotice ? 'red' : '#000')};
-  margin: 0;
-`;
-
-const ModalOverlay = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background-color: rgba(0, 0, 0, 0.6);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-`;
-
-const ModalContent = styled.div`
-  width: 400px;
-  background-color: #fff;
-  border-radius: 8px;
-  padding: 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  animation: ${scaleUp} 0.3s ease-in-out;
-  box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.3);
-`;
-
-const ModalTitle = styled.h3`
-  margin: 0;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid #000;
-  font-size: 1.1rem;
-  color: #333;
-`;
-
-const ModalText = styled.p`
-  font-size: 1rem;
-  color: #333;
-  margin: 0;
-  line-height: 1.4;
-  text-align: center;
-`;
-
-const ModalInput = styled.input`
-  padding: 0.5rem;
-  border: 1px solid #000;
-  border-radius: 4px;
-  font-size: 1rem;
-`;
-
-const ModalButtons = styled.div`
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
 `;
 
 const EmptySlotText = styled.div`
@@ -1059,36 +663,6 @@ const SubjectButton = styled.button`
   border-radius: 6px;
   padding: 0.4rem 0.8rem;
   cursor: pointer;
-  font-weight: bold;
-  transition: transform 0.2s;
-  &:hover {
-    transform: translateY(-2px);
-  }
-`;
-
-const ModalSubmitButton = styled.button`
-  background-color: #4caf50;
-  color: #fff;
-  border: 2px solid #000;
-  border-radius: 4px;
-  padding: 0.4rem 0.8rem;
-  cursor: pointer;
-  width: 100%;
-  font-weight: bold;
-  transition: transform 0.2s;
-  &:hover {
-    transform: translateY(-2px);
-  }
-`;
-
-const ModalCancelButton = styled.button`
-  background-color: #f06292;
-  color: #fff;
-  border: 2px solid #000;
-  border-radius: 4px;
-  padding: 0.4rem 0.8rem;
-  cursor: pointer;
-  width: 100%;
   font-weight: bold;
   transition: transform 0.2s;
   &:hover {
