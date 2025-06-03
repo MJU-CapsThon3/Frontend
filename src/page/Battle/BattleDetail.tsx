@@ -97,6 +97,7 @@ const BattleDetail: React.FC = () => {
   const [chatInput, setChatInput] = useState('');
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [subject, setSubject] = useState<string>('사자 vs 코끼리');
+  const [isBattleStarted, setIsBattleStarted] = useState(false);
 
   const splitInitial = subject.split(/vs/i).map((s) => s.trim());
   const [sideAOption, setSideAOption] = useState<string>(
@@ -108,8 +109,6 @@ const BattleDetail: React.FC = () => {
 
   const [modalVisible, setModalVisible] = useState<boolean>(false);
   const [subjectInput, setSubjectInput] = useState<string>('');
-  const [startModalVisible, setStartModalVisible] = useState(false);
-  const [warningModalVisible, setWarningModalVisible] = useState(false);
   const [kickModalVisible, setKickModalVisible] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerData | null>(null);
   const [isSpectatorsCollapsed, setIsSpectatorsCollapsed] = useState(false);
@@ -128,83 +127,80 @@ const BattleDetail: React.FC = () => {
     (p) => p.role === 'spectator' && p.id !== OWNER_ID
   );
 
-  const canStartGame =
-    ownerData &&
-    ownerData.role === 'participant' &&
-    ownerData.isReady &&
-    nonOwnerParticipants.length >= 1 &&
-    nonOwnerParticipants[0].isReady;
-
   // ─── A/B/P 팀 정보 API 호출 ─────────────────────
+  const fetchRoomDetail = async () => {
+    try {
+      const data: RoomDetailFull = await BattleRoomApi.getRoomDetailFull(
+        parseInt(roomId, 10)
+      );
+
+      // API에서 받아온 participantA, participantB, spectators를 PlayerData로 변환
+      const fetchedPlayers: PlayerData[] = [];
+
+      // A팀 (팀 색상 blue)
+      data.participantA.forEach((u) => {
+        fetchedPlayers.push({
+          id: Number(u.userId),
+          nickname: `유저${u.userId}`,
+          avatarUrl: '',
+          isReady: true,
+          team: 'blue',
+          role: 'participant',
+          tier: 'silver',
+        });
+        if (Number(u.userId) === OWNER_ID) {
+          setOwnerSide('left');
+          setOwnerSpectatorSlot(null);
+        }
+      });
+
+      // B팀 (팀 색상 red)
+      data.participantB.forEach((u) => {
+        fetchedPlayers.push({
+          id: Number(u.userId),
+          nickname: `유저${u.userId}`,
+          avatarUrl: '',
+          isReady: true,
+          team: 'red',
+          role: 'participant',
+          tier: 'silver',
+        });
+        if (Number(u.userId) === OWNER_ID) {
+          setOwnerSide('right');
+          setOwnerSpectatorSlot(null);
+        }
+      });
+
+      // 관전자
+      data.spectators.forEach((u, idx) => {
+        fetchedPlayers.push({
+          id: Number(u.userId),
+          nickname: `유저${u.userId}`,
+          avatarUrl: '',
+          role: 'spectator',
+          tier: 'silver',
+        });
+        if (Number(u.userId) === OWNER_ID) {
+          setOwnerSpectatorSlot(idx);
+        }
+      });
+
+      setPlayers(fetchedPlayers);
+    } catch (err) {
+      console.error('배틀방 상세 조회 오류:', err);
+    }
+  };
+
   useEffect(() => {
-    (async () => {
-      try {
-        // 상세 조회 API 호출
-        const data: RoomDetailFull =
-          await BattleRoomApi.getRoomDetailFull(roomId);
-
-        // API에서 받아온 participantA, participantB, spectators를 PlayerData로 변환
-        const fetchedPlayers: PlayerData[] = [];
-
-        // A팀 (팀 색상 blue)
-        data.participantA.forEach((u, idx) => {
-          fetchedPlayers.push({
-            id: Number(u.userId),
-            nickname: `유저${u.userId}`,
-            avatarUrl: '',
-            isReady: true, // 실제 로직에 맞춰 변경
-            team: 'blue',
-            role: 'participant',
-            tier: 'silver', // 예시값, 실제 등급 로직으로 수정
-          });
-          // 만약 OWNER_ID가 A팀이면 owner 위치를 왼쪽으로 설정
-          if (Number(u.userId) === OWNER_ID) {
-            setOwnerSide('left');
-          }
-        });
-
-        // B팀 (팀 색상 red)
-        data.participantB.forEach((u, idx) => {
-          fetchedPlayers.push({
-            id: Number(u.userId),
-            nickname: `유저${u.userId}`,
-            avatarUrl: '',
-            isReady: true,
-            team: 'red',
-            role: 'participant',
-            tier: 'silver',
-          });
-          if (Number(u.userId) === OWNER_ID) {
-            setOwnerSide('right');
-          }
-        });
-
-        // 관전자
-        data.spectators.forEach((u, idx) => {
-          fetchedPlayers.push({
-            id: Number(u.userId),
-            nickname: `유저${u.userId}`,
-            avatarUrl: '',
-            role: 'spectator',
-            tier: 'silver',
-          });
-          if (Number(u.userId) === OWNER_ID) {
-            setOwnerSpectatorSlot(idx);
-          }
-        });
-
-        setPlayers(fetchedPlayers);
-      } catch (err) {
-        console.error('배틀방 상세 조회 오류:', err);
-      }
-    })();
+    fetchRoomDetail();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId]);
 
   // ─── 채팅 내역 불러오기 ─────────────────────
   useEffect(() => {
     (async () => {
       try {
-        const res = await BattleChatApi.getChatMessages(roomId);
+        const res = await BattleChatApi.getChatMessages(parseInt(roomId, 10));
         const merged = [...res.result.sideA, ...res.result.sideB];
         merged.sort(
           (a, b) =>
@@ -224,7 +220,10 @@ const BattleDetail: React.FC = () => {
     const side = ownerSide === 'left' ? 'A' : 'B';
     try {
       const payload = { side, message: chatInput.trim() };
-      const res = await BattleChatApi.postChatMessage(roomId, payload);
+      const res = await BattleChatApi.postChatMessage(
+        parseInt(roomId, 10),
+        payload
+      );
       setChatMessages((prev) => [...prev, res.result]);
       setChatInput('');
     } catch (err) {
@@ -240,19 +239,40 @@ const BattleDetail: React.FC = () => {
     }
   }, [chatMessages]);
 
-  const handleExit = () => navigate(-1);
-
-  const handleStartGame = () => {
-    if (canStartGame) setStartModalVisible(true);
-    else setWarningModalVisible(true);
+  // ─── “방 나가기” 버튼에 leaveRoom API 연결 ─────────────────────
+  const handleExit = async () => {
+    try {
+      await BattleRoomApi.leaveRoom(parseInt(roomId, 10));
+      navigate(-1);
+    } catch (err) {
+      console.error('방 떠나기 오류:', err);
+      alert('방 나가는 중 오류가 발생했습니다.');
+    }
   };
 
-  const handleReadyToggle = () => {
-    setPlayers((prev) =>
-      prev.map((p) =>
-        p.id === OWNER_ID ? { ...p, isReady: !p.isReady, team: p.team } : p
-      )
-    );
+  // ─── “시작/종료” 버튼 클릭 시 배틀 시작 or 종료 API 호출 ─────────────────────
+  const handleToggleBattle = async () => {
+    if (!isBattleStarted) {
+      // 배틀 시작
+      try {
+        await BattleRoomApi.startBattle(parseInt(roomId, 10));
+        setIsBattleStarted(true);
+        alert('배틀이 시작되었습니다!');
+      } catch (err) {
+        console.error('배틀 시작 오류:', err);
+        alert('배틀 시작 중 오류가 발생했습니다.');
+      }
+    } else {
+      // 배틀 종료
+      try {
+        await BattleRoomApi.endBattle(parseInt(roomId, 10));
+        setIsBattleStarted(false);
+        alert('배틀이 종료되었습니다!');
+      } catch (err) {
+        console.error('배틀 종료 오류:', err);
+        alert('배틀 종료 중 오류가 발생했습니다.');
+      }
+    }
   };
 
   const handleKickPlayer = () => {
@@ -263,27 +283,57 @@ const BattleDetail: React.FC = () => {
     }
   };
 
-  const handleConfirmMove = () => {
+  // ─── 역할 변경 “예” 눌렀을 때 API 호출 및 상태 업데이트 ─────────────────────
+  const handleConfirmMove = async () => {
     if (!pendingMoveSlot || !ownerData) return;
+
     const { area, index } = pendingMoveSlot;
+    let newRoleValue: ChangeRoleRequest['role'];
     if (area === 'spectator') {
-      if (ownerData.role === 'participant') {
-        setPlayers((prev) =>
-          prev.map((p) => (p.id === OWNER_ID ? { ...p, role: 'spectator' } : p))
-        );
-      }
-      setOwnerSpectatorSlot(index);
+      newRoleValue = 'P';
     } else {
-      if (ownerData.role === 'spectator') {
-        setPlayers((prev) =>
-          prev.map((p) =>
-            p.id === OWNER_ID ? { ...p, role: 'participant' } : p
-          )
-        );
-      }
-      setOwnerSide(index === 0 ? 'left' : 'right');
+      newRoleValue = index === 0 ? 'A' : 'B';
     }
-    setPendingMoveSlot(null);
+
+    try {
+      await BattleRoomApi.changeRole(parseInt(roomId, 10), {
+        role: newRoleValue,
+      });
+
+      setPlayers((prev) =>
+        prev.map((p) => {
+          if (p.id !== OWNER_ID) return p;
+          if (area === 'spectator') {
+            return {
+              ...p,
+              role: 'spectator',
+              team: undefined,
+              isReady: undefined,
+            };
+          } else {
+            return {
+              ...p,
+              role: 'participant',
+              team: index === 0 ? 'blue' : 'red',
+              isReady: true,
+            };
+          }
+        })
+      );
+
+      if (area === 'spectator') {
+        setOwnerSpectatorSlot(index);
+        setOwnerSide('left');
+      } else {
+        setOwnerSpectatorSlot(null);
+        setOwnerSide(index === 0 ? 'left' : 'right');
+      }
+    } catch (err) {
+      console.error('역할 변경 오류:', err);
+      alert('역할 변경 중 오류가 발생했습니다.');
+    } finally {
+      setPendingMoveSlot(null);
+    }
   };
 
   const handleCancelMove = () => {
@@ -379,7 +429,7 @@ const BattleDetail: React.FC = () => {
           {isOwner ? (
             <OwnerBadge>방 장</OwnerBadge>
           ) : player.isReady ? (
-            <ReadyBadge>준 비</ReadyBadge>
+            <ReadyBadge>준비완료</ReadyBadge>
           ) : null}
         </RankArea>
       </StyledPlayerCard>
@@ -399,7 +449,9 @@ const BattleDetail: React.FC = () => {
         <PlayerCard player={nonOwnerParticipants[0]} />
       ) : (
         <CommonCard
-          onClick={() => setPendingMoveSlot({ area: 'participant', index: 0 })}
+          onClick={() => {
+            setPendingMoveSlot({ area: 'participant', index: 0 });
+          }}
         >
           <EmptySlotText>플레이어 대기중</EmptySlotText>
         </CommonCard>
@@ -420,7 +472,9 @@ const BattleDetail: React.FC = () => {
         <PlayerCard player={nonOwnerParticipants[1]} />
       ) : (
         <CommonCard
-          onClick={() => setPendingMoveSlot({ area: 'participant', index: 1 })}
+          onClick={() => {
+            setPendingMoveSlot({ area: 'participant', index: 1 });
+          }}
         >
           <EmptySlotText>플레이어 대기중</EmptySlotText>
         </CommonCard>
@@ -447,11 +501,11 @@ const BattleDetail: React.FC = () => {
         <SpectatorSlotContainer
           key={`spectator-slot-${i}`}
           $occupied={!!occupant}
-          onClick={
-            occupant
-              ? undefined
-              : () => setPendingMoveSlot({ area: 'spectator', index: i })
-          }
+          onClick={() => {
+            if (!occupant) {
+              setPendingMoveSlot({ area: 'spectator', index: i });
+            }
+          }}
         >
           {occupant ? (
             occupant.id === OWNER_ID ? (
@@ -554,11 +608,9 @@ const BattleDetail: React.FC = () => {
             >
               {isSpectatorsCollapsed ? '관전자 보기' : '관전자 숨김'}
             </ToggleButton>
-            {ownerData && ownerData.id === OWNER_ID ? (
-              <StartButton onClick={handleStartGame}>시작</StartButton>
-            ) : (
-              <StartButton onClick={handleReadyToggle}>준비</StartButton>
-            )}
+            <StartButton onClick={handleToggleBattle}>
+              {isBattleStarted ? '종료' : '시작'}
+            </StartButton>
           </RightButtonGroup>
         </SpectatorsHeader>
 
@@ -596,43 +648,6 @@ const BattleDetail: React.FC = () => {
             <ModalCancelButton onClick={() => setModalVisible(false)}>
               취소
             </ModalCancelButton>
-          </ModalButtons>
-        </ModalComponent>
-      )}
-
-      {startModalVisible && (
-        <ModalComponent title='게임 시작 확인'>
-          <ModalText>
-            모든 플레이어가 준비되었습니다.
-            <br />
-            게임을 시작하시겠습니까?
-          </ModalText>
-          <ModalButtons>
-            <ModalSubmitButton
-              onClick={() => {
-                setStartModalVisible(false);
-                alert('게임 시작!');
-              }}
-            >
-              네
-            </ModalSubmitButton>
-            <ModalCancelButton onClick={() => setStartModalVisible(false)}>
-              아니요
-            </ModalCancelButton>
-          </ModalButtons>
-        </ModalComponent>
-      )}
-
-      {warningModalVisible && (
-        <ModalComponent title='경고'>
-          <ModalText>
-            참가자 2명이 모두 있고 준비 완료된 상태여야 게임을 시작할 수
-            있습니다.
-          </ModalText>
-          <ModalButtons>
-            <ModalSubmitButton onClick={() => setWarningModalVisible(false)}>
-              확인
-            </ModalSubmitButton>
           </ModalButtons>
         </ModalComponent>
       )}
