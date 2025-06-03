@@ -4,19 +4,11 @@ import { Axios } from '../Axios';
 import { AxiosInstance } from 'axios';
 
 /**
- * 배틀 주제(Topic) 타입 정의
- */
-export interface Topic {
-  side: 'A' | 'B';
-  title: string;
-  suggestedBy: string;
-}
-
-/**
  * 배틀방 생성 요청 바디 타입
+ * POST /battle/rooms
  */
 export interface CreateBattleRoomRequest {
-  topics: Topic[];
+  roomName: string;
 }
 
 /**
@@ -24,27 +16,28 @@ export interface CreateBattleRoomRequest {
  */
 export interface CreateBattleRoomResponse {
   isSuccess: boolean;
-  code: number | string;
+  code: string;
   message: string;
   result: {
-    roomId: number;
-    adminId: number;
+    roomId: string;
+    adminId: string;
     topicA: string;
     topicB: string;
     status: 'WAITING' | 'FULL' | 'PLAYING' | 'FINISHED';
     createdAt: string; // ISO 날짜 문자열
-    topics: {
-      topicId: number;
-      side: 'A' | 'B';
-      title: string;
-      suggestedBy: string;
-      createdAt: string;
-    }[];
+    participants: Array<{
+      participantId: string;
+      userId: string;
+      role: 'A' | 'B' | 'P';
+      joinedAt: string; // ISO 날짜 문자열
+      side: string;
+    }>;
   } | null;
 }
 
 /**
  * 전체 배틀방 목록 조회 시 반환되는 방 요약 정보 타입
+ * GET /battle/rooms
  */
 export interface RoomSummary {
   roomId: number;
@@ -58,13 +51,14 @@ export interface RoomSummary {
  */
 export interface GetBattleRoomsResponse {
   isSuccess: boolean;
-  code: number | string;
+  code: string;
   message: string;
   result: RoomSummary[] | null;
 }
 
 /**
- * 특정 배틀방 상세 정보 타입
+ * 특정 배틀방 정보 조회 타입 (간단조회)
+ * GET /battle/rooms/{roomId}
  */
 export interface RoomDetail {
   roomId: number;
@@ -73,11 +67,11 @@ export interface RoomDetail {
   topicB: string;
   status: 'WAITING' | 'FULL' | 'PLAYING' | 'FINISHED';
   createdAt: string; // ISO 날짜 문자열
-  participants: {
+  participants: Array<{
     userId: number;
-    role: 'A' | 'B' | 'SPECTATOR';
+    role: 'A' | 'B' | 'P';
     joinedAt: string; // ISO 날짜 문자열
-  }[];
+  }>;
   spectatorCount: number;
 }
 
@@ -86,40 +80,160 @@ export interface RoomDetail {
  */
 export interface GetBattleRoomResponse {
   isSuccess: boolean;
-  code: number | string;
+  code: string;
   message: string;
   result: RoomDetail | null;
 }
 
 /**
- * 방 참가 요청 바디 타입
+ * 상세 조회 타입
+ * GET /battle/rooms/{roomId}/detail
  */
-export interface JoinBattleRoomRequest {
-  side: 'A' | 'B';
+export interface RoomDetailFull {
+  roomId: number;
+  adminId: number;
+  topicA: string;
+  topicB: string;
+  status: 'WAITING' | 'FULL' | 'PLAYING' | 'FINISHED';
+  createdAt: string; // ISO 날짜 문자열
+  participantA: Array<{
+    userId: string;
+    joinedAt: string; // ISO 날짜 문자열
+  }>;
+  participantB: Array<{
+    userId: string;
+    joinedAt: string; // ISO 날짜 문자열
+  }>;
+  spectators: Array<{
+    userId: string;
+    joinedAt: string; // ISO 날짜 문자열
+  }>;
 }
 
 /**
- * /battle/rooms/{roomId}/participants (POST) 응답 타입
+ * /battle/rooms/{roomId}/detail (GET) 응답 타입
+ */
+export interface GetBattleRoomDetailResponse {
+  isSuccess: boolean;
+  code: string;
+  message: string;
+  result: RoomDetailFull | null;
+}
+
+/**
+ * 방 참가 (관전자) 요청 바디는 없음
+ * POST /battle/rooms/{roomId}/participants
  */
 export interface JoinBattleRoomResponse {
   isSuccess: boolean;
-  code: number | string;
+  code: string;
   message: string;
   result: {
-    participantId: number;
-    roomId: number;
-    userId: number;
-    role: 'A' | 'B' | 'SPECTATOR';
+    participantId: string;
+    roomId: string;
+    userId: string;
+    role: 'P';
+    joinedAt: string; // ISO 날짜 문자열
+    side: string;
+  } | null;
+}
+
+/**
+ * 역할 변경 요청 바디 타입
+ * POST /battle/rooms/{roomId}/participants/role
+ */
+export interface ChangeRoleRequest {
+  role: 'A' | 'B' | 'P';
+}
+export interface ChangeRoleResponse {
+  isSuccess: boolean;
+  code: string;
+  message: string;
+  result: {
+    participantId: string;
+    roomId: string;
+    userId: string;
+    role: 'A' | 'B' | 'P';
     joinedAt: string; // ISO 날짜 문자열
   } | null;
 }
 
 /**
- * /battle/rooms/{roomId}/start (POST) 응답 타입
+ * 주제 설정 요청 바디 타입
+ * POST /battle/rooms/{roomId}/topics
+ */
+export interface SetTopicsRequest {
+  topicA: string;
+  topicB: string;
+}
+export interface SetTopicsResponse {
+  isSuccess: boolean;
+  code: string;
+  message: string;
+  result: {
+    roomId: string;
+    topicA: string;
+    topicB: string;
+    updatedAt: string; // ISO 날짜 문자열
+    titles: Array<{
+      titleId: string;
+      side: 'A' | 'B';
+      title: string;
+      suggestedBy: string;
+      createdAt: string; // ISO 날짜 문자열
+    }>;
+  } | null;
+}
+
+/**
+ * AI 주제 생성 후 저장
+ * POST /battle/rooms/{roomId}/topics/ai
+ */
+export interface GenerateAITopicsResponse {
+  isSuccess: boolean;
+  code: string;
+  message: string;
+  result: {
+    roomId: string;
+    topicA: string;
+    topicB: string;
+    updatedAt: string; // ISO 날짜 문자열
+    titles: Array<{
+      titleId: string;
+      side: 'A' | 'B';
+      title: string;
+      suggestedBy: 'ai';
+      createdAt: string; // ISO 날짜 문자열
+    }>;
+  } | null;
+}
+
+/**
+ * 주제 수정 요청 바디 타입
+ * POST /battle/rooms/{roomId}/topics/update
+ */
+export interface UpdateTopicsRequest {
+  topicA: string;
+  topicB: string;
+}
+export interface UpdateTopicsResponse {
+  isSuccess: boolean;
+  code: string;
+  message: string;
+  result: {
+    roomId: string;
+    topicA: string;
+    topicB: string;
+  } | null;
+}
+
+/**
+ * 배틀 시작
+ * POST /battle/rooms/{roomId}/start
  */
 export interface StartBattleResponse {
   isSuccess: boolean;
-  code: number | string;
+  code: string;
   message: string;
   result: {
     roomId: number;
@@ -129,13 +243,42 @@ export interface StartBattleResponse {
 }
 
 /**
- * /battle/rooms/{roomId}/end (POST) 응답 타입
+ * 토론(배틀) 종료
+ * POST /battle/rooms/{roomId}/end
  */
 export interface EndBattleResponse {
   isSuccess: boolean;
-  code: number | string;
+  code: string;
   message: string;
   result: string | null;
+}
+
+/**
+ * 방 떠나기
+ * POST /battle/rooms/{roomId}/leave
+ */
+export interface LeaveBattleResponse {
+  isSuccess: boolean;
+  code: string;
+  message: string;
+  result: string | null;
+}
+
+/**
+ * 토론 최종 결과 조회 + 포인트 지급
+ * GET /battle/rooms/{roomId}/result
+ */
+export interface GetBattleResultResponse {
+  isSuccess: boolean;
+  code: string;
+  message: string;
+  result: {
+    winnerSide: 'A' | 'B' | 'DRAW';
+    pointsAwarded: Array<{
+      userId: string;
+      points: number;
+    }>;
+  } | null;
 }
 
 /**
@@ -193,7 +336,7 @@ export const BattleRoomApi = {
   },
 
   /**
-   * 특정 배틀방 정보 조회
+   * 특정 배틀방 정보 조회 (간단)
    * GET /battle/rooms/{roomId}
    */
   async getRoomById(
@@ -220,18 +363,43 @@ export const BattleRoomApi = {
   },
 
   /**
-   * 방 참가
+   * 특정 배틀방 정보 상세 조회
+   * GET /battle/rooms/{roomId}/detail
+   */
+  async getRoomDetailFull(
+    roomId: number | string,
+    axiosInstance: AxiosInstance = Axios
+  ): Promise<RoomDetailFull> {
+    try {
+      const response = await axiosInstance.get<GetBattleRoomDetailResponse>(
+        `/battle/rooms/${roomId}/detail`
+      );
+      const data = response.data;
+      if (data.isSuccess && data.result) {
+        return data.result;
+      } else {
+        throw new Error(data.message || '배틀방 상세 조회 실패');
+      }
+    } catch (error) {
+      console.error(
+        `[BattleRoomApi.getRoomDetailFull] 방 ID ${roomId} 상세 조회 중 오류:`,
+        error
+      );
+      throw error;
+    }
+  },
+
+  /**
+   * 방 참가 (관전자)
    * POST /battle/rooms/{roomId}/participants
    */
   async joinRoom(
     roomId: number | string,
-    payload: JoinBattleRoomRequest,
     axiosInstance: AxiosInstance = Axios
   ): Promise<JoinBattleRoomResponse['result']> {
     try {
       const response = await axiosInstance.post<JoinBattleRoomResponse>(
-        `/battle/rooms/${roomId}/participants`,
-        payload
+        `/battle/rooms/${roomId}/participants`
       );
       const data = response.data;
       if (data.isSuccess && data.result) {
@@ -249,7 +417,121 @@ export const BattleRoomApi = {
   },
 
   /**
-   * 배틀 시작
+   * 역할 변경
+   * POST /battle/rooms/{roomId}/participants/role
+   */
+  async changeRole(
+    roomId: number | string,
+    payload: ChangeRoleRequest,
+    axiosInstance: AxiosInstance = Axios
+  ): Promise<ChangeRoleResponse['result']> {
+    try {
+      const response = await axiosInstance.post<ChangeRoleResponse>(
+        `/battle/rooms/${roomId}/participants/role`,
+        payload
+      );
+      const data = response.data;
+      if (data.isSuccess && data.result) {
+        return data.result;
+      } else {
+        throw new Error(data.message || '역할 변경 실패');
+      }
+    } catch (error) {
+      console.error(
+        `[BattleRoomApi.changeRole] 방 ID ${roomId} 역할 변경 중 오류:`,
+        error
+      );
+      throw error;
+    }
+  },
+
+  /**
+   * 주제 설정 (관리자 전용)
+   * POST /battle/rooms/{roomId}/topics
+   */
+  async setTopics(
+    roomId: number | string,
+    payload: SetTopicsRequest,
+    axiosInstance: AxiosInstance = Axios
+  ): Promise<SetTopicsResponse['result']> {
+    try {
+      const response = await axiosInstance.post<SetTopicsResponse>(
+        `/battle/rooms/${roomId}/topics`,
+        payload
+      );
+      const data = response.data;
+      if (data.isSuccess && data.result) {
+        return data.result;
+      } else {
+        throw new Error(data.message || '주제 설정 실패');
+      }
+    } catch (error) {
+      console.error(
+        `[BattleRoomApi.setTopics] 방 ID ${roomId} 주제 설정 중 오류:`,
+        error
+      );
+      throw error;
+    }
+  },
+
+  /**
+   * AI 주제 생성 및 저장 (관리자 전용)
+   * POST /battle/rooms/{roomId}/topics/ai
+   */
+  async generateAITopics(
+    roomId: number | string,
+    axiosInstance: AxiosInstance = Axios
+  ): Promise<GenerateAITopicsResponse['result']> {
+    try {
+      const response = await axiosInstance.post<GenerateAITopicsResponse>(
+        `/battle/rooms/${roomId}/topics/ai`
+      );
+      const data = response.data;
+      if (data.isSuccess && data.result) {
+        return data.result;
+      } else {
+        throw new Error(data.message || 'AI 주제 생성 실패');
+      }
+    } catch (error) {
+      console.error(
+        `[BattleRoomApi.generateAITopics] 방 ID ${roomId} AI 주제 생성 중 오류:`,
+        error
+      );
+      throw error;
+    }
+  },
+
+  /**
+   * 주제 수정 (관리자 전용)
+   * POST /battle/rooms/{roomId}/topics/update
+   */
+  async updateTopics(
+    roomId: number | string,
+    payload: UpdateTopicsRequest,
+    axiosInstance: AxiosInstance = Axios
+  ): Promise<UpdateTopicsResponse['result']> {
+    try {
+      const response = await axiosInstance.post<UpdateTopicsResponse>(
+        `/battle/rooms/${roomId}/topics/update`,
+        payload
+      );
+      const data = response.data;
+      if (data.isSuccess && data.result) {
+        return data.result;
+      } else {
+        throw new Error(data.message || '토론 주제 수정 실패');
+      }
+    } catch (error) {
+      console.error(
+        `[BattleRoomApi.updateTopics] 방 ID ${roomId} 주제 수정 중 오류:`,
+        error
+      );
+      throw error;
+    }
+  },
+
+  /**
+   * 배틀 시작 (관리자 전용)
    * POST /battle/rooms/{roomId}/start
    */
   async startBattle(
@@ -276,7 +558,7 @@ export const BattleRoomApi = {
   },
 
   /**
-   * 토론(배틀) 종료
+   * 토론(배틀) 종료 (관리자 전용)
    * POST /battle/rooms/{roomId}/end
    */
   async endBattle(
@@ -296,6 +578,60 @@ export const BattleRoomApi = {
     } catch (error) {
       console.error(
         `[BattleRoomApi.endBattle] 방 ID ${roomId} 토론 종료 중 오류:`,
+        error
+      );
+      throw error;
+    }
+  },
+
+  /**
+   * 토론방 떠나기
+   * POST /battle/rooms/{roomId}/leave
+   */
+  async leaveRoom(
+    roomId: number | string,
+    axiosInstance: AxiosInstance = Axios
+  ): Promise<LeaveBattleResponse['result']> {
+    try {
+      const response = await axiosInstance.post<LeaveBattleResponse>(
+        `/battle/rooms/${roomId}/leave`
+      );
+      const data = response.data;
+      if (data.isSuccess) {
+        return data.result!;
+      } else {
+        throw new Error(data.message || '방 떠나기 실패');
+      }
+    } catch (error) {
+      console.error(
+        `[BattleRoomApi.leaveRoom] 방 ID ${roomId} 떠나기 중 오류:`,
+        error
+      );
+      throw error;
+    }
+  },
+
+  /**
+   * 토론 최종 결과 조회 + 포인트 지급
+   * GET /battle/rooms/{roomId}/result
+   */
+  async getBattleResult(
+    roomId: number | string,
+    axiosInstance: AxiosInstance = Axios
+  ): Promise<GetBattleResultResponse['result']> {
+    try {
+      const response = await axiosInstance.get<GetBattleResultResponse>(
+        `/battle/rooms/${roomId}/result`
+      );
+      const data = response.data;
+      if (data.isSuccess && data.result) {
+        return data.result;
+      } else {
+        throw new Error(data.message || '토론 최종 결과 조회 실패');
+      }
+    } catch (error) {
+      console.error(
+        `[BattleRoomApi.getBattleResult] 방 ID ${roomId} 결과 조회 중 오류:`,
         error
       );
       throw error;

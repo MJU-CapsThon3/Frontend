@@ -44,8 +44,9 @@ export interface AddItemRequest {
 export interface ShopItem {
   id: number;
   name: string;
-  context: string;
-  cost: number;
+  category: string;
+  icon: string; // svg 문자열
+  price: number;
 }
 
 export interface AddItemResponse {

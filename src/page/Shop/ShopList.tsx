@@ -410,23 +410,17 @@ const ShopWithPreview: React.FC = () => {
     useState<ShopItem | null>(null);
 
   useEffect(() => {
-    ShopApi.getItems()
-      .then((apiItems: APIShopItem[]) => {
-        const mapped = apiItems.map((apiItem) => {
-          const dummy = dummyShopItems.find((d) => d.id === apiItem.id);
-          return {
-            id: apiItem.id,
-            name: apiItem.name,
-            price: apiItem.cost,
-            icon: dummy?.icon ?? <FaUserAlt size={64} color='#888' />,
-            category: dummy?.category ?? '전체',
-          } as ShopItem;
-        });
-        setItems(mapped);
-      })
-      .catch((err) => {
-        console.error('[ShopList] 상점 아이템 조회 실패:', err);
+    ShopApi.getItems().then((apiItems) => {
+      const mapped = apiItems.map((apiItem) => {
+        const dummy = dummyShopItems.find((d) => d.id === apiItem.id);
+        return {
+          ...apiItem,
+          icon: dummy?.icon ?? <FaUserAlt size={64} color='#888' />,
+          category: dummy?.category ?? '전체',
+        };
       });
+      setItems(mapped);
+    });
 
     ShopApi.getMyItems()
       .then((apiMyItems: APIMyItem[]) => {

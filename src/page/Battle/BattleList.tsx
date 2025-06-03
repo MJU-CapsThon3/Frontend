@@ -1,3 +1,5 @@
+// src/pages/Battle/BattleList.tsx
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
@@ -5,16 +7,15 @@ import RoomCard, { RoomData } from '../../components/Battle/RoomCard';
 import Pagination from '../../components/Battle/Pagination';
 import RoomModal from '../../components/Battle/RoomModal';
 import CreateRoomModal from '../../components/Battle/CreateRoomModal';
-import { BattleRoomApi } from '../../api/battle/battleRoomApi';
+import { BattleRoomApi } from '../../api/battle/battleRoomApi'; // 경로 확인
 
 const ROOMS_PER_PAGE = 10;
 
 /**
- * RoomSummary 타입 재정의 (API에서 실제로 `id`라는 키로 들어온다고 가정)
- * 필요하다면 이 인터페이스를 BattleRoomApi.getAllRooms()에서 사용하는 타입에 맞춰서 조정해야 합니다.
+ * RoomSummary 타입
  */
 interface RoomSummary {
-  id: string; // 서버에서 "id"라는 이름으로 넘어왔다면 string 형태로
+  roomId: number; // 서버에서 숫자로 내려온다고 가정
   status: 'WAITING' | 'FULL' | 'PLAYING' | 'FINISHED';
   topicA: string;
   topicB: string;
@@ -23,50 +24,51 @@ interface RoomSummary {
 const BattleList: React.FC = () => {
   const navigate = useNavigate();
 
-  // API에서 받아온 전체 방 목록 (RoomSummary[])
+  // 전체 방 목록
   const [allRooms, setAllRooms] = useState<RoomSummary[]>([]);
   const [page, setPage] = useState(1);
   const [showRoomModal, setShowRoomModal] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState<RoomData | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [isCreating, setIsCreating] = useState(false); // 생성 중 로딩 상태
 
-  // 페이지 수 계산
+  // 전체 페이지 수 계산
   const totalPages = Math.ceil(allRooms.length / ROOMS_PER_PAGE);
 
-  // 컴포넌트 마운트 시 API 호출하여 방 목록 받아오기
+  // 방 목록 가져오기
+  const fetchRooms = async () => {
+    try {
+      const roomsFromApi: RoomSummary[] = await BattleRoomApi.getAllRooms();
+      setAllRooms(roomsFromApi);
+    } catch (error) {
+      console.error('[BattleList] 전체 방 조회 오류:', error);
+    }
+  };
+
   useEffect(() => {
-    (async () => {
-      try {
-        // 기존 BattleRoomApi.getAllRooms()를 그대로 사용하되, 반환 타입이 RoomSummary[]와 호환되도록 맞춥니다.
-        const roomsFromApi: any[] = await BattleRoomApi.getAllRooms();
-        // API 결과 예시: [{ id: "1", status: "PLAYING", topicA: "치킨", topicB: "피자" }, ...]
-        setAllRooms(roomsFromApi);
-      } catch (error) {
-        console.error('[BattleList] 전체 방 조회 오류:', error);
-      }
-    })();
+    fetchRooms();
   }, []);
 
-  // 현재 페이지에 표시할 방 데이터만 슬라이스
+  // 현재 페이지에 표시할 방들
   const startIndex = (page - 1) * ROOMS_PER_PAGE;
   const pageSlice = allRooms.slice(startIndex, startIndex + ROOMS_PER_PAGE);
 
-  // RoomSummary → RoomData 매핑 (id := 방 번호)
+  // RoomSummary → RoomData 매핑
   const roomsToDisplay: RoomData[] = pageSlice.map((r) => ({
-    id: Number(r.id), // 서버에서 문자열로 넘어오는 경우 Number()로 숫자 변환
+    id: r.roomId,
     name: `${r.topicA} vs ${r.topicB}`,
     status: r.status,
-    current: 0, // 참여자 수 정보가 없으므로 임시 0
-    max: 8, // 최대 8명으로 가정
-    hasReturningUser: false, // 추가 정보 없으면 false
+    current: 0, // 참가자 수는 별도 API 없으므로 임시로 0
+    max: 8,
+    hasReturningUser: false,
   }));
 
-  // 페이지 내 빈 자리가 있을 때 빈 칸 채우기
+  // 빈 슬롯 채우기
   if (roomsToDisplay.length < ROOMS_PER_PAGE) {
     const empties = Array(ROOMS_PER_PAGE - roomsToDisplay.length).fill({
       id: 0,
       name: '',
-      status: '' as const,
+      status: '' as any,
       current: 0,
       max: 8,
       hasReturningUser: false,
@@ -75,17 +77,13 @@ const BattleList: React.FC = () => {
   }
 
   const prev = () => {
-    if (page > 1) {
-      setPage((p) => p - 1);
-    }
+    if (page > 1) setPage((p) => p - 1);
   };
   const next = () => {
-    if (page < totalPages) {
-      setPage((p) => p + 1);
-    }
+    if (page < totalPages) setPage((p) => p + 1);
   };
 
-  /** 카드 클릭 시 방 상세 페이지로 이동 */
+  /** 카드 클릭 시 상세 페이지로 이동 */
   const handleCardClick = (roomId: number) => {
     if (roomId !== 0) {
       navigate(`/battle/${roomId}`);
@@ -99,17 +97,35 @@ const BattleList: React.FC = () => {
     setShowRoomModal(true);
   };
 
-  /** 방 만들기 버튼 클릭 시 모달 열기 */
-  const handleCreateRoom = (name: string) => {
-    console.log('새 방 생성:', name);
-    // 실제 생성 로직: BattleRoomApi.createRoom({ topics: [...] }) 후 allRooms 갱신
+  /** 방 만들기 버튼 클릭 시 생성 API 호출 */
+  const handleCreateRoom = async (roomName: string) => {
+    try {
+      setIsCreating(true);
+      // API 명세에 맞춰 payload 설정
+      const newRoom = await BattleRoomApi.createRoom({ roomName });
+      // 생성된 방을 로그로 확인 (optional)
+      console.log('생성된 방 정보:', newRoom);
+
+      // 생성 성공 후 모달 닫고 목록 갱신
+      setShowCreateModal(false);
+      await fetchRooms();
+    } catch (error) {
+      console.error('[BattleList] 방 생성 실패:', error);
+      alert('방 생성 중 오류가 발생했습니다. 다시 시도해주세요.');
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   return (
     <Container>
       <Header>
         <HeaderLeft>
-          <HeaderButton $primary onClick={() => setShowCreateModal(true)}>
+          <HeaderButton
+            $primary
+            onClick={() => setShowCreateModal(true)}
+            disabled={isCreating}
+          >
             방 만들기
           </HeaderButton>
         </HeaderLeft>
@@ -140,6 +156,7 @@ const BattleList: React.FC = () => {
         <CreateRoomModal
           onClose={() => setShowCreateModal(false)}
           onCreate={handleCreateRoom}
+          isLoading={isCreating}
         />
       )}
 
@@ -165,12 +182,11 @@ const Container = styled.div`
   padding: 1rem;
   background: #3aa7f0;
   border: 5px solid #000;
-  border-radius: 4px;
+  border-radius: 8px;
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
   font-family: 'Malgun Gothic', 'Arial', sans-serif;
   display: flex;
   flex-direction: column;
-  border-radius: 8px;
 `;
 
 const Header = styled.header`
@@ -199,7 +215,10 @@ const HeaderButton = styled.button<{ $primary?: boolean }>`
   cursor: pointer;
   background-color: ${({ $primary }) => ($primary ? '#0050b3' : '#ffa700')};
   border: 2px solid #000;
-  border-radius: 4px;
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
 `;
 
 const Main = styled.main`
