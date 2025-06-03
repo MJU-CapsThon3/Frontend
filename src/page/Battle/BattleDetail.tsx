@@ -1300,7 +1300,7 @@ const ResultContainer = styled.div`
 `;
 
 /** 결과 항목 가로 배치 */
-const ResultRow = styled<div>`
+const ResultRow = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
