@@ -12,12 +12,12 @@ import {
 import { useNavigate, useParams } from 'react-router-dom';
 
 // ───── API import ──────────────────────────────
-import BattleChatApi, { ChatMessage } from '../../api/chat/chatApi';
-import AiApi from '../../api/Ai/AiApi';
+
 import {
   BattleRoomApi,
   RoomDetailFull,
   ChangeRoleRequest,
+  GenerateAITopicsResponse,
 } from '../../api/battle/battleRoomApi';
 
 // ───── 아이콘 임포트 ──────────────────────────────
@@ -99,7 +99,7 @@ const BattleDetail: React.FC = () => {
   );
   const [players, setPlayers] = useState<PlayerData[]>([]);
   const [chatInput, setChatInput] = useState('');
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatMessages, setChatMessages] = useState<any[]>([]); // ChatMessage 대신 any 사용
   const [subject, setSubject] = useState<string>('사자 vs 코끼리');
   const [isBattleStarted, setIsBattleStarted] = useState(false);
 
@@ -201,38 +201,26 @@ const BattleDetail: React.FC = () => {
   }, [roomId]);
 
   // ─── 채팅 내역 불러오기 ─────────────────────
+  // Chat 기능은 유지하되, ChatApi는 제거했으므로 빈 배열 유지
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await BattleChatApi.getChatMessages(parseInt(roomId, 10));
-        const merged = [...res.result.sideA, ...res.result.sideB];
-        merged.sort(
-          (a, b) =>
-            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-        );
-        setChatMessages(merged);
-      } catch (err) {
-        console.error('채팅 내역 조회 오류:', err);
-      }
-    })();
+    setChatMessages([]); // 초기화만 해둠
   }, [roomId]);
 
   // ─── 채팅 전송 ─────────────────────────────
   const handleChatSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
-    const side = ownerSide === 'left' ? 'A' : 'B';
-    try {
-      const payload = { side, message: chatInput.trim() };
-      const res = await BattleChatApi.postChatMessage(
-        parseInt(roomId, 10),
-        payload
-      );
-      setChatMessages((prev) => [...prev, res.result]);
-      setChatInput('');
-    } catch (err) {
-      console.error('채팅 메시지 전송 오류:', err);
-    }
+    // 채팅 API 호출 대신 console.log 처리
+    console.log('채팅 전송:', chatInput.trim());
+    setChatMessages((prev) => [
+      ...prev,
+      {
+        side: ownerSide === 'left' ? 'A' : 'B',
+        userId: OWNER_ID.toString(),
+        message: chatInput.trim(),
+      },
+    ]);
+    setChatInput('');
   };
 
   // ─── 채팅 스크롤 자동 최하단 유지 ─────────────────────
@@ -344,16 +332,19 @@ const BattleDetail: React.FC = () => {
     setPendingMoveSlot(null);
   };
 
-  // ─── 랜덤 토론 주제 생성 ─────────────────────
+  // ─── 랜덤 토론 주제 생성 (AI 주제 생성 API 호출) ─────────────────────
   const handleRandomSubject = async () => {
     try {
-      const res = await AiApi.generateTopic();
-      const { topic, option_a, option_b } = (res as any).result;
-      setSubject(topic);
-      setSideAOption(option_a);
-      setSideBOption(option_b);
+      const res: GenerateAITopicsResponse['result'] =
+        await BattleRoomApi.generateAITopics(parseInt(roomId, 10));
+      if (res) {
+        setSubject(`${res.topicA} vs ${res.topicB}`);
+        setSideAOption(res.topicA);
+        setSideBOption(res.topicB);
+      }
     } catch (err) {
       console.error('랜덤 토론 주제 생성 오류:', err);
+      // API 실패 시 예시 키워드 풀로 대체
       const keywordPool = [
         '기린',
         '코끼리',
@@ -527,7 +518,7 @@ const BattleDetail: React.FC = () => {
   };
 
   // ─── 채팅 버블 ─────────────────────
-  const ChatBubble: React.FC<{ msg: ChatMessage }> = ({ msg }) => {
+  const ChatBubble: React.FC<{ msg: any }> = ({ msg }) => {
     const isOwnerMsg = Number(msg.userId) === OWNER_ID;
     const isNotice = msg.message.startsWith('[공지]');
     return (
@@ -572,11 +563,9 @@ const BattleDetail: React.FC = () => {
         <ParticipantContainer>{renderLeftSlot()}</ParticipantContainer>
         <ChatSection>
           <ChatMessages ref={chatContainerRef}>
-            {chatMessages
-              .filter((m): m is ChatMessage => m !== null)
-              .map((msg) => (
-                <ChatBubble key={msg.id} msg={msg} />
-              ))}
+            {chatMessages.map((msg, idx) => (
+              <ChatBubble key={idx} msg={msg} />
+            ))}
           </ChatMessages>
           <ChatForm onSubmit={handleChatSubmit}>
             <FaCommentDots
