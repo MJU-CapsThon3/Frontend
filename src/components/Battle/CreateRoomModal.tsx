@@ -17,8 +17,11 @@ const ModalBox = styled.div`
   background: #ffffff;
   border-radius: 8px;
   width: 400px;
+
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   overflow: hidden;
+  border: 2px solid #000;
+  border-radius: 8px;
 `;
 
 const Header = styled.div`
@@ -28,6 +31,7 @@ const Header = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
+  border-bottom: 2px solid #000;
 `;
 
 const Title = styled.h2`
@@ -52,7 +56,7 @@ const Form = styled.form`
 
 const Label = styled.label`
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: 1rem;
 `;
 
 const Input = styled.input`
@@ -77,7 +81,8 @@ const Footer = styled.div`
 const Button = styled.button<{ primary?: boolean }>`
   padding: 0.6rem 1.2rem;
   border: none;
-  border-radius: 4px;
+  flex: 1;
+  border-radius: 6px;
   font-weight: 600;
   color: #fff;
   background-color: ${({ primary }) => (primary ? '#0050b3' : '#ffa700')};
@@ -86,6 +91,7 @@ const Button = styled.button<{ primary?: boolean }>`
   &:hover {
     background-color: ${({ primary }) => (primary ? '#003e8a' : '#cc8500')};
   }
+  border: 2px solid #000;
 `;
 
 interface CreateRoomModalProps {
