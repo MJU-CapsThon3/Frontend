@@ -1,7 +1,7 @@
 // src/pages/Battle/BattleDetail.tsx
 
 import React, { useState, useEffect, useRef, PropsWithChildren } from 'react';
-import styled, { keyframes } from 'styled-components';
+import styled from 'styled-components';
 import {
   FaCommentDots,
   FaUserAlt,
@@ -12,12 +12,12 @@ import {
 import { useNavigate, useParams } from 'react-router-dom';
 
 // ───── API import ──────────────────────────────
-
 import {
   BattleRoomApi,
   RoomDetailFull,
   ChangeRoleRequest,
   GenerateAITopicsResponse,
+  SetTopicsRequest,
 } from '../../api/battle/battleRoomApi';
 
 // ───── 아이콘 임포트 ──────────────────────────────
@@ -70,17 +70,6 @@ const tierIcons: { [key in Tier]: string } = {
   challenger: ChallengerIcon,
 };
 
-// ───── keyframes 정의 ──────────────────────────────
-const fadeIn = keyframes`
-  0% { opacity: 0; }
-  100% { opacity: 1; }
-`;
-
-const scaleUp = keyframes`
-  0% { transform: scale(0.8); opacity: 0; }
-  100% { transform: scale(1); opacity: 1; }
-`;
-
 // ───── BattleDetail 컴포넌트 ──────────────────────────────
 type TargetSlot = { area: 'participant' | 'spectator'; index: number };
 
@@ -99,23 +88,18 @@ const BattleDetail: React.FC = () => {
   );
   const [players, setPlayers] = useState<PlayerData[]>([]);
   const [chatInput, setChatInput] = useState('');
-  const [chatMessages, setChatMessages] = useState<any[]>([]); // ChatMessage 대신 any 사용
-  const [subject, setSubject] = useState<string>('사자 vs 코끼리');
-  const [isBattleStarted, setIsBattleStarted] = useState(false);
-
-  const splitInitial = subject.split(/vs/i).map((s) => s.trim());
-  const [sideAOption, setSideAOption] = useState<string>(
-    splitInitial.length === 2 ? splitInitial[0] : ''
-  );
-  const [sideBOption, setSideBOption] = useState<string>(
-    splitInitial.length === 2 ? splitInitial[1] : ''
-  );
-
+  const [chatMessages, setChatMessages] = useState<any[]>([]);
+  // API에서 받아올 주제(질문)
+  const [subject, setSubject] = useState<string>('');
+  const [sideAOption, setSideAOption] = useState<string>('');
+  const [sideBOption, setSideBOption] = useState<string>('');
   const [modalVisible, setModalVisible] = useState<boolean>(false);
-  const [subjectInput, setSubjectInput] = useState<string>('');
+  const [subjectAInput, setSubjectAInput] = useState<string>('');
+  const [subjectBInput, setSubjectBInput] = useState<string>('');
   const [kickModalVisible, setKickModalVisible] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerData | null>(null);
   const [isSpectatorsCollapsed, setIsSpectatorsCollapsed] = useState(false);
+  const [isBattleStarted, setIsBattleStarted] = useState(false);
 
   // roomId가 없으면 렌더링 중단
   if (!roomId) {
@@ -138,7 +122,13 @@ const BattleDetail: React.FC = () => {
         parseInt(roomId, 10)
       );
 
-      // API에서 받아온 participantA, participantB, spectators를 PlayerData로 변환
+      // ➔ API 응답에 담긴 question, topicA, topicB를 바로 상태에 할당
+      if (data.question) {
+        setSubject(data.question);
+        setSideAOption(data.topicA);
+        setSideBOption(data.topicB);
+      }
+
       const fetchedPlayers: PlayerData[] = [];
 
       // A팀 (팀 색상 blue)
@@ -200,18 +190,15 @@ const BattleDetail: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId]);
 
-  // ─── 채팅 내역 불러오기 ─────────────────────
-  // Chat 기능은 유지하되, ChatApi는 제거했으므로 빈 배열 유지
+  // ─── 채팅 내역 초기화 ─────────────────────
   useEffect(() => {
-    setChatMessages([]); // 초기화만 해둠
+    setChatMessages([]);
   }, [roomId]);
 
   // ─── 채팅 전송 ─────────────────────────────
   const handleChatSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
-    // 채팅 API 호출 대신 console.log 처리
-    console.log('채팅 전송:', chatInput.trim());
     setChatMessages((prev) => [
       ...prev,
       {
@@ -245,7 +232,6 @@ const BattleDetail: React.FC = () => {
   // ─── “시작/종료” 버튼 클릭 시 배틀 시작 or 종료 API 호출 ─────────────────────
   const handleToggleBattle = async () => {
     if (!isBattleStarted) {
-      // 배틀 시작
       try {
         await BattleRoomApi.startBattle(parseInt(roomId, 10));
         setIsBattleStarted(true);
@@ -255,7 +241,6 @@ const BattleDetail: React.FC = () => {
         alert('배틀 시작 중 오류가 발생했습니다.');
       }
     } else {
-      // 배틀 종료
       try {
         await BattleRoomApi.endBattle(parseInt(roomId, 10));
         setIsBattleStarted(false);
@@ -362,33 +347,47 @@ const BattleDetail: React.FC = () => {
     }
   };
 
-  // ─── 직접 주제 생성 ─────────────────────
+  // ─── 직접 주제 생성 버튼 클릭 ─────────────────────
   const handleDirectSubject = () => {
-    setSubjectInput('');
+    setSubjectAInput('');
+    setSubjectBInput('');
     setModalVisible(true);
   };
 
-  const handleModalSubmit = () => {
-    const trimmed = subjectInput.trim();
-    if (!trimmed) {
-      alert('주제를 입력해주세요. 예시: 사자 vs 코끼리');
-      return;
-    }
-    const parts = trimmed.split(/vs/i);
-    if (parts.length !== 2) {
-      alert('“주제A vs 주제B” 형식으로 입력해주세요.');
-      return;
-    }
-    const a = parts[0].trim();
-    const b = parts[1].trim();
+  // ─── 직접 입력한 주제로 서버 API 호출하여 저장 ─────────────────────
+  const handleModalSubmit = async () => {
+    const a = subjectAInput.trim();
+    const b = subjectBInput.trim();
+
     if (!a || !b) {
-      alert('“vs” 양쪽에 반드시 텍스트가 있어야 합니다.');
+      alert('주제 A와 주제 B를 모두 입력해주세요.');
       return;
     }
-    setSubject(`${a} vs ${b}`);
-    setSideAOption(a);
-    setSideBOption(b);
-    setModalVisible(false);
+
+    // API 요청 바디 생성
+    const payload: SetTopicsRequest = {
+      question: `${a} vs ${b}`,
+      topicA: a,
+      topicB: b,
+    };
+
+    try {
+      const res = await BattleRoomApi.setTopics(parseInt(roomId, 10), payload);
+      if (res) {
+        setSubject(`${res.topicA} vs ${res.topicB}`);
+        setSideAOption(res.topicA);
+        setSideBOption(res.topicB);
+      }
+    } catch (err) {
+      console.error('직접 주제 설정 오류:', err);
+      // 실패 시에도 사용자가 입력한 두 값을 화면에 반영
+      setSubject(`${a} vs ${b}`);
+      setSideAOption(a);
+      setSideBOption(b);
+      alert('주제 설정에 실패했습니다. 입력한 내용을 화면에 반영합니다.');
+    } finally {
+      setModalVisible(false);
+    }
   };
 
   // ─── PlayerCard 컴포넌트 ─────────────────────
@@ -627,18 +626,30 @@ const BattleDetail: React.FC = () => {
       )}
 
       {modalVisible && (
-        <ModalComponent title='주제 입력 (예: 사자 vs 코끼리)'>
-          <ModalInput
-            type='text'
-            placeholder='주제를 입력하세요. 예: 사자 vs 코끼리'
-            value={subjectInput}
-            onChange={(e) => setSubjectInput(e.target.value)}
-          />
+        <ModalComponent title='주제 입력 (주제 A / 주제 B)'>
+          <ColumnContainer>
+            <ModalInput
+              type='text'
+              placeholder='주제 A 입력...'
+              value={subjectAInput}
+              onChange={(e) => setSubjectAInput(e.currentTarget.value)}
+            />
+            <ModalInput
+              type='text'
+              placeholder='주제 B 입력...'
+              value={subjectBInput}
+              onChange={(e) => setSubjectBInput(e.currentTarget.value)}
+            />
+          </ColumnContainer>
           <ModalButtons>
             <ModalSubmitButton onClick={handleModalSubmit}>
               생성
             </ModalSubmitButton>
-            <ModalCancelButton onClick={() => setModalVisible(false)}>
+            <ModalCancelButton
+              onClick={() => {
+                setModalVisible(false);
+              }}
+            >
               취소
             </ModalCancelButton>
           </ModalButtons>
@@ -682,7 +693,6 @@ const Container = styled.div`
   font-family: 'Malgun Gothic', 'Arial', sans-serif;
   overflow: hidden;
   position: relative;
-  animation: ${fadeIn} 0.5s ease-in-out forwards;
 `;
 
 const Header = styled.header`
@@ -1006,7 +1016,6 @@ const ModalContent = styled.div`
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  animation: ${scaleUp} 0.3s ease-in-out;
   box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.3);
 `;
 
@@ -1016,6 +1025,12 @@ const ModalTitle = styled.h3`
   border-bottom: 1px solid #000;
   font-size: 1.1rem;
   color: #333;
+`;
+
+const ColumnContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
 `;
 
 const ModalText = styled.p`
