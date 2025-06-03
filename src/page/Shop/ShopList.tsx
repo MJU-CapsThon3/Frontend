@@ -34,12 +34,6 @@ import TeamIcon15 from '../../assets/ShopIcon/TeamIcon15.svg';
 import TeamIcon16 from '../../assets/ShopIcon/TeamIcon16.svg';
 import TeamIcon17 from '../../assets/ShopIcon/TeamIcon17.svg';
 
-import { ShopApi } from '../../api/shop/shop';
-import type {
-  ShopItem as APIShopItem,
-  MyItem as APIMyItem,
-} from '../../api/shop/shop';
-
 export type CategoryType = '전체' | '팀 아이콘' | '테두리';
 
 export interface ShopItem {
@@ -250,7 +244,7 @@ const dummyShopItems: ShopItem[] = [
     icon: <FaCat size={64} color='#fd79a8' />,
     category: '팀 아이콘',
   },
-  // 테두리 10개
+  // 테두리 14개
   {
     id: 10,
     name: '기본 실선 테두리',
@@ -399,6 +393,7 @@ const ShopWithPreview: React.FC = () => {
     appliedBorder: null,
     avatarUrl: '',
   });
+  // API 대신 dummyShopItems 를 그대로 사용
   const [items, setItems] = useState<ShopItem[]>([]);
   const [myItems, setMyItems] = useState<ShopItem[]>([]);
   const [selectedCategory, setSelectedCategory] =
@@ -409,36 +404,11 @@ const ShopWithPreview: React.FC = () => {
   const [purchaseSuccessItem, setPurchaseSuccessItem] =
     useState<ShopItem | null>(null);
 
+  // 최초에 dummyShopItems 를 불러오도록
   useEffect(() => {
-    ShopApi.getItems().then((apiItems) => {
-      const mapped = apiItems.map((apiItem) => {
-        const dummy = dummyShopItems.find((d) => d.id === apiItem.id);
-        return {
-          ...apiItem,
-          icon: dummy?.icon ?? <FaUserAlt size={64} color='#888' />,
-          category: dummy?.category ?? '전체',
-        };
-      });
-      setItems(mapped);
-    });
-
-    ShopApi.getMyItems()
-      .then((apiMyItems: APIMyItem[]) => {
-        const mappedMy = apiMyItems.map((apiItem) => {
-          const dummy = dummyShopItems.find((d) => d.id === apiItem.id);
-          return {
-            id: apiItem.id,
-            name: apiItem.name,
-            price: apiItem.cost,
-            icon: dummy?.icon ?? <FaUserAlt size={64} color='#888' />,
-            category: dummy?.category ?? '전체',
-          } as ShopItem;
-        });
-        setMyItems(mappedMy);
-      })
-      .catch((err) => {
-        console.error('[ShopList] 내 아이템 조회 실패:', err);
-      });
+    setItems(dummyShopItems);
+    // 내 아이템은 초기엔 빈 배열로
+    setMyItems([]);
   }, []);
 
   const filteredItems =
@@ -455,21 +425,14 @@ const ShopWithPreview: React.FC = () => {
 
   const confirmPurchase = () => {
     if (!selectedPurchaseItem) return;
-    ShopApi.buyItem({ itemId: selectedPurchaseItem.id })
-      .then(() => {
-        setPurchaseSuccessItem(selectedPurchaseItem);
-        setMyItems((prev) => {
-          if (prev.find((x) => x.id === selectedPurchaseItem.id)) return prev;
-          return [...prev, selectedPurchaseItem];
-        });
-      })
-      .catch((err) => {
-        console.error('[ShopList] 아이템 구매 실패:', err);
-      })
-      .finally(() => {
-        setSelectedPurchaseItem(null);
-        setPurchaseModalVisible(false);
-      });
+    // 실제 API 호출 대신 간단히 내 아이템 스테이트에 추가
+    setPurchaseSuccessItem(selectedPurchaseItem);
+    setMyItems((prev) => {
+      if (prev.find((x) => x.id === selectedPurchaseItem.id)) return prev;
+      return [...prev, selectedPurchaseItem];
+    });
+    setSelectedPurchaseItem(null);
+    setPurchaseModalVisible(false);
   };
 
   const cancelPurchase = () => {
@@ -780,7 +743,7 @@ const MyItemsSection = styled.div`
 
 const MyItemsGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 0.8rem;
   padding: 0.5rem;
 `;
