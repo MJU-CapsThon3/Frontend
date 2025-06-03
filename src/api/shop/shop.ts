@@ -34,8 +34,9 @@ export interface BuyItemResponse {
  */
 export interface AddItemRequest {
   name: string;
-  context: string;
-  cost: number;
+  price: number;
+  icon: string; // SVG 문자열
+  category: '팀 아이콘' | '테두리';
 }
 
 /**
@@ -44,14 +45,14 @@ export interface AddItemRequest {
 export interface ShopItem {
   id: number;
   name: string;
-  category: string;
-  icon: string; // svg 문자열
+  category: '팀 아이콘' | '테두리';
+  icon: string; // SVG 문자열
   price: number;
 }
 
 export interface AddItemResponse {
   isSuccess: boolean;
-  code: number | string;
+  code: string | number;
   message: string;
   result: ShopItem | null;
 }
@@ -72,8 +73,9 @@ export interface GetItemsResponse {
 export interface MyItem {
   id: number;
   name: string;
-  context: string;
-  cost: number;
+  category: '팀 아이콘' | '테두리';
+  icon: string; // SVG 문자열
+  price: number;
   acquiredAt: string; // ISO 문자열
   isEquipped: boolean;
 }
@@ -91,8 +93,9 @@ export interface GetMyItemsResponse {
 export interface UpdateItemRequest {
   itemId: number;
   name: string;
-  context: string;
-  cost: number;
+  category: '팀 아이콘' | '테두리';
+  icon: string; // SVG 문자열
+  price: number;
 }
 
 /**
@@ -122,10 +125,11 @@ export const ShopApi = {
         '/shop/buy-item',
         payload
       );
-      if (response.data.isSuccess && response.data.result) {
-        return response.data.result;
+      const data = response.data;
+      if (data.isSuccess && data.result) {
+        return data.result;
       } else {
-        const msg = response.data.message || '아이템 구매 실패';
+        const msg = data.message || '아이템 구매 실패';
         throw new Error(msg);
       }
     } catch (error) {
@@ -150,10 +154,11 @@ export const ShopApi = {
         '/shop/items',
         payload
       );
-      if (response.data.isSuccess && response.data.result) {
-        return response.data.result;
+      const data = response.data;
+      if (data.isSuccess && data.result) {
+        return data.result;
       } else {
-        const msg = response.data.message || '아이템 추가 실패';
+        const msg = data.message || '아이템 추가 실패';
         throw new Error(msg);
       }
     } catch (error) {
@@ -172,10 +177,11 @@ export const ShopApi = {
   async getItems(axiosInstance: AxiosInstance = Axios): Promise<ShopItem[]> {
     try {
       const response = await axiosInstance.get<GetItemsResponse>('/shop/items');
-      if (response.data.isSuccess && response.data.result) {
-        return response.data.result;
+      const data = response.data;
+      if (data.isSuccess && data.result) {
+        return data.result;
       } else {
-        const msg = response.data.message || '아이템 목록 조회 실패';
+        const msg = data.message || '아이템 목록 조회 실패';
         throw new Error(msg);
       }
     } catch (error) {
@@ -192,10 +198,11 @@ export const ShopApi = {
     try {
       const response =
         await axiosInstance.get<GetMyItemsResponse>('/shop/my-items');
-      if (response.data.isSuccess && response.data.result) {
-        return response.data.result;
+      const data = response.data;
+      if (data.isSuccess && data.result) {
+        return data.result;
       } else {
-        const msg = response.data.message || '내 아이템 목록 조회 실패';
+        const msg = data.message || '내 아이템 목록 조회 실패';
         throw new Error(msg);
       }
     } catch (error) {
@@ -220,10 +227,11 @@ export const ShopApi = {
         '/shop/items/update',
         payload
       );
-      if (response.data.isSuccess && response.data.result) {
-        return response.data.result;
+      const data = response.data;
+      if (data.isSuccess && data.result) {
+        return data.result;
       } else {
-        const msg = response.data.message || '아이템 수정 실패';
+        const msg = data.message || '아이템 수정 실패';
         throw new Error(msg);
       }
     } catch (error) {
