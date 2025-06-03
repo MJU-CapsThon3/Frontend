@@ -9,15 +9,22 @@ import RoomModal from '../../components/Battle/RoomModal';
 import CreateRoomModal from '../../components/Battle/CreateRoomModal';
 import { BattleRoomApi } from '../../api/battle/battleRoomApi';
 
+// 한 페이지에 표시할 방 개수
 const ROOMS_PER_PAGE = 10;
 
 /**
- * RoomSummary 타입 재정의 (API에서 실제로 `id`라는 키로 넘어왔다고 가정)
- * 필요하다면 이 인터페이스를 BattleRoomApi.getAllRooms()에서 사용하는 타입에 맞춰서 조정해야 합니다.
+ * 실제 API에서 내려주는 JSON 형식에 맞춘 로컬 타입
+ *  - API 응답 예시:
+ *    {
+ *      "id": "1",
+ *      "status": "ENDED",
+ *      "topicA": "블리츠",
+ *      "topicB": "브라움"
+ *    }
  */
-interface RoomSummary {
-  id: string; // 서버에서 "id"라는 이름으로 넘어왔다면 string 형태로
-  status: 'WAITING' | 'FULL' | 'PLAYING' | 'FINISHED';
+interface RawRoomSummary {
+  id: string;
+  status: 'WAITING' | 'FULL' | 'PLAYING' | 'FINISHED' | 'ENDED';
   topicA: string;
   topicB: string;
 }
@@ -25,41 +32,43 @@ interface RoomSummary {
 const BattleList: React.FC = () => {
   const navigate = useNavigate();
 
-  // API에서 받아온 전체 방 목록 (RoomSummary[])
-  const [allRooms, setAllRooms] = useState<RoomSummary[]>([]);
+  // API에서 받아온 전체 방 목록 (RawRoomSummary[])
+  const [allRooms, setAllRooms] = useState<RawRoomSummary[]>([]);
   const [page, setPage] = useState(1);
   const [showRoomModal, setShowRoomModal] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState<RoomData | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  // 페이지 수 계산
+  // 총 페이지 수 계산
   const totalPages = Math.ceil(allRooms.length / ROOMS_PER_PAGE);
 
   // 컴포넌트 마운트 시 API 호출하여 방 목록 받아오기
   useEffect(() => {
     (async () => {
       try {
-        // BattleRoomApi.getAllRooms() 호출하여 방 목록 가져오기
-        const roomsFromApi: RoomSummary[] = await BattleRoomApi.getAllRooms();
-        setAllRooms(roomsFromApi);
+        // getAllRooms()가 반환하는 타입(RoomSummary[])과 실제 응답 키(id)는 다르므로
+        // raw 타입을 any로 받아온 뒤, id 필드를 사용하도록 캐스팅할 것입니다.
+        const roomsFromApi: any[] = await BattleRoomApi.getAllRooms();
+        // roomsFromApi 배열의 각 원소가 { id: string, status, topicA, topicB } 형태인지 확인
+        setAllRooms(roomsFromApi as RawRoomSummary[]);
       } catch (error) {
         console.error('[BattleList] 전체 방 조회 오류:', error);
       }
     })();
   }, []);
 
-  // 현재 페이지에 표시할 방 데이터만 슬라이스
+  // 현재 페이지에 표시할 방 데이터만 잘라냄
   const startIndex = (page - 1) * ROOMS_PER_PAGE;
   const pageSlice = allRooms.slice(startIndex, startIndex + ROOMS_PER_PAGE);
 
-  // RoomSummary → RoomData 매핑 (id := 방 번호)
+  // RawRoomSummary → RoomData 매핑 (id: string → 숫자로 변환)
   const roomsToDisplay: RoomData[] = pageSlice.map((r) => ({
-    id: Number(r.id), // 서버에서 문자열로 넘어오는 경우 Number()로 숫자 변환
+    id: Number(r.id),
     name: `${r.topicA} vs ${r.topicB}`,
-    status: r.status,
-    current: 0, // 참여자 수 정보가 없으므로 임시 0
-    max: 8, // 최대 8명으로 가정
-    hasReturningUser: false, // 추가 정보 없으면 false
+    status: r.status as RoomData['status'], // RoomData.status 는 RoomStatus, 문자열 매핑
+    current: 0,
+    max: 8,
+    hasReturningUser: false,
   }));
 
   // 페이지 내 빈 자리가 있을 때 빈 칸 채우기
@@ -67,7 +76,7 @@ const BattleList: React.FC = () => {
     const empties = Array(ROOMS_PER_PAGE - roomsToDisplay.length).fill({
       id: 0,
       name: '',
-      status: '' as const,
+      status: '' as RoomData['status'],
       current: 0,
       max: 8,
       hasReturningUser: false,
@@ -88,19 +97,16 @@ const BattleList: React.FC = () => {
 
   /**
    * 카드 클릭 시:
-   * - roomId가 0이 아니면(빈 슬롯이 아니면) 관전자(P) 모드로 API 호출 후 방으로 이동
+   * - roomId가 0이 아니면(빈 슬롯이 아니면) 관전자 모드로 API 호출 후 방으로 이동
    */
   const handleCardClick = async (roomId: number) => {
-    if (roomId === 0) return; // 빈 슬롯 클릭 시 아무 동작 없음
+    if (roomId === 0) return;
 
     try {
-      // 관전자 모드로 방 참가 API 호출
       await BattleRoomApi.joinRoom(roomId);
-      // 참가 성공 시 해당 방 상세 페이지로 이동
       navigate(`/battle/${roomId}`);
     } catch (error) {
       console.error(`[BattleList] 방 ${roomId} 참가 오류:`, error);
-      // 필요하다면 에러 처리 UI 추가 (예: 토스트 메시지)
     }
   };
 
@@ -133,7 +139,7 @@ const BattleList: React.FC = () => {
       <Main>
         {roomsToDisplay.map((room) => (
           <RoomCard
-            key={room.id || Math.random()}
+            key={room.id !== 0 ? room.id : Math.random()}
             room={room}
             onCardClick={handleCardClick}
             onUserIconClick={handleUserIconClick}
@@ -166,6 +172,10 @@ const BattleList: React.FC = () => {
 };
 
 export default BattleList;
+
+// ─────────────────────────────────────────────────────────────────
+// Styled Components 정의
+// ─────────────────────────────────────────────────────────────────
 
 const Container = styled.div`
   position: absolute;

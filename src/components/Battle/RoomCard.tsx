@@ -1,5 +1,3 @@
-// src/components/Battle/RoomCard.tsx
-
 import React from 'react';
 import styled, { keyframes } from 'styled-components';
 import { FaSkullCrossbones, FaUserFriends } from 'react-icons/fa';
