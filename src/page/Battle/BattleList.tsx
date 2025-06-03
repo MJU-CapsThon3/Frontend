@@ -113,16 +113,19 @@ const BattleList: React.FC = () => {
   };
 
   /**
-   * 방 만들기 버튼 클릭 시 모달 열기 → 방 생성 API 호출 후 1페이지를 다시 조회
+   * 방 만들기 버튼 클릭 시 모달 열기 → 방 생성 API 호출 후 바로 방 참가(join) → 방 상세페이지로 이동
    */
   const handleCreateRoom = async (name: string) => {
     try {
-      await BattleRoomApi.createRoom({ roomName: name });
-      // 방 생성 후 항상 1페이지로 돌아가 새 목록 조회
-      setPage(1);
-      const updatedRooms: any[] = await BattleRoomApi.getAllRooms(1);
-      setRoomsThisPage(updatedRooms as RawRoomSummary[]);
+      // 1) 방 생성
+      const result = await BattleRoomApi.createRoom({ roomName: name });
+
+      // 2) 생성된 roomId로 즉시 참가
+      await BattleRoomApi.joinRoom(result.roomId);
+
+      // 3) 모달 닫고 상세 페이지로 이동
       setShowCreateModal(false);
+      navigate(`/battle/${result.roomId}`);
     } catch (error) {
       console.error('[BattleList] 방 생성 오류:', error);
     }
