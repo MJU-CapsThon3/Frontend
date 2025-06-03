@@ -13,7 +13,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 
 // ───── API import ──────────────────────────────
 import BattleChatApi, { ChatMessage } from '../../api/chat/chatApi';
-import AiApi from '../../api/Ai/AiApi'; // ← AiApi import
+import AiApi from '../../api/Ai/AiApi';
+import { BattleRoomApi, RoomDetailFull } from '../../api/battle/battleRoomApi';
 
 // ───── 아이콘 임포트 ──────────────────────────────
 import BronzeIcon from '../../assets/Bronze.svg';
@@ -25,7 +26,7 @@ import MasterIcon from '../../assets/Master.svg';
 import GrandMasterIcon from '../../assets/GrandMaster.svg';
 import ChallengerIcon from '../../assets/Challenger.svg';
 
-// ───── 타입 및 테스트 데이터 ──────────────────────────────
+// ───── 타입 정의 ──────────────────────────────
 type Tier =
   | 'bronze'
   | 'silver'
@@ -48,86 +49,8 @@ export type PlayerData = {
   tier: Tier;
 };
 
-const initialPlayers: PlayerData[] = [
-  {
-    id: 1,
-    nickname: '테스트1',
-    avatarUrl: '',
-    isReady: true,
-    role: 'participant',
-    tier: 'challenger',
-  },
-  {
-    id: 2,
-    nickname: '플레이어2',
-    avatarUrl: '',
-    isReady: true,
-    role: 'spectator',
-    tier: 'gold',
-  },
-  {
-    id: 3,
-    nickname: '플레이어3',
-    avatarUrl: '',
-    isReady: true,
-    role: 'spectator',
-    tier: 'silver',
-  },
-  {
-    id: 4,
-    nickname: '플레이어4',
-    avatarUrl: '',
-    isReady: true,
-    role: 'spectator',
-    tier: 'platinum',
-  },
-  {
-    id: 5,
-    nickname: '플레이어5',
-    avatarUrl: '',
-    isReady: true,
-    role: 'spectator',
-    tier: 'bronze',
-  },
-  {
-    id: 6,
-    nickname: '플레이어6',
-    avatarUrl: '',
-    isReady: true,
-    role: 'spectator',
-    tier: 'diamond',
-  },
-  {
-    id: 7,
-    nickname: '플레이어7',
-    avatarUrl: '',
-    isReady: true,
-    role: 'spectator',
-    tier: 'master',
-  },
-  {
-    id: 8,
-    nickname: '플레이어8',
-    avatarUrl: '',
-    isReady: true,
-    role: 'spectator',
-    tier: 'grandmaster',
-  },
-];
-
-const keywordPool: string[] = [
-  '기린',
-  '코끼리',
-  '호랑이',
-  '사자',
-  '펭귄',
-  '코알라',
-  '토끼',
-  '거북이',
-];
-
 // ───── 상수 정의 ──────────────────────────────
-const OWNER_ID = 1;
+const OWNER_ID = 1; // 예시용: 현재 로그인된 사용자 ID
 const TOTAL_SLOTS = 8;
 const BOX_SIZE = '150px';
 
@@ -162,7 +85,7 @@ const BattleDetail: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>();
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
-  // ─── Hooks는 컴포넌트 최상단에서만 호출 ────────────────────
+  // ─── 상태 정의 ───────────────────────────────────
   const [ownerSide, setOwnerSide] = useState<'left' | 'right'>('left');
   const [ownerSpectatorSlot, setOwnerSpectatorSlot] = useState<number | null>(
     null
@@ -170,14 +93,11 @@ const BattleDetail: React.FC = () => {
   const [pendingMoveSlot, setPendingMoveSlot] = useState<TargetSlot | null>(
     null
   );
-  const [players, setPlayers] = useState<PlayerData[]>(initialPlayers);
+  const [players, setPlayers] = useState<PlayerData[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-
-  // 기본 subject: “사자 vs 코끼리”
   const [subject, setSubject] = useState<string>('사자 vs 코끼리');
 
-  // subject를 “A vs B”로 분리해서 초기값 할당
   const splitInitial = subject.split(/vs/i).map((s) => s.trim());
   const [sideAOption, setSideAOption] = useState<string>(
     splitInitial.length === 2 ? splitInitial[0] : ''
@@ -187,19 +107,19 @@ const BattleDetail: React.FC = () => {
   );
 
   const [modalVisible, setModalVisible] = useState<boolean>(false);
-  const [subjectInput, setSubjectInput] = useState<string>(''); // ← 직접 주제 입력용 상태 추가
+  const [subjectInput, setSubjectInput] = useState<string>('');
   const [startModalVisible, setStartModalVisible] = useState(false);
   const [warningModalVisible, setWarningModalVisible] = useState(false);
   const [kickModalVisible, setKickModalVisible] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerData | null>(null);
   const [isSpectatorsCollapsed, setIsSpectatorsCollapsed] = useState(false);
-  // ─────────────────────────────────────────────────────────────
 
-  // roomId가 없으면 렌더링을 중단 (Hooks 이후에)
+  // roomId가 없으면 렌더링 중단
   if (!roomId) {
     return <div>유효하지 않은 방 ID입니다.</div>;
   }
 
+  // 현재 소유자 정보
   const ownerData = players.find((p) => p.id === OWNER_ID);
   const nonOwnerParticipants = players.filter(
     (p) => p.role === 'participant' && p.id !== OWNER_ID
@@ -215,59 +135,70 @@ const BattleDetail: React.FC = () => {
     nonOwnerParticipants.length >= 1 &&
     nonOwnerParticipants[0].isReady;
 
-  // ─── 랜덤 토론 주제 생성 핸들러 ───────────────────
-  const handleRandomSubject = async () => {
-    try {
-      // API에서 topic, option_a, option_b 반환
-      const res = await AiApi.generateTopic();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { topic, option_a, option_b } = (res as any).result;
-      setSubject(topic);
-      setSideAOption(option_a);
-      setSideBOption(option_b);
-    } catch (err) {
-      console.error('랜덤 토론 주제 생성 오류:', err);
-      // 폴백: 키워드 풀에서 랜덤 주제 생성
-      const shuffled = [...keywordPool].sort(() => 0.5 - Math.random());
-      setSubject(`${shuffled[0]} vs ${shuffled[1]}`);
-      setSideAOption(shuffled[0]);
-      setSideBOption(shuffled[1]);
-    }
-  };
-  // ─────────────────────────────────────────────────────────────
+  // ─── A/B/P 팀 정보 API 호출 ─────────────────────
+  useEffect(() => {
+    (async () => {
+      try {
+        // 상세 조회 API 호출
+        const data: RoomDetailFull =
+          await BattleRoomApi.getRoomDetailFull(roomId);
 
-  // ─── 직접 주제 생성 핸들러 ───────────────────
-  const handleDirectSubject = () => {
-    setSubjectInput(''); // 입력값 초기화
-    setModalVisible(true);
-  };
+        // API에서 받아온 participantA, participantB, spectators를 PlayerData로 변환
+        const fetchedPlayers: PlayerData[] = [];
 
-  const handleModalSubmit = () => {
-    const trimmed = subjectInput.trim();
-    if (!trimmed) {
-      alert('주제를 입력해주세요. 예시: 사자 vs 코끼리');
-      return;
-    }
-    // 'vs' 기준으로 분리하여 A와 B를 추출
-    const parts = trimmed.split(/vs/i); // 대소문자 구분 없이 'vs'로 분리
-    if (parts.length !== 2) {
-      alert(
-        '입력 형식이 잘못되었습니다. “주제A vs 주제B” 형식으로 입력해주세요.'
-      );
-      return;
-    }
-    const a = parts[0].trim();
-    const b = parts[1].trim();
-    if (!a || !b) {
-      alert('“vs” 양쪽에 반드시 텍스트가 있어야 합니다.');
-      return;
-    }
-    setSubject(`${a} vs ${b}`);
-    setSideAOption(a);
-    setSideBOption(b);
-    setModalVisible(false);
-  };
-  // ─────────────────────────────────────────────────────────────
+        // A팀 (팀 색상 blue)
+        data.participantA.forEach((u, idx) => {
+          fetchedPlayers.push({
+            id: Number(u.userId),
+            nickname: `유저${u.userId}`,
+            avatarUrl: '',
+            isReady: true, // 실제 로직에 맞춰 변경
+            team: 'blue',
+            role: 'participant',
+            tier: 'silver', // 예시값, 실제 등급 로직으로 수정
+          });
+          // 만약 OWNER_ID가 A팀이면 owner 위치를 왼쪽으로 설정
+          if (Number(u.userId) === OWNER_ID) {
+            setOwnerSide('left');
+          }
+        });
+
+        // B팀 (팀 색상 red)
+        data.participantB.forEach((u, idx) => {
+          fetchedPlayers.push({
+            id: Number(u.userId),
+            nickname: `유저${u.userId}`,
+            avatarUrl: '',
+            isReady: true,
+            team: 'red',
+            role: 'participant',
+            tier: 'silver',
+          });
+          if (Number(u.userId) === OWNER_ID) {
+            setOwnerSide('right');
+          }
+        });
+
+        // 관전자
+        data.spectators.forEach((u, idx) => {
+          fetchedPlayers.push({
+            id: Number(u.userId),
+            nickname: `유저${u.userId}`,
+            avatarUrl: '',
+            role: 'spectator',
+            tier: 'silver',
+          });
+          if (Number(u.userId) === OWNER_ID) {
+            setOwnerSpectatorSlot(idx);
+          }
+        });
+
+        setPlayers(fetchedPlayers);
+      } catch (err) {
+        console.error('배틀방 상세 조회 오류:', err);
+      }
+    })();
+  }, [roomId]);
 
   // ─── 채팅 내역 불러오기 ─────────────────────
   useEffect(() => {
@@ -318,7 +249,9 @@ const BattleDetail: React.FC = () => {
 
   const handleReadyToggle = () => {
     setPlayers((prev) =>
-      prev.map((p) => (p.id === OWNER_ID ? { ...p, isReady: !p.isReady } : p))
+      prev.map((p) =>
+        p.id === OWNER_ID ? { ...p, isReady: !p.isReady, team: p.team } : p
+      )
     );
   };
 
@@ -357,6 +290,62 @@ const BattleDetail: React.FC = () => {
     setPendingMoveSlot(null);
   };
 
+  // ─── 랜덤 토론 주제 생성 ─────────────────────
+  const handleRandomSubject = async () => {
+    try {
+      const res = await AiApi.generateTopic();
+      const { topic, option_a, option_b } = (res as any).result;
+      setSubject(topic);
+      setSideAOption(option_a);
+      setSideBOption(option_b);
+    } catch (err) {
+      console.error('랜덤 토론 주제 생성 오류:', err);
+      const keywordPool = [
+        '기린',
+        '코끼리',
+        '호랑이',
+        '사자',
+        '펭귄',
+        '코알라',
+        '토끼',
+        '거북이',
+      ];
+      const shuffled = [...keywordPool].sort(() => 0.5 - Math.random());
+      setSubject(`${shuffled[0]} vs ${shuffled[1]}`);
+      setSideAOption(shuffled[0]);
+      setSideBOption(shuffled[1]);
+    }
+  };
+
+  // ─── 직접 주제 생성 ─────────────────────
+  const handleDirectSubject = () => {
+    setSubjectInput('');
+    setModalVisible(true);
+  };
+
+  const handleModalSubmit = () => {
+    const trimmed = subjectInput.trim();
+    if (!trimmed) {
+      alert('주제를 입력해주세요. 예시: 사자 vs 코끼리');
+      return;
+    }
+    const parts = trimmed.split(/vs/i);
+    if (parts.length !== 2) {
+      alert('“주제A vs 주제B” 형식으로 입력해주세요.');
+      return;
+    }
+    const a = parts[0].trim();
+    const b = parts[1].trim();
+    if (!a || !b) {
+      alert('“vs” 양쪽에 반드시 텍스트가 있어야 합니다.');
+      return;
+    }
+    setSubject(`${a} vs ${b}`);
+    setSideAOption(a);
+    setSideBOption(b);
+    setModalVisible(false);
+  };
+
   // ─── PlayerCard 컴포넌트 ─────────────────────
   const PlayerCard: React.FC<{
     player: PlayerData;
@@ -389,9 +378,9 @@ const BattleDetail: React.FC = () => {
         <RankArea>
           {isOwner ? (
             <OwnerBadge>방 장</OwnerBadge>
-          ) : (
-            player.isReady && <ReadyBadge>준 비</ReadyBadge>
-          )}
+          ) : player.isReady ? (
+            <ReadyBadge>준 비</ReadyBadge>
+          ) : null}
         </RankArea>
       </StyledPlayerCard>
     );
@@ -427,8 +416,8 @@ const BattleDetail: React.FC = () => {
       ownerData.role === 'participant' &&
       ownerSide === 'right' ? (
         <PlayerCard player={ownerData} isOwner />
-      ) : nonOwnerParticipants.length > 0 && ownerSide !== 'right' ? (
-        <PlayerCard player={nonOwnerParticipants[0]} />
+      ) : nonOwnerParticipants.length > 1 && ownerSide !== 'right' ? (
+        <PlayerCard player={nonOwnerParticipants[1]} />
       ) : (
         <CommonCard
           onClick={() => setPendingMoveSlot({ area: 'participant', index: 1 })}
@@ -594,7 +583,6 @@ const BattleDetail: React.FC = () => {
 
       {modalVisible && (
         <ModalComponent title='주제 입력 (예: 사자 vs 코끼리)'>
-          {/* 하나의 입력창에서 “A vs B” 형식으로 입력받도록 수정 */}
           <ModalInput
             type='text'
             placeholder='주제를 입력하세요. 예: 사자 vs 코끼리'
