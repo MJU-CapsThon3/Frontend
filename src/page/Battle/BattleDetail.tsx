@@ -80,6 +80,7 @@ const BOX_SIZE = '150px';
 const POLL_INTERVAL = 2000; // 2초마다 방 상태 폴링
 const INITIAL_TIMER = 180; // 3분 = 180초
 const CHAT_POLL_INTERVAL = 2000; // 2초마다 채팅 내역 폴링
+const VOTE_TIMEOUT = 10000; // 10초 후 자동 투표 (ms)
 
 const tierIcons: { [key in Tier]: string } = {
   bronze: BronzeIcon,
@@ -145,6 +146,10 @@ const BattleDetail: React.FC = () => {
     aiAnalysis: string;
     pointsAwarded: number;
   } | null>(null);
+
+  // 투표 타이머(10초) 및 결과 폴링 핸들러
+  const voteTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const resultPollingRef = useRef<NodeJS.Timeout | null>(null);
 
   if (!roomId) {
     return <div>유효하지 않은 방 ID입니다.</div>;
@@ -271,10 +276,61 @@ const BattleDetail: React.FC = () => {
     return () => clearInterval(interval);
   }, [fetchRoomDetail]);
 
+  // ─── 투표 모달이 열릴 때: 10초 카운트다운 + 결과 폴링 시작 ─────────────────────
+  useEffect(() => {
+    // 투표 모달이 열린 순간
+    if (voteModalVisible) {
+      // (1) 10초 후 자동 투표 처리
+      voteTimeoutRef.current = setTimeout(() => {
+        if (!hasVoted) {
+          console.log('자동 투표 처리: A팀으로 투표 처리합니다.');
+          handleVote('A'); // 기본으로 A팀 자동 투표 (원한다면 B로 바꾸거나 랜덤으로 처리)
+        }
+      }, VOTE_TIMEOUT);
+
+      // (2) 모든 사용자에게 결과 모달을 띄우기 위한 결과 폴링
+      const pollResult = async () => {
+        try {
+          const result = await BattleRoomApi.getBattleResult(
+            parseInt(roomId, 10)
+          );
+          // result가 null이 아니고, voteCount가 들어있다면 “최종 결과가 계산됨”으로 간주
+          if (result && result.voteCount !== undefined && !resultModalVisible) {
+            setBattleResult(result);
+            setResultModalVisible(true);
+            setVoteModalVisible(false);
+          }
+        } catch (e) {
+          console.error('결과 조회 중 오류:', e);
+        }
+      };
+
+      // 바로 한 번 호출
+      pollResult();
+      // 2초마다 한 번씩 폴링
+      resultPollingRef.current = setInterval(pollResult, 2000);
+    }
+
+    // 투표 모달이 닫히면, 타이머와 폴링을 모두 정리
+    return () => {
+      if (voteTimeoutRef.current) {
+        clearTimeout(voteTimeoutRef.current);
+        voteTimeoutRef.current = null;
+      }
+      if (resultPollingRef.current) {
+        clearInterval(resultPollingRef.current);
+        resultPollingRef.current = null;
+      }
+    };
+    // hasVoted, voteModalVisible, resultModalVisible 변경 시마다 재실행
+  }, [voteModalVisible, hasVoted, resultModalVisible, roomId]);
+
   // ─── 이전 isBattleStarted 값 비교하여, true → false 전환 시 투표 모달 오픈 ─────────────────────
   useEffect(() => {
     if (prevIsBattleStarted.current && !isBattleStarted) {
+      // 방이 PLAYING → FINISHED(또는 WAITING)으로 바뀌면
       setVoteModalVisible(true);
+      setHasVoted(false); // 새로 투표 시작
     }
     prevIsBattleStarted.current = isBattleStarted;
   }, [isBattleStarted]);
@@ -325,6 +381,34 @@ const BattleDetail: React.FC = () => {
     setChatInput('');
   };
 
+  // ─── 투표 처리 (A 또는 B) ─────────────────────
+  const handleVote = async (choice: 'A' | 'B') => {
+    if (hasVoted) return; // 이미 투표했다면 무시
+    try {
+      const payload: CreateVoteRequest = { vote: choice };
+      await VoteApi.createVote(roomId, payload);
+      setHasVoted(true);
+      setVoteModalVisible(false);
+
+      // 투표가 끝나면, 즉시 결과 한 번 조회 시도
+      try {
+        const result = await BattleRoomApi.getBattleResult(
+          parseInt(roomId, 10)
+        );
+        if (result && result.voteCount !== undefined && !resultModalVisible) {
+          setBattleResult(result);
+          setResultModalVisible(true);
+        }
+      } catch (e) {
+        console.error('투표 후 결과 조회 실패:', e);
+      }
+    } catch (err: any) {
+      console.error('투표 중 오류:', err);
+      alert('투표 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+      setVoteModalVisible(false);
+    }
+  };
+
   // ─── “방 나가기” 버튼 ─────────────────────
   const handleExit = async () => {
     try {
@@ -349,6 +433,7 @@ const BattleDetail: React.FC = () => {
             clearInterval(timerRef.current!);
             setTimer(0);
             setVoteModalVisible(true);
+            setHasVoted(false);
             return 0;
           }
           return prev - 1;
@@ -400,23 +485,6 @@ const BattleDetail: React.FC = () => {
       setResultModalVisible(true);
     } catch (err) {
       console.error('최종 결과 조회 오류:', err);
-    }
-  };
-
-  // ─── 투표 모달에서 “A팀” / “B팀” 클릭 시 호출 ─────────────────────
-  const handleVote = async (choice: 'A' | 'B') => {
-    if (hasVoted) return;
-    try {
-      const payload: CreateVoteRequest = { vote: choice };
-      await VoteApi.createVote(roomId, payload);
-      setHasVoted(true);
-      setVoteModalVisible(false);
-      fetchBattleResult();
-    } catch (err: any) {
-      console.error(err.message);
-      alert('투표 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
-      setVoteModalVisible(false);
-      fetchBattleResult();
     }
   };
 
