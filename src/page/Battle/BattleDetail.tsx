@@ -1,12 +1,6 @@
 // src/pages/Battle/BattleDetail.tsx
 
-import React, {
-  useState,
-  useEffect,
-  useRef,
-  PropsWithChildren,
-  ChangeEvent,
-} from 'react';
+import React, { useState, useEffect, useRef, ChangeEvent } from 'react';
 import styled from 'styled-components';
 import {
   FaCommentDots,
@@ -39,6 +33,8 @@ import ChallengerIcon from '../../assets/Challenger.svg';
 
 // ───── 분리된 컴포넌트 import ───────────────────
 import DirectSubjectModal from '../../components/BattleDetail/DirectSubjectModal';
+import VoteModal from '../../components/BattleDetail/VoteModal';
+import ResultModal from '../../components/BattleDetail/ResultModal';
 
 // ───── 타입 정의 ──────────────────────────────
 type Tier =
@@ -606,22 +602,6 @@ const BattleDetail: React.FC = () => {
     );
   };
 
-  interface ModalComponentProps {
-    title: string;
-  }
-
-  const ModalComponent = ({
-    title,
-    children,
-  }: PropsWithChildren<ModalComponentProps>) => (
-    <ModalOverlay>
-      <ModalContent>
-        <ModalTitle>{title}</ModalTitle>
-        {children}
-      </ModalContent>
-    </ModalOverlay>
-  );
-
   return (
     <Container>
       {/* Header */}
@@ -690,17 +670,20 @@ const BattleDetail: React.FC = () => {
 
       {/* ─── 역할 이동 확인 모달 ───────────────────────────── */}
       {pendingMoveSlot !== null && (
-        <ModalComponent title='이동 확인'>
-          <ModalText>해당 슬롯으로 이동하시겠습니까?</ModalText>
-          <ModalButtons>
-            <ModalSubmitButton onClick={handleConfirmMove}>
-              네
-            </ModalSubmitButton>
-            <ModalCancelButton onClick={handleCancelMove}>
-              아니요
-            </ModalCancelButton>
-          </ModalButtons>
-        </ModalComponent>
+        <ModalOverlay>
+          <ModalContent>
+            <ModalTitle>이동 확인</ModalTitle>
+            <ModalText>해당 슬롯으로 이동하시겠습니까?</ModalText>
+            <ModalButtons>
+              <ModalSubmitButton onClick={handleConfirmMove}>
+                네
+              </ModalSubmitButton>
+              <ModalCancelButton onClick={handleCancelMove}>
+                아니요
+              </ModalCancelButton>
+            </ModalButtons>
+          </ModalContent>
+        </ModalOverlay>
       )}
 
       {/* ─── 분리된 직접 주제 입력 모달 ───────────────────────────── */}
@@ -718,85 +701,22 @@ const BattleDetail: React.FC = () => {
         onCancel={() => setModalVisible(false)}
       />
 
-      {/* ─── 강퇴 확인 모달 ───────────────────────────── */}
-      {kickModalVisible && selectedPlayer && (
-        <ModalComponent title='플레이어 강퇴 확인'>
-          <ModalText>
-            {selectedPlayer.nickname} 플레이어를 강퇴하시겠습니까?
-          </ModalText>
-          <ModalButtons>
-            <ModalSubmitButton onClick={handleKickPlayer}>네</ModalSubmitButton>
-            <ModalCancelButton
-              onClick={() => {
-                setKickModalVisible(false);
-                setSelectedPlayer(null);
-              }}
-            >
-              아니요
-            </ModalCancelButton>
-          </ModalButtons>
-        </ModalComponent>
-      )}
+      {/* ─── 분리된 투표 모달 ───────────────────────────── */}
+      <VoteModal
+        visible={
+          voteModalVisible && !hasVoted && ownerData?.role === 'spectator'
+        }
+        onVoteA={() => handleVote('A')}
+        onVoteB={() => handleVote('B')}
+        onCancel={handleVoteCancel}
+      />
 
-      {/* ─── 투표 모달 (배틀 종료 후, 관전자용) ───────────────────────────── */}
-      {voteModalVisible &&
-        !hasVoted &&
-        ownerData &&
-        ownerData.role === 'spectator' && (
-          <ModalComponent title='승리팀을 투표해주세요'>
-            <ModalText>누가 이긴 것 같으신가요?</ModalText>
-            <VoteButtonGroup>
-              <VoteButton onClick={() => handleVote('A')}>A팀 투표</VoteButton>
-              <VoteButton onClick={() => handleVote('B')}>B팀 투표</VoteButton>
-            </VoteButtonGroup>
-            <ModalCancelButton onClick={handleVoteCancel}>
-              나중에 투표
-            </ModalCancelButton>
-          </ModalComponent>
-        )}
-
-      {/* ─── 최종 결과 모달 ───────────────────────────── */}
-      {resultModalVisible && battleResult && (
-        <ModalComponent title='토론 최종 결과 및 포인트'>
-          <ResultContainer>
-            <ResultRow>
-              <ResultLabel>투표 집계</ResultLabel>
-              <ResultValue>
-                A: {battleResult.voteCount.A}표&nbsp;&nbsp;B:{' '}
-                {battleResult.voteCount.B}표
-              </ResultValue>
-            </ResultRow>
-            <ResultRow>
-              <ResultLabel>투표 승자</ResultLabel>
-              <ResultValue>{battleResult.voteWinner}</ResultValue>
-            </ResultRow>
-            <ResultRow>
-              <ResultLabel>AI 분석 승자</ResultLabel>
-              <ResultValue>{battleResult.aiWinner}</ResultValue>
-            </ResultRow>
-            <SectionDivider />
-            <SectionTitle>판정 이유</SectionTitle>
-            <SectionText>{battleResult.judgementReason}</SectionText>
-            <SectionDivider />
-            <SectionTitle>AI 상세 분석</SectionTitle>
-            <SectionText style={{ whiteSpace: 'pre-wrap' }}>
-              {battleResult.aiAnalysis}
-            </SectionText>
-            <SectionDivider />
-            <ResultRow>
-              <ResultLabel>획득 포인트</ResultLabel>
-              <ResultValue>
-                {battleResult.pointsAwarded.toLocaleString()} P
-              </ResultValue>
-            </ResultRow>
-          </ResultContainer>
-          <ModalButtons style={{ marginTop: '1rem', justifyContent: 'center' }}>
-            <ModalSubmitButton onClick={() => setResultModalVisible(false)}>
-              확인
-            </ModalSubmitButton>
-          </ModalButtons>
-        </ModalComponent>
-      )}
+      {/* ─── 분리된 최종 결과 모달 ───────────────────────────── */}
+      <ResultModal
+        visible={resultModalVisible && battleResult !== null}
+        data={battleResult}
+        onClose={() => setResultModalVisible(false)}
+      />
 
       {/* ─── 게임 시작 오버레이 ───────────────────────────── */}
       {showStartOverlay && (
@@ -1241,68 +1161,6 @@ const SubjectButton = styled.button`
   &:hover {
     transform: translateY(-2px);
   }
-`;
-
-const VoteButtonGroup = styled.div`
-  display: flex;
-  justify-content: space-around;
-  margin-top: 0.5rem;
-`;
-
-const VoteButton = styled.button`
-  background-color: #2196f3;
-  color: #fff;
-  border: 2px solid #000;
-  border-radius: 6px;
-  padding: 0.5rem 1rem;
-  font-weight: bold;
-  cursor: pointer;
-  transition: transform 0.2s;
-  &:hover {
-    transform: translateY(-2px);
-  }
-`;
-
-const ResultContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.8rem;
-  max-height: 70vh;
-  overflow-y: auto;
-`;
-
-const ResultRow = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-`;
-
-const ResultLabel = styled.span`
-  font-weight: bold;
-  color: #333;
-`;
-
-const ResultValue = styled.span`
-  color: #000;
-`;
-
-const SectionDivider = styled.hr`
-  border: none;
-  border-top: 1px solid #ddd;
-  margin: 0.5rem 0;
-`;
-
-const SectionTitle = styled.h4`
-  margin: 0;
-  font-size: 1rem;
-  font-weight: bold;
-  color: #333;
-`;
-
-const SectionText = styled.p`
-  font-size: 0.9rem;
-  color: #555;
-  margin: 0;
 `;
 
 const OverlayCenter = styled.div`
