@@ -24,6 +24,13 @@ import {
   GenerateAITopicsResponse,
   SetTopicsRequest,
 } from '../../api/battle/battleRoomApi';
+
+import BattleChatApi, {
+  ChatMessage as RestChatMessage,
+  GetChatMessagesResponse,
+  PostChatMessageRequest,
+} from '../../api/chat/chatApi';
+
 import VoteApi, { CreateVoteRequest } from '../../api/vote/voteApi'; // 투표 API
 
 // ───── 아이콘 임포트 ──────────────────────────────
@@ -63,14 +70,17 @@ export type PlayerData = {
   tier: Tier;
 };
 
-// ───── 상수 정의 ──────────────────────────────
-const OWNER_ID = 1; // 현재 로그인된 사용자 ID (예시)
+// REST로 조회해서 받아오는 메시지 타입 (battle/chat.ts 참조)
+export type ChatMessage = RestChatMessage;
+// { id, roomId, userId, side, message, createdAt }
+
+const OWNER_ID = 1; // (예시) 현재 로그인된 사용자 ID
 const TOTAL_SLOTS = 8;
 const BOX_SIZE = '150px';
-const POLL_INTERVAL = 2000; // 2초마다 폴링
+const POLL_INTERVAL = 2000; // 2초마다 방 상태 폴링
 const INITIAL_TIMER = 180; // 3분 = 180초
+const CHAT_POLL_INTERVAL = 2000; // 2초마다 채팅 내역 폴링
 
-// ───── 티어 아이콘 매핑 ──────────────────────────────
 const tierIcons: { [key in Tier]: string } = {
   bronze: BronzeIcon,
   silver: SilverIcon,
@@ -82,7 +92,6 @@ const tierIcons: { [key in Tier]: string } = {
   challenger: ChallengerIcon,
 };
 
-// ───── BattleDetail 컴포넌트 ──────────────────────────────
 const BattleDetail: React.FC = () => {
   const navigate = useNavigate();
   const { roomId } = useParams<{ roomId: string }>();
@@ -94,7 +103,9 @@ const BattleDetail: React.FC = () => {
   );
   const [players, setPlayers] = useState<PlayerData[]>([]);
   const [chatInput, setChatInput] = useState('');
-  const [chatMessages, setChatMessages] = useState<any[]>([]);
+  // 과거 메시지 + 폴링으로 갱신된 모든 메시지를 저장
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+
   const [subject, setSubject] = useState<string>('');
   const [sideAOption, setSideAOption] = useState<string>('');
   const [sideBOption, setSideBOption] = useState<string>('');
@@ -107,7 +118,6 @@ const BattleDetail: React.FC = () => {
 
   // ─── 방 상태 (시작 여부) ─────────────────────
   const [isBattleStarted, setIsBattleStarted] = useState(false);
-  // 이전 isBattleStarted 값을 기억하기 위한 ref
   const prevIsBattleStarted = useRef<boolean>(false);
 
   // ─── 타이머 (남은 초) 상태 ─────────────────────
@@ -156,10 +166,7 @@ const BattleDetail: React.FC = () => {
         parseInt(roomId, 10)
       );
 
-      // 서버에서 받은 status 값을 통해 isBattleStarted 업데이트
       setIsBattleStarted(data.status === 'PLAYING');
-
-      // 관전자 수 갱신
       setSpectatorCount(data.spectators.length);
 
       if (data.question) {
@@ -222,7 +229,42 @@ const BattleDetail: React.FC = () => {
     }
   }, [roomId]);
 
-  // ─── 초기 조회 및 폴링 ─────────────────────
+  // ─── 과거 채팅 내역(REST) 한 번 조회 & 폴링 시작 ─────────────────────
+  useEffect(() => {
+    let pollingHandle: NodeJS.Timeout;
+
+    const fetchChatMessages = async () => {
+      try {
+        const res: GetChatMessagesResponse =
+          await BattleChatApi.getChatMessages(roomId);
+
+        // sideA, sideB 배열을 합쳐서 하나의 리스트로 만든 뒤, createdAt 기준으로 정렬
+        const combined: ChatMessage[] = [
+          ...res.result.sideA,
+          ...res.result.sideB,
+        ].sort(
+          (a, b) =>
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        );
+
+        setChatMessages(combined);
+      } catch (e) {
+        console.error('과거 채팅 조회 실패:', e);
+      }
+    };
+
+    // 처음 마운트 시 한 번 불러오기
+    fetchChatMessages();
+
+    // 채팅 폴링 주기 설정
+    pollingHandle = setInterval(fetchChatMessages, CHAT_POLL_INTERVAL);
+
+    return () => {
+      clearInterval(pollingHandle);
+    };
+  }, [roomId]);
+
+  // ─── 기존 방 상태/타이머 폴링 ─────────────────────
   useEffect(() => {
     fetchRoomDetail();
     const interval = setInterval(fetchRoomDetail, POLL_INTERVAL);
@@ -231,33 +273,11 @@ const BattleDetail: React.FC = () => {
 
   // ─── 이전 isBattleStarted 값 비교하여, true → false 전환 시 투표 모달 오픈 ─────────────────────
   useEffect(() => {
-    // 처음 마운트될 때는 prevIsBattleStarted.current가 false이므로 무시
     if (prevIsBattleStarted.current && !isBattleStarted) {
-      // 서버에서 상태가 PLAYING → FINISHED(또는 WAITING)로 바뀌면 모든 사용자에게 투표 모달 열기
       setVoteModalVisible(true);
     }
     prevIsBattleStarted.current = isBattleStarted;
   }, [isBattleStarted]);
-
-  // ─── 채팅 내역 초기화 ─────────────────────
-  useEffect(() => {
-    setChatMessages([]);
-  }, [roomId]);
-
-  // ─── 채팅 전송 ─────────────────────────────
-  const handleChatSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!chatInput.trim()) return;
-    setChatMessages((prev) => [
-      ...prev,
-      {
-        side: ownerData?.team === 'blue' ? 'A' : 'B',
-        userId: OWNER_ID.toString(),
-        message: chatInput.trim(),
-      },
-    ]);
-    setChatInput('');
-  };
 
   // ─── 채팅 스크롤 자동 최하단 유지 ─────────────────────
   useEffect(() => {
@@ -266,6 +286,44 @@ const BattleDetail: React.FC = () => {
         chatContainerRef.current.scrollHeight;
     }
   }, [chatMessages]);
+
+  // ─── 채팅 전송 ─────────────────────────────
+  const handleChatSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+
+    // A팀 / B팀 구분
+    const side = ownerData?.team === 'blue' ? 'A' : 'B';
+
+    // 1) REST API로 메시지 저장(필터링)
+    const payload: PostChatMessageRequest = {
+      side,
+      message: chatInput.trim(),
+    };
+    try {
+      await BattleChatApi.postChatMessage(roomId, payload);
+    } catch (err) {
+      console.error('채팅 저장 실패:', err);
+    }
+
+    // 2) 저장 직후 채팅 내역을 즉시 한 번 더 불러오기
+    try {
+      const res: GetChatMessagesResponse =
+        await BattleChatApi.getChatMessages(roomId);
+      const combined: ChatMessage[] = [
+        ...res.result.sideA,
+        ...res.result.sideB,
+      ].sort(
+        (a, b) =>
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      );
+      setChatMessages(combined);
+    } catch (e) {
+      console.error('채팅 전송 후 조회 실패:', e);
+    }
+
+    setChatInput('');
+  };
 
   // ─── “방 나가기” 버튼 ─────────────────────
   const handleExit = async () => {
@@ -280,20 +338,16 @@ const BattleDetail: React.FC = () => {
 
   // ─── 타이머 시작/종료 로직 ─────────────────────
   useEffect(() => {
-    // 게임이 시작될 때만 타이머를 초기화하고 카운트다운 시작
     if (isBattleStarted) {
       setTimer(INITIAL_TIMER);
-      // 기존 타이머가 있으면 삭제
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
       timerRef.current = setInterval(() => {
         setTimer((prev) => {
           if (prev <= 1) {
-            // 타이머가 0이 되면 종료
             clearInterval(timerRef.current!);
             setTimer(0);
-            // 타이머 종료 시점에 모든 사용자에게 투표 모달 열기
             setVoteModalVisible(true);
             return 0;
           }
@@ -301,13 +355,11 @@ const BattleDetail: React.FC = () => {
         });
       }, 1000);
     } else {
-      // 게임이 종료되거나 대기 상태가 되면 타이머 정지
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
       setTimer(0);
     }
-    // cleanup on unmount
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
@@ -318,10 +370,8 @@ const BattleDetail: React.FC = () => {
   // ─── “시작/종료” 버튼 클릭 ─────────────────────
   const handleToggleBattle = async () => {
     if (!isBattleStarted) {
-      // 배틀 시작
       try {
         await BattleRoomApi.startBattle(parseInt(roomId, 10));
-        // 로컬 오버레이만 표시, 서버 상태는 폴링으로 반영됨
         setShowStartOverlay(true);
         setTimeout(() => setShowStartOverlay(false), 3000);
       } catch (err) {
@@ -329,13 +379,11 @@ const BattleDetail: React.FC = () => {
         alert('배틀 시작 중 오류가 발생했습니다.');
       }
     } else {
-      // 배틀 종료
       try {
         await BattleRoomApi.endBattle(parseInt(roomId, 10));
         setShowEndOverlay(true);
         setTimeout(() => {
           setShowEndOverlay(false);
-          // 서버 상태 변화 감지(useEffect)로 모든 사용자에게 투표 모달이 뜨게 함
         }, 3000);
       } catch (err) {
         console.error('배틀 종료 오류:', err);
@@ -363,13 +411,11 @@ const BattleDetail: React.FC = () => {
       await VoteApi.createVote(roomId, payload);
       setHasVoted(true);
       setVoteModalVisible(false);
-      // 투표 후 바로 결과 조회 및 모달 표시
       fetchBattleResult();
     } catch (err: any) {
       console.error(err.message);
       alert('투표 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
       setVoteModalVisible(false);
-      // 오류가 났어도 결과 확인 시도
       fetchBattleResult();
     }
   };
@@ -389,22 +435,23 @@ const BattleDetail: React.FC = () => {
     }
   };
 
-  // ─── A/B 역할 변경 핸들러 (로컬 상태 업데이트 + 즉시 서버 재조회) ─────────────────────
+  // ─── A/B 역할 변경 핸들러 ─────────────────────
   const handleChangeToA = async () => {
     try {
       await BattleRoomApi.changeToRoleA(parseInt(roomId, 10));
-
-      // 로컬 상태에 바로 반영
       setPlayers((prev) =>
         prev.map((p) =>
           p.id === OWNER_ID
-            ? { ...p, role: 'participant', team: 'blue', isReady: true }
+            ? {
+                ...p,
+                role: 'participant',
+                team: 'blue',
+                isReady: true,
+              }
             : p
         )
       );
       setOwnerSpectatorSlot(null);
-
-      // 즉시 서버에서 최신 방 정보 다시 가져오기
       fetchRoomDetail();
     } catch (err) {
       console.error('A 역할 변경 오류:', err);
@@ -415,18 +462,19 @@ const BattleDetail: React.FC = () => {
   const handleChangeToB = async () => {
     try {
       await BattleRoomApi.changeToRoleB(parseInt(roomId, 10));
-
-      // 로컬 상태에 바로 반영
       setPlayers((prev) =>
         prev.map((p) =>
           p.id === OWNER_ID
-            ? { ...p, role: 'participant', team: 'red', isReady: true }
+            ? {
+                ...p,
+                role: 'participant',
+                team: 'red',
+                isReady: true,
+              }
             : p
         )
       );
       setOwnerSpectatorSlot(null);
-
-      // 즉시 서버에서 최신 방 정보 다시 가져오기
       fetchRoomDetail();
     } catch (err) {
       console.error('B 역할 변경 오류:', err);
@@ -545,7 +593,6 @@ const BattleDetail: React.FC = () => {
   const renderLeftSlot = () => (
     <CenteredDiv>
       <ParticipantKeyword>{sideAOption}</ParticipantKeyword>
-      {/* 클릭 시 A 역할로 변경 */}
       <CommonCard onClick={handleChangeToA}>
         {ownerData &&
         ownerData.role === 'participant' &&
@@ -568,7 +615,6 @@ const BattleDetail: React.FC = () => {
   const renderRightSlot = () => (
     <CenteredDiv>
       <ParticipantKeyword>{sideBOption}</ParticipantKeyword>
-      {/* 클릭 시 B 역할로 변경 */}
       <CommonCard onClick={handleChangeToB}>
         {ownerData &&
         ownerData.role === 'participant' &&
@@ -623,7 +669,7 @@ const BattleDetail: React.FC = () => {
   };
 
   // ─── 채팅 버블 ─────────────────────
-  const ChatBubble: React.FC<{ msg: any }> = ({ msg }) => {
+  const ChatBubble: React.FC<{ msg: ChatMessage }> = ({ msg }) => {
     const isOwnerMsg = Number(msg.userId) === OWNER_ID;
     const isNotice = msg.message.startsWith('[공지]');
     return (
@@ -707,7 +753,6 @@ const BattleDetail: React.FC = () => {
           </RightButtonGroup>
         </SpectatorsHeader>
 
-        {/* 타이머 표시 */}
         {isBattleStarted && timer > 0 && (
           <TimerDisplay>{formatTime(timer)}</TimerDisplay>
         )}
@@ -717,7 +762,7 @@ const BattleDetail: React.FC = () => {
         )}
       </SpectatorsSection>
 
-      {/* ─── 분리된 직접 주제 입력 모달 ───────────────────────────── */}
+      {/* ─── 직접 주제 입력 모달 ───────────────────────────── */}
       <DirectSubjectModal
         visible={modalVisible}
         subjectAInput={subjectAInput}
@@ -732,7 +777,7 @@ const BattleDetail: React.FC = () => {
         onCancel={() => setModalVisible(false)}
       />
 
-      {/* ─── 분리된 투표 모달 (모든 사용자에게 노출) ───────────────────────────── */}
+      {/* ─── 투표 모달 ───────────────────────────── */}
       <VoteModal
         visible={voteModalVisible && !hasVoted}
         onVoteA={() => handleVote('A')}
@@ -740,7 +785,7 @@ const BattleDetail: React.FC = () => {
         onCancel={handleVoteCancel}
       />
 
-      {/* ─── 분리된 최종 결과 모달 (모든 사용자에게 노출) ───────────────────────────── */}
+      {/* ─── 최종 결과 모달 ───────────────────────────── */}
       <ResultModal
         visible={resultModalVisible && battleResult !== null}
         data={battleResult}
@@ -753,7 +798,6 @@ const BattleDetail: React.FC = () => {
           <OverlayText>게임 시작</OverlayText>
         </OverlayCenter>
       )}
-
       {/* ─── 게임 종료 오버레이 ───────────────────────────── */}
       {showEndOverlay && (
         <OverlayCenter>
@@ -940,7 +984,7 @@ const SpectatorSlotContainer = styled.div<{ $occupied: boolean }>`
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: default; /* 클릭 방지 */
+  cursor: default;
   box-shadow: 0 3px 5px rgba(0, 0, 0, 0.1);
 `;
 
@@ -973,7 +1017,7 @@ const CommonCard = styled.div`
 
 const StyledPlayerCard = styled(CommonCard)<{ $bgColor: string }>`
   background-color: ${({ $bgColor }) => $bgColor};
-  cursor: default; /* 내부 클릭 방지 */
+  cursor: default;
 `;
 
 const PlayerImage = styled.img`
