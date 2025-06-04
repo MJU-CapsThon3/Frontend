@@ -1,6 +1,12 @@
 // src/pages/Battle/BattleDetail.tsx
 
-import React, { useState, useEffect, useRef, ChangeEvent } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  ChangeEvent,
+  useCallback,
+} from 'react';
 import styled from 'styled-components';
 import {
   FaCommentDots,
@@ -15,7 +21,6 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   BattleRoomApi,
   RoomDetailFull,
-  ChangeRoleRequest,
   GenerateAITopicsResponse,
   SetTopicsRequest,
 } from '../../api/battle/battleRoomApi';
@@ -62,6 +67,7 @@ export type PlayerData = {
 const OWNER_ID = 1; // 현재 로그인된 사용자 ID (예시)
 const TOTAL_SLOTS = 8;
 const BOX_SIZE = '150px';
+const POLL_INTERVAL = 2000; // 2초마다 갱신
 
 // ───── 티어 아이콘 매핑 ──────────────────────────────
 const tierIcons: { [key in Tier]: string } = {
@@ -76,19 +82,13 @@ const tierIcons: { [key in Tier]: string } = {
 };
 
 // ───── BattleDetail 컴포넌트 ──────────────────────────────
-type TargetSlot = { area: 'participant' | 'spectator'; index: number };
-
 const BattleDetail: React.FC = () => {
   const navigate = useNavigate();
   const { roomId } = useParams<{ roomId: string }>();
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   // ─── 상태 정의 ───────────────────────────────────
-  const [ownerSide, setOwnerSide] = useState<'left' | 'right'>('left');
   const [ownerSpectatorSlot, setOwnerSpectatorSlot] = useState<number | null>(
-    null
-  );
-  const [pendingMoveSlot, setPendingMoveSlot] = useState<TargetSlot | null>(
     null
   );
   const [players, setPlayers] = useState<PlayerData[]>([]);
@@ -138,7 +138,7 @@ const BattleDetail: React.FC = () => {
   );
 
   // ─── A/B/P 팀 정보 API 호출 ─────────────────────
-  const fetchRoomDetail = async () => {
+  const fetchRoomDetail = useCallback(async () => {
     try {
       const data: RoomDetailFull = await BattleRoomApi.getRoomDetailFull(
         parseInt(roomId, 10)
@@ -163,7 +163,6 @@ const BattleDetail: React.FC = () => {
           tier: 'silver',
         });
         if (Number(u.userId) === OWNER_ID) {
-          setOwnerSide('left');
           setOwnerSpectatorSlot(null);
         }
       });
@@ -179,7 +178,6 @@ const BattleDetail: React.FC = () => {
           tier: 'silver',
         });
         if (Number(u.userId) === OWNER_ID) {
-          setOwnerSide('right');
           setOwnerSpectatorSlot(null);
         }
       });
@@ -201,12 +199,14 @@ const BattleDetail: React.FC = () => {
     } catch (err) {
       console.error('배틀방 상세 조회 오류:', err);
     }
-  };
+  }, [roomId]);
 
+  // ─── 초기 조회 및 폴링 ─────────────────────
   useEffect(() => {
     fetchRoomDetail();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roomId]);
+    const interval = setInterval(fetchRoomDetail, POLL_INTERVAL);
+    return () => clearInterval(interval);
+  }, [fetchRoomDetail]);
 
   // ─── 채팅 내역 초기화 ─────────────────────
   useEffect(() => {
@@ -220,7 +220,7 @@ const BattleDetail: React.FC = () => {
     setChatMessages((prev) => [
       ...prev,
       {
-        side: ownerSide === 'left' ? 'A' : 'B',
+        side: ownerData?.team === 'blue' ? 'A' : 'B',
         userId: OWNER_ID.toString(),
         message: chatInput.trim(),
       },
@@ -342,56 +342,49 @@ const BattleDetail: React.FC = () => {
     }
   };
 
-  // ─── 역할 변경 “예” 눌렀을 때 API 호출 및 상태 업데이트 ─────────────────────
-  const handleConfirmMove = async () => {
-    if (!pendingMoveSlot || !ownerData) return;
-
-    const { area, index } = pendingMoveSlot;
-    let newRoleValue: ChangeRoleRequest['role'] =
-      area === 'spectator' ? 'P' : index === 0 ? 'A' : 'B';
-
+  // ─── A/B 역할 변경 핸들러 (로컬 상태 업데이트 + 즉시 서버 재조회) ─────────────────────
+  const handleChangeToA = async () => {
     try {
-      await BattleRoomApi.changeRole(parseInt(roomId, 10), {
-        role: newRoleValue,
-      });
+      await BattleRoomApi.changeToRoleA(parseInt(roomId, 10));
 
+      // 로컬 상태에 바로 반영
       setPlayers((prev) =>
-        prev.map((p) => {
-          if (p.id !== OWNER_ID) return p;
-          if (area === 'spectator') {
-            return {
-              ...p,
-              role: 'spectator',
-              team: undefined,
-              isReady: undefined,
-            };
-          } else {
-            return {
-              ...p,
-              role: 'participant',
-              team: index === 0 ? 'blue' : 'red',
-              isReady: true,
-            };
-          }
-        })
+        prev.map((p) =>
+          p.id === OWNER_ID
+            ? { ...p, role: 'participant', team: 'blue', isReady: true }
+            : p
+        )
       );
+      setOwnerSpectatorSlot(null);
 
-      if (area === 'spectator') {
-        setOwnerSpectatorSlot(index);
-        setOwnerSide('left');
-      } else {
-        setOwnerSpectatorSlot(null);
-        setOwnerSide(index === 0 ? 'left' : 'right');
-      }
+      // 즉시 서버에서 최신 방 정보 다시 가져오기
+      fetchRoomDetail();
     } catch (err) {
-      console.error('역할 변경 오류:', err);
-      alert('역할 변경 중 오류가 발생했습니다.');
-    } finally {
-      setPendingMoveSlot(null);
+      console.error('A 역할 변경 오류:', err);
+      alert('A 역할 변경 중 오류가 발생했습니다.');
     }
   };
-  const handleCancelMove = () => {
-    setPendingMoveSlot(null);
+
+  const handleChangeToB = async () => {
+    try {
+      await BattleRoomApi.changeToRoleB(parseInt(roomId, 10));
+
+      // 로컬 상태에 바로 반영
+      setPlayers((prev) =>
+        prev.map((p) =>
+          p.id === OWNER_ID
+            ? { ...p, role: 'participant', team: 'red', isReady: true }
+            : p
+        )
+      );
+      setOwnerSpectatorSlot(null);
+
+      // 즉시 서버에서 최신 방 정보 다시 가져오기
+      fetchRoomDetail();
+    } catch (err) {
+      console.error('B 역할 변경 오류:', err);
+      alert('B 역할 변경 중 오류가 발생했습니다.');
+    }
   };
 
   // ─── 랜덤 주제 생성 ─────────────────────
@@ -505,22 +498,22 @@ const BattleDetail: React.FC = () => {
   const renderLeftSlot = () => (
     <CenteredDiv>
       <ParticipantKeyword>{sideAOption}</ParticipantKeyword>
-      {ownerData &&
-      ownerData.id === OWNER_ID &&
-      ownerData.role === 'participant' &&
-      ownerSide === 'left' ? (
-        <PlayerCard player={ownerData} isOwner />
-      ) : nonOwnerParticipants.length > 0 && ownerSide !== 'left' ? (
-        <PlayerCard player={nonOwnerParticipants[0]} />
-      ) : (
-        <CommonCard
-          onClick={() => {
-            setPendingMoveSlot({ area: 'participant', index: 0 });
-          }}
-        >
-          <EmptySlotText>플레이어 대기중</EmptySlotText>
-        </CommonCard>
-      )}
+      {/* 클릭 시 A 역할로 변경 */}
+      <CommonCard onClick={handleChangeToA}>
+        {ownerData &&
+        ownerData.role === 'participant' &&
+        ownerData.team === 'blue' ? (
+          <PlayerCard player={ownerData} isOwner />
+        ) : nonOwnerParticipants.find((p) => p.team === 'blue') ? (
+          <PlayerCard
+            player={
+              nonOwnerParticipants.find((p) => p.team === 'blue') as PlayerData
+            }
+          />
+        ) : (
+          <EmptySlotText>참가자 없음</EmptySlotText>
+        )}
+      </CommonCard>
     </CenteredDiv>
   );
 
@@ -528,22 +521,22 @@ const BattleDetail: React.FC = () => {
   const renderRightSlot = () => (
     <CenteredDiv>
       <ParticipantKeyword>{sideBOption}</ParticipantKeyword>
-      {ownerData &&
-      ownerData.id === OWNER_ID &&
-      ownerData.role === 'participant' &&
-      ownerSide === 'right' ? (
-        <PlayerCard player={ownerData} isOwner />
-      ) : nonOwnerParticipants.length > 1 && ownerSide !== 'right' ? (
-        <PlayerCard player={nonOwnerParticipants[1]} />
-      ) : (
-        <CommonCard
-          onClick={() => {
-            setPendingMoveSlot({ area: 'participant', index: 1 });
-          }}
-        >
-          <EmptySlotText>플레이어 대기중</EmptySlotText>
-        </CommonCard>
-      )}
+      {/* 클릭 시 B 역할로 변경 */}
+      <CommonCard onClick={handleChangeToB}>
+        {ownerData &&
+        ownerData.role === 'participant' &&
+        ownerData.team === 'red' ? (
+          <PlayerCard player={ownerData} isOwner />
+        ) : nonOwnerParticipants.find((p) => p.team === 'red') ? (
+          <PlayerCard
+            player={
+              nonOwnerParticipants.find((p) => p.team === 'red') as PlayerData
+            }
+          />
+        ) : (
+          <EmptySlotText>참가자 없음</EmptySlotText>
+        )}
+      </CommonCard>
     </CenteredDiv>
   );
 
@@ -566,11 +559,6 @@ const BattleDetail: React.FC = () => {
         <SpectatorSlotContainer
           key={`spectator-slot-${i}`}
           $occupied={!!occupant}
-          onClick={() => {
-            if (!occupant) {
-              setPendingMoveSlot({ area: 'spectator', index: i });
-            }
-          }}
         >
           {occupant ? (
             occupant.id === OWNER_ID ? (
@@ -667,24 +655,6 @@ const BattleDetail: React.FC = () => {
           <SpectatorsGrid>{renderSpectatorGrid()}</SpectatorsGrid>
         )}
       </SpectatorsSection>
-
-      {/* ─── 역할 이동 확인 모달 ───────────────────────────── */}
-      {pendingMoveSlot !== null && (
-        <ModalOverlay>
-          <ModalContent>
-            <ModalTitle>이동 확인</ModalTitle>
-            <ModalText>해당 슬롯으로 이동하시겠습니까?</ModalText>
-            <ModalButtons>
-              <ModalSubmitButton onClick={handleConfirmMove}>
-                네
-              </ModalSubmitButton>
-              <ModalCancelButton onClick={handleCancelMove}>
-                아니요
-              </ModalCancelButton>
-            </ModalButtons>
-          </ModalContent>
-        </ModalOverlay>
-      )}
 
       {/* ─── 분리된 직접 주제 입력 모달 ───────────────────────────── */}
       <DirectSubjectModal
@@ -910,12 +880,8 @@ const SpectatorSlotContainer = styled.div<{ $occupied: boolean }>`
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: ${({ $occupied }) => ($occupied ? 'default' : 'pointer')};
+  cursor: default; /* 클릭 방지 */
   box-shadow: 0 3px 5px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s;
-  &:hover {
-    transform: ${({ $occupied }) => ($occupied ? 'none' : 'scale(1.03)')};
-  }
 `;
 
 const EmptyBox = styled.div`
@@ -947,6 +913,7 @@ const CommonCard = styled.div`
 
 const StyledPlayerCard = styled(CommonCard)<{ $bgColor: string }>`
   background-color: ${({ $bgColor }) => $bgColor};
+  cursor: default; /* 내부 클릭 방지 */
 `;
 
 const PlayerImage = styled.img`

@@ -214,6 +214,28 @@ export interface ChangeRoleResponse {
 }
 
 /**
+ * 참여 중인 방에서 A 역할로 변경 API (응답 바디 없음)
+ * POST /battle/rooms/{roomId}/participants/role/A
+ */
+export interface ChangeToARoleResponse {
+  isSuccess: boolean;
+  code: string | number;
+  message: string;
+  result: null;
+}
+
+/**
+ * 참여 중인 방에서 B 역할로 변경 API (응답 바디 없음)
+ * POST /battle/rooms/{roomId}/participants/role/B
+ */
+export interface ChangeToBRoleResponse {
+  isSuccess: boolean;
+  code: string | number;
+  message: string;
+  result: null;
+}
+
+/**
  * 주제 설정 요청 바디 타입
  * POST /battle/rooms/{roomId}/topics
  *
@@ -547,6 +569,60 @@ export const BattleRoomApi = {
     } catch (error) {
       console.error(
         `[BattleRoomApi.changeRole] 방 ID ${roomId} 역할 변경 중 오류:`,
+        error
+      );
+      throw error;
+    }
+  },
+
+  /**
+   * 참여 중인 방에서 A 역할로 변경
+   * POST /battle/rooms/{roomId}/participants/role/A
+   */
+  async changeToRoleA(
+    roomId: number | string,
+    axiosInstance: AxiosInstance = Axios
+  ): Promise<ChangeToARoleResponse['result']> {
+    try {
+      const response = await axiosInstance.post<ChangeToARoleResponse>(
+        `/battle/rooms/${roomId}/participants/role/A`
+      );
+      const data = response.data;
+      if (data.isSuccess) {
+        return data.result!; // result는 null 반환
+      } else {
+        throw new Error(data.message || 'A 역할 변경 실패');
+      }
+    } catch (error) {
+      console.error(
+        `[BattleRoomApi.changeToRoleA] 방 ID ${roomId} A 역할 변경 중 오류:`,
+        error
+      );
+      throw error;
+    }
+  },
+
+  /**
+   * 참여 중인 방에서 B 역할로 변경
+   * POST /battle/rooms/{roomId}/participants/role/B
+   */
+  async changeToRoleB(
+    roomId: number | string,
+    axiosInstance: AxiosInstance = Axios
+  ): Promise<ChangeToBRoleResponse['result']> {
+    try {
+      const response = await axiosInstance.post<ChangeToBRoleResponse>(
+        `/battle/rooms/${roomId}/participants/role/B`
+      );
+      const data = response.data;
+      if (data.isSuccess) {
+        return data.result!; // result는 null 반환
+      } else {
+        throw new Error(data.message || 'B 역할 변경 실패');
+      }
+    } catch (error) {
+      console.error(
+        `[BattleRoomApi.changeToRoleB] 방 ID ${roomId} B 역할 변경 중 오류:`,
         error
       );
       throw error;
