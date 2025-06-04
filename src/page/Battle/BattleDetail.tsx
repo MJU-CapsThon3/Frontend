@@ -28,13 +28,8 @@ import {
 import BattleChatApi, {
   ChatMessage as RestChatMessage,
   GetChatMessagesResponse,
+  PostChatMessageRequest,
 } from '../../api/chat/chatApi';
-
-// 왼쪽(A팀) / 오른쪽(B팀) 채팅 저장 함수
-import {
-  sendChatMessageToA,
-  sendChatMessageToB,
-} from '../../api/default/default';
 
 import VoteApi, { CreateVoteRequest } from '../../api/vote/voteApi'; // 투표 API
 
@@ -283,19 +278,23 @@ const BattleDetail: React.FC = () => {
 
   // ─── 투표 모달이 열릴 때: 10초 카운트다운 + 결과 폴링 시작 ─────────────────────
   useEffect(() => {
+    // 투표 모달이 열린 순간
     if (voteModalVisible) {
+      // (1) 10초 후 자동 투표 처리
       voteTimeoutRef.current = setTimeout(() => {
         if (!hasVoted) {
           console.log('자동 투표 처리: A팀으로 투표 처리합니다.');
-          handleVote('A');
+          handleVote('A'); // 기본으로 A팀 자동 투표 (원한다면 B로 바꾸거나 랜덤으로 처리)
         }
       }, VOTE_TIMEOUT);
 
+      // (2) 모든 사용자에게 결과 모달을 띄우기 위한 결과 폴링
       const pollResult = async () => {
         try {
           const result = await BattleRoomApi.getBattleResult(
             parseInt(roomId, 10)
           );
+          // result가 null이 아니고, voteCount가 들어있다면 “최종 결과가 계산됨”으로 간주
           if (result && result.voteCount !== undefined && !resultModalVisible) {
             setBattleResult(result);
             setResultModalVisible(true);
@@ -306,10 +305,13 @@ const BattleDetail: React.FC = () => {
         }
       };
 
+      // 바로 한 번 호출
       pollResult();
+      // 2초마다 한 번씩 폴링
       resultPollingRef.current = setInterval(pollResult, 2000);
     }
 
+    // 투표 모달이 닫히면, 타이머와 폴링을 모두 정리
     return () => {
       if (voteTimeoutRef.current) {
         clearTimeout(voteTimeoutRef.current);
@@ -320,13 +322,15 @@ const BattleDetail: React.FC = () => {
         resultPollingRef.current = null;
       }
     };
+    // hasVoted, voteModalVisible, resultModalVisible 변경 시마다 재실행
   }, [voteModalVisible, hasVoted, resultModalVisible, roomId]);
 
   // ─── 이전 isBattleStarted 값 비교하여, true → false 전환 시 투표 모달 오픈 ─────────────────────
   useEffect(() => {
     if (prevIsBattleStarted.current && !isBattleStarted) {
+      // 방이 PLAYING → FINISHED(또는 WAITING)으로 바뀌면
       setVoteModalVisible(true);
-      setHasVoted(false);
+      setHasVoted(false); // 새로 투표 시작
     }
     prevIsBattleStarted.current = isBattleStarted;
   }, [isBattleStarted]);
@@ -344,22 +348,21 @@ const BattleDetail: React.FC = () => {
     e.preventDefault();
     if (!chatInput.trim()) return;
 
-    // 팀 구분: 파란 팀(왼쪽) → A, 빨간 팀(오른쪽) → B
+    // A팀 / B팀 구분
     const side = ownerData?.team === 'blue' ? 'A' : 'B';
 
+    // 1) REST API로 메시지 저장(필터링)
+    const payload: PostChatMessageRequest = {
+      side,
+      message: chatInput.trim(),
+    };
     try {
-      if (side === 'A') {
-        // 왼쪽 참가자가 던지는 채팅
-        await sendChatMessageToA(roomId, { message: chatInput.trim() });
-      } else {
-        // 오른쪽 참가자가 던지는 채팅
-        await sendChatMessageToB(roomId, { message: chatInput.trim() });
-      }
+      await BattleChatApi.postChatMessage(roomId, payload);
     } catch (err) {
       console.error('채팅 저장 실패:', err);
     }
 
-    // 저장 직후 채팅 내역 즉시 갱신
+    // 2) 저장 직후 채팅 내역을 즉시 한 번 더 불러오기
     try {
       const res: GetChatMessagesResponse =
         await BattleChatApi.getChatMessages(roomId);
@@ -380,13 +383,14 @@ const BattleDetail: React.FC = () => {
 
   // ─── 투표 처리 (A 또는 B) ─────────────────────
   const handleVote = async (choice: 'A' | 'B') => {
-    if (hasVoted) return;
+    if (hasVoted) return; // 이미 투표했다면 무시
     try {
       const payload: CreateVoteRequest = { vote: choice };
       await VoteApi.createVote(roomId, payload);
       setHasVoted(true);
       setVoteModalVisible(false);
 
+      // 투표가 끝나면, 즉시 결과 한 번 조회 시도
       try {
         const result = await BattleRoomApi.getBattleResult(
           parseInt(roomId, 10)
