@@ -67,7 +67,8 @@ export type PlayerData = {
 const OWNER_ID = 1; // 현재 로그인된 사용자 ID (예시)
 const TOTAL_SLOTS = 8;
 const BOX_SIZE = '150px';
-const POLL_INTERVAL = 2000; // 2초마다 갱신
+const POLL_INTERVAL = 2000; // 2초마다 폴링
+const INITIAL_TIMER = 180; // 3분 = 180초
 
 // ───── 티어 아이콘 매핑 ──────────────────────────────
 const tierIcons: { [key in Tier]: string } = {
@@ -103,7 +104,18 @@ const BattleDetail: React.FC = () => {
   const [kickModalVisible, setKickModalVisible] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerData | null>(null);
   const [isSpectatorsCollapsed, setIsSpectatorsCollapsed] = useState(false);
+
+  // ─── 방 상태 (시작 여부) ─────────────────────
   const [isBattleStarted, setIsBattleStarted] = useState(false);
+  // 이전 isBattleStarted 값을 기억하기 위한 ref
+  const prevIsBattleStarted = useRef<boolean>(false);
+
+  // ─── 타이머 (남은 초) 상태 ─────────────────────
+  const [timer, setTimer] = useState<number>(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // ─── 관전자 수 ─────────────────────
+  const [spectatorCount, setSpectatorCount] = useState<number>(0);
 
   // ─── 게임 시작/종료 오버레이 상태 ─────────────────────
   const [showStartOverlay, setShowStartOverlay] = useState(false);
@@ -111,7 +123,7 @@ const BattleDetail: React.FC = () => {
 
   // ─── 투표 모달 관련 상태 ─────────────────────
   const [voteModalVisible, setVoteModalVisible] = useState(false);
-  const [hasVoted, setHasVoted] = useState(false);
+  const [hasVoted, setHasVoted] = useState<boolean>(false);
 
   // ─── 최종 결과 모달 관련 상태 ─────────────────────
   const [resultModalVisible, setResultModalVisible] = useState(false);
@@ -144,6 +156,12 @@ const BattleDetail: React.FC = () => {
         parseInt(roomId, 10)
       );
 
+      // 서버에서 받은 status 값을 통해 isBattleStarted 업데이트
+      setIsBattleStarted(data.status === 'PLAYING');
+
+      // 관전자 수 갱신
+      setSpectatorCount(data.spectators.length);
+
       if (data.question) {
         setSubject(data.question);
         setSideAOption(data.topicA);
@@ -152,6 +170,7 @@ const BattleDetail: React.FC = () => {
 
       const fetchedPlayers: PlayerData[] = [];
 
+      // A팀 참가자
       data.participantA.forEach((u) => {
         fetchedPlayers.push({
           id: Number(u.userId),
@@ -167,6 +186,7 @@ const BattleDetail: React.FC = () => {
         }
       });
 
+      // B팀 참가자
       data.participantB.forEach((u) => {
         fetchedPlayers.push({
           id: Number(u.userId),
@@ -182,6 +202,7 @@ const BattleDetail: React.FC = () => {
         }
       });
 
+      // 관전자
       data.spectators.forEach((u, idx) => {
         fetchedPlayers.push({
           id: Number(u.userId),
@@ -207,6 +228,16 @@ const BattleDetail: React.FC = () => {
     const interval = setInterval(fetchRoomDetail, POLL_INTERVAL);
     return () => clearInterval(interval);
   }, [fetchRoomDetail]);
+
+  // ─── 이전 isBattleStarted 값 비교하여, true → false 전환 시 투표 모달 오픈 ─────────────────────
+  useEffect(() => {
+    // 처음 마운트될 때는 prevIsBattleStarted.current가 false이므로 무시
+    if (prevIsBattleStarted.current && !isBattleStarted) {
+      // 서버에서 상태가 PLAYING → FINISHED(또는 WAITING)로 바뀌면 모든 사용자에게 투표 모달 열기
+      setVoteModalVisible(true);
+    }
+    prevIsBattleStarted.current = isBattleStarted;
+  }, [isBattleStarted]);
 
   // ─── 채팅 내역 초기화 ─────────────────────
   useEffect(() => {
@@ -247,14 +278,50 @@ const BattleDetail: React.FC = () => {
     }
   };
 
+  // ─── 타이머 시작/종료 로직 ─────────────────────
+  useEffect(() => {
+    // 게임이 시작될 때만 타이머를 초기화하고 카운트다운 시작
+    if (isBattleStarted) {
+      setTimer(INITIAL_TIMER);
+      // 기존 타이머가 있으면 삭제
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+      timerRef.current = setInterval(() => {
+        setTimer((prev) => {
+          if (prev <= 1) {
+            // 타이머가 0이 되면 종료
+            clearInterval(timerRef.current!);
+            setTimer(0);
+            // 타이머 종료 시점에 모든 사용자에게 투표 모달 열기
+            setVoteModalVisible(true);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      // 게임이 종료되거나 대기 상태가 되면 타이머 정지
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+      setTimer(0);
+    }
+    // cleanup on unmount
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, [isBattleStarted]);
+
   // ─── “시작/종료” 버튼 클릭 ─────────────────────
   const handleToggleBattle = async () => {
     if (!isBattleStarted) {
       // 배틀 시작
       try {
         await BattleRoomApi.startBattle(parseInt(roomId, 10));
-        setIsBattleStarted(true);
-
+        // 로컬 오버레이만 표시, 서버 상태는 폴링으로 반영됨
         setShowStartOverlay(true);
         setTimeout(() => setShowStartOverlay(false), 3000);
       } catch (err) {
@@ -265,20 +332,11 @@ const BattleDetail: React.FC = () => {
       // 배틀 종료
       try {
         await BattleRoomApi.endBattle(parseInt(roomId, 10));
-        setIsBattleStarted(false);
-
         setShowEndOverlay(true);
         setTimeout(() => {
           setShowEndOverlay(false);
-
-          if (ownerData && ownerData.role === 'spectator' && !hasVoted) {
-            setVoteModalVisible(true);
-          } else {
-            fetchBattleResult();
-          }
+          // 서버 상태 변화 감지(useEffect)로 모든 사용자에게 투표 모달이 뜨게 함
         }, 3000);
-
-        alert('배틀이 종료되었습니다! 관전자 분들은 투표해주세요.');
       } catch (err) {
         console.error('배틀 종료 오류:', err);
         alert('배틀 종료 중 오류가 발생했습니다.');
@@ -299,39 +357,28 @@ const BattleDetail: React.FC = () => {
 
   // ─── 투표 모달에서 “A팀” / “B팀” 클릭 시 호출 ─────────────────────
   const handleVote = async (choice: 'A' | 'B') => {
-    if (!ownerData || hasVoted) return;
-
+    if (hasVoted) return;
     try {
       const payload: CreateVoteRequest = { vote: choice };
       await VoteApi.createVote(roomId, payload);
       setHasVoted(true);
       setVoteModalVisible(false);
-      alert(`투표 완료! ${choice}팀을 선택하셨습니다.`);
+      // 투표 후 바로 결과 조회 및 모달 표시
       fetchBattleResult();
     } catch (err: any) {
       console.error(err.message);
       alert('투표 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
       setVoteModalVisible(false);
+      // 오류가 났어도 결과 확인 시도
       fetchBattleResult();
     }
   };
 
-  // ─── 투표 모달 취소 / 자동 닫힘 로직 ─────────────────────
+  // ─── 투표 모달 취소 시 ─────────────────────
   const handleVoteCancel = () => {
     setVoteModalVisible(false);
     fetchBattleResult();
   };
-  useEffect(() => {
-    if (voteModalVisible) {
-      const timer = setTimeout(() => {
-        if (!hasVoted) {
-          setVoteModalVisible(false);
-          fetchBattleResult();
-        }
-      }, 20000);
-      return () => clearTimeout(timer);
-    }
-  }, [voteModalVisible, hasVoted]);
 
   // ─── 플레이어 강퇴 ─────────────────────
   const handleKickPlayer = () => {
@@ -590,6 +637,15 @@ const BattleDetail: React.FC = () => {
     );
   };
 
+  // ─── 남은 시간 표시(분:초) ─────────────────────
+  const formatTime = (sec: number) => {
+    const m = Math.floor(sec / 60)
+      .toString()
+      .padStart(2, '0');
+    const s = (sec % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  };
+
   return (
     <Container>
       {/* Header */}
@@ -651,6 +707,11 @@ const BattleDetail: React.FC = () => {
           </RightButtonGroup>
         </SpectatorsHeader>
 
+        {/* 타이머 표시 */}
+        {isBattleStarted && timer > 0 && (
+          <TimerDisplay>{formatTime(timer)}</TimerDisplay>
+        )}
+
         {!isSpectatorsCollapsed && (
           <SpectatorsGrid>{renderSpectatorGrid()}</SpectatorsGrid>
         )}
@@ -671,17 +732,15 @@ const BattleDetail: React.FC = () => {
         onCancel={() => setModalVisible(false)}
       />
 
-      {/* ─── 분리된 투표 모달 ───────────────────────────── */}
+      {/* ─── 분리된 투표 모달 (모든 사용자에게 노출) ───────────────────────────── */}
       <VoteModal
-        visible={
-          voteModalVisible && !hasVoted && ownerData?.role === 'spectator'
-        }
+        visible={voteModalVisible && !hasVoted}
         onVoteA={() => handleVote('A')}
         onVoteB={() => handleVote('B')}
         onCancel={handleVoteCancel}
       />
 
-      {/* ─── 분리된 최종 결과 모달 ───────────────────────────── */}
+      {/* ─── 분리된 최종 결과 모달 (모든 사용자에게 노출) ───────────────────────────── */}
       <ResultModal
         visible={resultModalVisible && battleResult !== null}
         data={battleResult}
@@ -816,6 +875,7 @@ const SpectatorsSection = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
+  position: relative;
 `;
 
 const SpectatorsHeader = styled.div`
@@ -1149,4 +1209,18 @@ const OverlayText = styled.span`
   font-size: 5rem;
   font-weight: bold;
   margin-top: 0.5rem;
+`;
+
+const TimerDisplay = styled.div`
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 2.5rem;
+  font-weight: bold;
+  background-color: rgba(0, 0, 0, 0.3);
+  color: #fff;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  z-index: 500;
 `;
