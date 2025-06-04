@@ -790,8 +790,6 @@ const BattleDetail: React.FC = () => {
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
             />
-            {/* 전송 버튼 */}
-            <SendButton type='submit'>전송</SendButton>
           </ChatForm>
         </ChatSection>
 
@@ -980,22 +978,6 @@ const ChatInput = styled.input`
   border-radius: 4px;
   padding: 0.3rem;
   outline: none;
-`;
-
-// 전송 버튼 추가
-const SendButton = styled.button`
-  background-color: #2e8bc0;
-  color: #fff;
-  border: 2px solid #000;
-  border-radius: 4px;
-  padding: 0.3rem 0.8rem;
-  margin-left: 0.5rem;
-  cursor: pointer;
-  font-weight: bold;
-  transition: background-color 0.2s;
-  &:hover {
-    background-color: #1b5f8a;
-  }
 `;
 
 const SpectatorsSection = styled.div`
