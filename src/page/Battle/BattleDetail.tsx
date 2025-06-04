@@ -1,6 +1,12 @@
 // src/pages/Battle/BattleDetail.tsx
 
-import React, { useState, useEffect, useRef, PropsWithChildren } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  PropsWithChildren,
+  ChangeEvent,
+} from 'react';
 import styled from 'styled-components';
 import {
   FaCommentDots,
@@ -30,6 +36,9 @@ import DiamondIcon from '../../assets/Diamond.svg';
 import MasterIcon from '../../assets/Master.svg';
 import GrandMasterIcon from '../../assets/GrandMaster.svg';
 import ChallengerIcon from '../../assets/Challenger.svg';
+
+// ───── 분리된 컴포넌트 import ───────────────────
+import DirectSubjectModal from '../../components/BattleDetail/DirectSubjectModal';
 
 // ───── 타입 정의 ──────────────────────────────
 type Tier =
@@ -106,7 +115,7 @@ const BattleDetail: React.FC = () => {
 
   // ─── 투표 모달 관련 상태 ─────────────────────
   const [voteModalVisible, setVoteModalVisible] = useState(false);
-  const [hasVoted, setHasVoted] = useState(false); // 이미 투표했는지 확인
+  const [hasVoted, setHasVoted] = useState(false);
 
   // ─── 최종 결과 모달 관련 상태 ─────────────────────
   const [resultModalVisible, setResultModalVisible] = useState(false);
@@ -250,7 +259,6 @@ const BattleDetail: React.FC = () => {
         await BattleRoomApi.startBattle(parseInt(roomId, 10));
         setIsBattleStarted(true);
 
-        // 시작 오버레이 보여주기 (3초 후 자동 사라짐)
         setShowStartOverlay(true);
         setTimeout(() => setShowStartOverlay(false), 3000);
       } catch (err) {
@@ -263,12 +271,10 @@ const BattleDetail: React.FC = () => {
         await BattleRoomApi.endBattle(parseInt(roomId, 10));
         setIsBattleStarted(false);
 
-        // 종료 오버레이 보여주기 (3초 후 자동 사라짐 뒤 투표/결과 로직)
         setShowEndOverlay(true);
         setTimeout(() => {
           setShowEndOverlay(false);
 
-          // 종료 아이콘이 사라진 시점에, 관전자 투표 또는 바로 결과 조회
           if (ownerData && ownerData.role === 'spectator' && !hasVoted) {
             setVoteModalVisible(true);
           } else {
@@ -292,7 +298,6 @@ const BattleDetail: React.FC = () => {
       setResultModalVisible(true);
     } catch (err) {
       console.error('최종 결과 조회 오류:', err);
-      // 오류 시 모달 없이 넘어가도 무방
     }
   };
 
@@ -321,7 +326,6 @@ const BattleDetail: React.FC = () => {
     fetchBattleResult();
   };
   useEffect(() => {
-    // 투표 모달이 켜지면 20초 후에 자동으로 닫고 결과 모달 띄우기
     if (voteModalVisible) {
       const timer = setTimeout(() => {
         if (!hasVoted) {
@@ -424,7 +428,7 @@ const BattleDetail: React.FC = () => {
   };
 
   // ─── 직접 주제 생성 모달 오픈 ─────────────────────
-  const handleDirectSubject = () => {
+  const handleDirectSubjectOpen = () => {
     setSubjectAInput('');
     setSubjectBInput('');
     setModalVisible(true);
@@ -661,7 +665,7 @@ const BattleDetail: React.FC = () => {
               <FaRandom style={{ marginRight: '0.3rem' }} />
               랜덤 주제생성
             </SubjectButton>
-            <SubjectButton onClick={handleDirectSubject}>
+            <SubjectButton onClick={handleDirectSubjectOpen}>
               <FaEdit style={{ marginRight: '0.3rem' }} />
               직접 주제 생성
             </SubjectButton>
@@ -699,33 +703,20 @@ const BattleDetail: React.FC = () => {
         </ModalComponent>
       )}
 
-      {/* ─── 직접 주제 입력 모달 ───────────────────────────── */}
-      {modalVisible && (
-        <ModalComponent title='주제 입력 (주제 A / 주제 B)'>
-          <ColumnContainer>
-            <ModalInput
-              type='text'
-              placeholder='주제 A 입력...'
-              value={subjectAInput}
-              onChange={(e) => setSubjectAInput(e.currentTarget.value)}
-            />
-            <ModalInput
-              type='text'
-              placeholder='주제 B 입력...'
-              value={subjectBInput}
-              onChange={(e) => setSubjectBInput(e.currentTarget.value)}
-            />
-          </ColumnContainer>
-          <ModalButtons>
-            <ModalSubmitButton onClick={handleModalSubmit}>
-              생성
-            </ModalSubmitButton>
-            <ModalCancelButton onClick={() => setModalVisible(false)}>
-              취소
-            </ModalCancelButton>
-          </ModalButtons>
-        </ModalComponent>
-      )}
+      {/* ─── 분리된 직접 주제 입력 모달 ───────────────────────────── */}
+      <DirectSubjectModal
+        visible={modalVisible}
+        subjectAInput={subjectAInput}
+        subjectBInput={subjectBInput}
+        onChangeA={(e: ChangeEvent<HTMLInputElement>) =>
+          setSubjectAInput(e.currentTarget.value)
+        }
+        onChangeB={(e: ChangeEvent<HTMLInputElement>) =>
+          setSubjectBInput(e.currentTarget.value)
+        }
+        onSubmit={handleModalSubmit}
+        onCancel={() => setModalVisible(false)}
+      />
 
       {/* ─── 강퇴 확인 모달 ───────────────────────────── */}
       {kickModalVisible && selectedPlayer && (
@@ -807,14 +798,14 @@ const BattleDetail: React.FC = () => {
         </ModalComponent>
       )}
 
-      {/* ─── 게임 시작 오버레이 (아이콘 제거) ───────────────────────────── */}
+      {/* ─── 게임 시작 오버레이 ───────────────────────────── */}
       {showStartOverlay && (
         <OverlayCenter>
           <OverlayText>게임 시작</OverlayText>
         </OverlayCenter>
       )}
 
-      {/* ─── 게임 종료 오버레이 (아이콘 제거) ───────────────────────────── */}
+      {/* ─── 게임 종료 오버레이 ───────────────────────────── */}
       {showEndOverlay && (
         <OverlayCenter>
           <OverlayText>게임 종료</OverlayText>
@@ -841,7 +832,6 @@ const Container = styled.div`
   position: relative;
 `;
 
-/** 헤더 */
 const Header = styled.header`
   display: flex;
   align-items: center;
@@ -1142,7 +1132,6 @@ const ChatBubbleText = styled.p<{ isNotice: boolean }>`
   margin: 0;
 `;
 
-/** 모달 오버레이(공통) ───────────────────────────── */
 const ModalOverlay = styled.div`
   position: fixed;
   top: 0;
@@ -1156,7 +1145,6 @@ const ModalOverlay = styled.div`
   z-index: 1000;
 `;
 
-/** 모달 콘텐츠(흰 배경 박스) */
 const ModalContent = styled.div`
   width: 400px;
   background-color: #fff;
@@ -1176,12 +1164,6 @@ const ModalTitle = styled.h3`
   color: #333;
 `;
 
-const ColumnContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.8rem;
-`;
-
 const ModalText = styled.p`
   font-size: 1rem;
   color: #333;
@@ -1190,20 +1172,12 @@ const ModalText = styled.p`
   text-align: center;
 `;
 
-const ModalInput = styled.input`
-  padding: 0.5rem;
-  border: 1px solid #000;
-  border-radius: 4px;
-  font-size: 1rem;
-`;
-
 const ModalButtons = styled.div`
   display: flex;
   justify-content: flex-end;
   gap: 0.5rem;
 `;
 
-/** “네” 버튼 */
 const ModalSubmitButton = styled.button`
   background-color: #4caf50;
   color: #fff;
@@ -1219,7 +1193,6 @@ const ModalSubmitButton = styled.button`
   }
 `;
 
-/** “아니요” 버튼 */
 const ModalCancelButton = styled.button`
   background-color: #f06292;
   color: #fff;
@@ -1290,7 +1263,6 @@ const VoteButton = styled.button`
   }
 `;
 
-/** 최종 결과 모달 내부 컨테이너 */
 const ResultContainer = styled.div`
   display: flex;
   flex-direction: column;
@@ -1299,32 +1271,27 @@ const ResultContainer = styled.div`
   overflow-y: auto;
 `;
 
-/** 결과 항목 가로 배치 */
 const ResultRow = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
 `;
 
-/** 결과 레이블 */
 const ResultLabel = styled.span`
   font-weight: bold;
   color: #333;
 `;
 
-/** 결과 값 */
 const ResultValue = styled.span`
   color: #000;
 `;
 
-/** 구분선 */
 const SectionDivider = styled.hr`
   border: none;
   border-top: 1px solid #ddd;
   margin: 0.5rem 0;
 `;
 
-/** 소제목 */
 const SectionTitle = styled.h4`
   margin: 0;
   font-size: 1rem;
@@ -1332,14 +1299,12 @@ const SectionTitle = styled.h4`
   color: #333;
 `;
 
-/** 본문 텍스트 */
 const SectionText = styled.p`
   font-size: 0.9rem;
   color: #555;
   margin: 0;
 `;
 
-/** 게임 시작/종료 오버레이 중앙 박스 */
 const OverlayCenter = styled.div`
   position: absolute;
   top: 30%;
@@ -1354,7 +1319,6 @@ const OverlayCenter = styled.div`
   z-index: 2000;
 `;
 
-/** 오버레이 텍스트 (흰색) */
 const OverlayText = styled.span`
   color: #fff;
   font-size: 5rem;
