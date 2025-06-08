@@ -738,10 +738,9 @@ const BattleDetail: React.FC = () => {
 
   // ─── 채팅 버블 ─────────────────────
   const ChatBubble: React.FC<{ msg: ChatMessage }> = ({ msg }) => {
-    const isOwnerMsg = Number(msg.userId) === OWNER_ID;
     const isNotice = msg.message.startsWith('[공지]');
     return (
-      <ChatBubbleContainer isOwnerMsg={isOwnerMsg} isNotice={isNotice}>
+      <ChatBubbleContainer side={msg.side} isNotice={isNotice}>
         <ChatBubbleText isNotice={isNotice}>
           {isNotice
             ? msg.message
@@ -1171,16 +1170,17 @@ const SpectatorImage = styled.img`
 `;
 
 const ChatBubbleContainer = styled.div<{
-  isOwnerMsg: boolean;
+  side: 'A' | 'B';
   isNotice: boolean;
 }>`
   max-width: 70%;
   padding: 8px 12px;
   border-radius: 16px;
   margin: 4px 0;
-  background-color: ${({ isOwnerMsg, isNotice }) =>
-    isNotice ? '#ffe6e6' : isOwnerMsg ? '#dcf8c6' : '#fff'};
-  align-self: ${({ isOwnerMsg }) => (isOwnerMsg ? 'flex-end' : 'flex-start')};
+  background-color: ${({ side, isNotice }) =>
+    isNotice ? '#ffe6e6' : side === 'A' ? '#fff' : '#dcf8c6'};
+  /* sideA는 왼쪽, sideB는 오른쪽 */
+  align-self: ${({ side }) => (side === 'A' ? 'flex-start' : 'flex-end')};
   box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
   word-break: break-word;
 `;
@@ -1189,82 +1189,6 @@ const ChatBubbleText = styled.p<{ isNotice: boolean }>`
   font-size: 0.9rem;
   color: ${({ isNotice }) => (isNotice ? 'red' : '#000')};
   margin: 0;
-`;
-
-const ModalOverlay = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background-color: rgba(0, 0, 0, 0.6);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-`;
-
-const ModalContent = styled.div`
-  width: 400px;
-  background-color: #fff;
-  border-radius: 8px;
-  padding: 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.3);
-`;
-
-const ModalTitle = styled.h3`
-  margin: 0;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid #000;
-  font-size: 1.1rem;
-  color: #333;
-`;
-
-const ModalText = styled.p`
-  font-size: 1rem;
-  color: #333;
-  margin: 0;
-  line-height: 1.4;
-  text-align: center;
-`;
-
-const ModalButtons = styled.div`
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-`;
-
-const ModalSubmitButton = styled.button`
-  background-color: #4caf50;
-  color: #fff;
-  border: 2px solid #000;
-  border-radius: 4px;
-  padding: 0.4rem 0.8rem;
-  cursor: pointer;
-  width: 100%;
-  font-weight: bold;
-  transition: transform 0.2s;
-  &:hover {
-    transform: translateY(-2px);
-  }
-`;
-
-const ModalCancelButton = styled.button`
-  background-color: #f06292;
-  color: #fff;
-  border: 2px solid #000;
-  border-radius: 4px;
-  padding: 0.4rem 0.8rem;
-  cursor: pointer;
-  width: 100%;
-  font-weight: bold;
-  transition: transform 0.2s;
-  &:hover {
-    transform: translateY(-2px);
-  }
 `;
 
 const EmptySlotText = styled.div`
