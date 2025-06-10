@@ -84,7 +84,7 @@ export interface GetBattleRoomsResponse {
  */
 export interface RoomDetail {
   roomId: number;
-  adminId: number;
+  adminId: number; //방장
   topicA: string;
   topicB: string;
   status: 'WAITING' | 'FULL' | 'PLAYING' | 'FINISHED' | 'ENDED';
