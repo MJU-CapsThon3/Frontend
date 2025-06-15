@@ -92,11 +92,11 @@ export type PlayerData = {
   tier: Tier;
 };
 
-// REST로 조회해서 받아오는 메시지 타입 (battle/chat.ts 참조)
+// REST로 조회해서 받아오는 메시지 타입
 export type ChatMessage = RestChatMessage & {
-  // RestChatMessage에 이미 emotion, warning, probabilities 필드가 정의되어 있으면 중복 선언 불필요
-  // 단, 초기 GET /chat/messages 에서 emotion/warning 정보가 없다면 빈값 혹은 기본값을 채워두고,
-  // 이후 별도 호출로 업데이트합니다.
+  // RestChatMessage에는 기본적으로 id, userId, side, message, createdAt, emotion?, warning? 등이 있음
+  // 별도의 nickname 필드가 API에서 제공되면 사용; 아니면 front에서 players 배열을 참조해 매핑
+  nickname?: string;
 };
 
 const OWNER_ID = 1; // (예시) 현재 로그인된 사용자 ID
@@ -224,45 +224,88 @@ const BattleDetail: React.FC = () => {
 
       const fetchedPlayers: PlayerData[] = [];
 
+      // helper to map API tier (string) to our Tier; default bronze if unmapped
+      const mapTier = (apiTier: string | undefined): Tier => {
+        if (!apiTier) return 'bronze';
+        const lower = apiTier.toLowerCase();
+        if (lower.includes('bronze')) return 'bronze';
+        if (lower.includes('silver')) return 'silver';
+        if (lower.includes('gold')) return 'gold';
+        if (lower.includes('platinum')) return 'platinum';
+        if (lower.includes('diamond')) return 'diamond';
+        if (lower.includes('master')) {
+          if (lower.includes('grand')) return 'grandmaster';
+          return 'master';
+        }
+        if (lower.includes('grandmaster')) return 'grandmaster';
+        if (lower.includes('challenger')) return 'challenger';
+        return 'bronze';
+      };
+
+      // participantA
       data.participantA.forEach((u) => {
+        const idNum = Number(u.userId);
+        // API에서 nickname이 제공되면 사용, 없으면 fallback
+        const nickname =
+          (u as any).nickname && String((u as any).nickname).trim()
+            ? String((u as any).nickname)
+            : `유저${u.userId}`;
+        const tierStr = (u as any).tier;
+        const tier = mapTier(tierStr);
         fetchedPlayers.push({
-          id: Number(u.userId),
-          nickname: `유저${u.userId}`,
-          avatarUrl: '',
+          id: idNum,
+          nickname,
+          avatarUrl: '', // API 제공시 설정 가능
           isReady: true,
           team: 'blue',
           role: 'participant',
-          tier: 'silver',
+          tier,
         });
-        if (Number(u.userId) === OWNER_ID) {
+        if (idNum === OWNER_ID) {
           setOwnerSpectatorSlot(null);
         }
       });
 
+      // participantB
       data.participantB.forEach((u) => {
+        const idNum = Number(u.userId);
+        const nickname =
+          (u as any).nickname && String((u as any).nickname).trim()
+            ? String((u as any).nickname)
+            : `유저${u.userId}`;
+        const tierStr = (u as any).tier;
+        const tier = mapTier(tierStr);
         fetchedPlayers.push({
-          id: Number(u.userId),
-          nickname: `유저${u.userId}`,
+          id: idNum,
+          nickname,
           avatarUrl: '',
           isReady: true,
           team: 'red',
           role: 'participant',
-          tier: 'silver',
+          tier,
         });
-        if (Number(u.userId) === OWNER_ID) {
+        if (idNum === OWNER_ID) {
           setOwnerSpectatorSlot(null);
         }
       });
 
+      // spectators
       data.spectators.forEach((u, idx) => {
+        const idNum = Number(u.userId);
+        const nickname =
+          (u as any).nickname && String((u as any).nickname).trim()
+            ? String((u as any).nickname)
+            : `유저${u.userId}`;
+        const tierStr = (u as any).tier;
+        const tier = mapTier(tierStr);
         fetchedPlayers.push({
-          id: Number(u.userId),
-          nickname: `유저${u.userId}`,
+          id: idNum,
+          nickname,
           avatarUrl: '',
           role: 'spectator',
-          tier: 'silver',
+          tier,
         });
-        if (Number(u.userId) === OWNER_ID) {
+        if (idNum === OWNER_ID) {
           setOwnerSpectatorSlot(idx);
         }
       });
@@ -291,10 +334,27 @@ const BattleDetail: React.FC = () => {
             new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
         );
 
-        setChatMessages(combined);
+        // 만약 API 응답 ChatMessage에 nickname이 포함되어 있다면 이를 우선 사용하도록 병합
+        const combinedWithNickname = combined.map((msg) => {
+          if ((msg as any).nickname) {
+            // 이미 nickname 필드 존재
+            return msg;
+          }
+          // 없으면 players 상태에서 찾아서 할당
+          const found = players.find((p) => p.id === msg.userId);
+          if (found) {
+            return {
+              ...msg,
+              nickname: found.nickname,
+            };
+          }
+          return msg;
+        });
+
+        setChatMessages(combinedWithNickname);
 
         // 감정분석 API 호출: 아직 처리되지 않은 메시지에 대해
-        combined.forEach(async (msg) => {
+        combinedWithNickname.forEach(async (msg) => {
           if (!processedEmotion.current.has(msg.id)) {
             processedEmotion.current.add(msg.id);
             try {
@@ -317,7 +377,14 @@ const BattleDetail: React.FC = () => {
                 );
                 // warning이 true면 모달 띄우기
                 if (warning) {
-                  const preview = `[${emoRes.result.side}] 유저${emoRes.result.userId}: ${msg.message}`;
+                  // players 상태에서 nickname 찾기
+                  const p = players.find((p) => p.id === emoRes.result.userId);
+                  const nameForPreview = p
+                    ? p.nickname
+                    : msg.nickname
+                      ? msg.nickname
+                      : `유저${emoRes.result.userId}`;
+                  const preview = `[${emoRes.result.side}] ${nameForPreview}: ${msg.message}`;
                   setWarningMsgPreview(preview);
                   setWarningModalVisible(true);
                 }
@@ -338,7 +405,7 @@ const BattleDetail: React.FC = () => {
     return () => {
       clearInterval(pollingHandle);
     };
-  }, [roomId]);
+  }, [roomId, players]);
 
   // ─── 기존 방 상태/타이머 폴링 ─────────────────────
   useEffect(() => {
@@ -460,10 +527,25 @@ const BattleDetail: React.FC = () => {
         (a, b) =>
           new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
       );
-      setChatMessages(combined);
+
+      const combinedWithNickname = combined.map((msg) => {
+        if ((msg as any).nickname) {
+          return msg;
+        }
+        const found = players.find((p) => p.id === msg.userId);
+        if (found) {
+          return {
+            ...msg,
+            nickname: found.nickname,
+          };
+        }
+        return msg;
+      });
+
+      setChatMessages(combinedWithNickname);
 
       // 전송 후 새로운 메시지에 대해 감정분석 호출
-      combined.forEach(async (msg) => {
+      combinedWithNickname.forEach(async (msg) => {
         if (!processedEmotion.current.has(msg.id)) {
           processedEmotion.current.add(msg.id);
           try {
@@ -484,7 +566,13 @@ const BattleDetail: React.FC = () => {
                 )
               );
               if (warning) {
-                const preview = `[${emoRes.result.side}] 유저${emoRes.result.userId}: ${msg.message}`;
+                const p = players.find((p) => p.id === emoRes.result.userId);
+                const nameForPreview = p
+                  ? p.nickname
+                  : msg.nickname
+                    ? msg.nickname
+                    : `유저${emoRes.result.userId}`;
+                const preview = `[${emoRes.result.side}] ${nameForPreview}: ${msg.message}`;
                 setWarningMsgPreview(preview);
                 setWarningModalVisible(true);
               }
@@ -855,6 +943,11 @@ const BattleDetail: React.FC = () => {
   // ─── 채팅 버블 ─────────────────────
   const ChatBubble: React.FC<{ msg: ChatMessage }> = ({ msg }) => {
     const isNotice = msg.message.startsWith('[공지]');
+    // 우선 msg.nickname 필드가 있으면 사용, 없으면 players 배열에서 찾아 사용
+    const displayName =
+      msg.nickname ??
+      players.find((p) => p.id === msg.userId)?.nickname ??
+      `유저${msg.userId}`;
     return (
       <ChatBubbleContainer
         side={msg.side}
@@ -864,7 +957,7 @@ const BattleDetail: React.FC = () => {
         <ChatBubbleText isNotice={isNotice}>
           {isNotice
             ? msg.message
-            : `[${msg.side}] 유저${msg.userId}: ${msg.message}`}
+            : `[${msg.side}] ${displayName}: ${msg.message}`}
           {/* 감정 레이블 표시 */}
           <EmotionTag>{msg.emotion}</EmotionTag>
         </ChatBubbleText>

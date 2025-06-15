@@ -82,7 +82,7 @@ export interface GetBattleRoomsResponse {
  */
 export interface RoomDetail {
   roomId: number;
-  adminId: number; //방장
+  adminId: number; // 방장
   topicA: string;
   topicB: string;
   status: 'WAITING' | 'FULL' | 'PLAYING' | 'FINISHED' | 'ENDED';
@@ -118,14 +118,14 @@ export interface GetBattleRoomResponse {
  *   "topicB": "호랑이",
  *   "status": "WAITING",
  *   "createdAt": "2025-05-25T12:00:00.000Z",
- *   "participantA": [
- *     { "userId": "9", "joinedAt": "2025-05-25T12:01:00.000Z" }
- *   ],
- *   "participantB": [
- *     { "userId": "10", "joinedAt": "2025-05-25T12:02:00.000Z" }
- *   ],
- *   "spectators": [
- *     { "userId": "12", "joinedAt": "2025-05-25T12:04:00.000Z" }
+ *   "participants": [
+ *     {
+ *       "userId": "11",
+ *       "role": "P",
+ *       "joinedAt": "2025-05-25T12:03:00.000Z",
+ *       "nickname": "watcher_one",
+ *       "rank": "Bronze"
+ *     }
  *   ]
  * }
  */
@@ -137,17 +137,12 @@ export interface RoomDetailFull {
   topicB: string;
   status: 'WAITING' | 'FULL' | 'PLAYING' | 'FINISHED' | 'ENDED';
   createdAt: string; // ISO 날짜 문자열
-  participantA: Array<{
+  participants: Array<{
     userId: string;
+    role: 'A' | 'B' | 'P';
     joinedAt: string; // ISO 날짜 문자열
-  }>;
-  participantB: Array<{
-    userId: string;
-    joinedAt: string; // ISO 날짜 문자열
-  }>;
-  spectators: Array<{
-    userId: string;
-    joinedAt: string; // ISO 날짜 문자열
+    nickname: string;
+    rank: string;
   }>;
 }
 
@@ -192,8 +187,7 @@ export interface JoinBattleRoomResponse {
 /**
  * 역할 변경 요청 바디 타입
  * POST /battle/rooms/{roomId}/participants/role
- * Request body:
- * { "role": "A" }
+ * Request body: { "role": "A" }
  */
 export interface ChangeRoleRequest {
   role: 'A' | 'B' | 'P';
