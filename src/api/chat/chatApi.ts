@@ -12,6 +12,14 @@ export interface ChatMessage {
   side: 'A' | 'B';
   message: string;
   createdAt: string; // ISO 8601 형식
+  warning: boolean; // 감정 분석에 따른 경고 여부
+  emotion: string; // 분석된 감정 레이블 ("긍정", "부정", "중립" 등)
+  probabilities: {
+    // 각 감정에 대한 확률 분포
+    긍정: number;
+    부정: number;
+    중립: number;
+  };
 }
 
 /**

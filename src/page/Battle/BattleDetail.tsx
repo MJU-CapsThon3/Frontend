@@ -66,13 +66,12 @@ export type PlayerData = {
   avatarUrl?: string;
   isReady?: boolean;
   team?: 'blue' | 'red';
-  role: Role;
+  role: 'participant' | 'spectator';
   tier: Tier;
 };
 
 // REST로 조회해서 받아오는 메시지 타입 (battle/chat.ts 참조)
 export type ChatMessage = RestChatMessage;
-// { id, roomId, userId, side, message, createdAt }
 
 const OWNER_ID = 1; // (예시) 현재 로그인된 사용자 ID
 const TOTAL_SLOTS = 8;
@@ -280,27 +279,27 @@ const BattleDetail: React.FC = () => {
 
   // ─── 투표 모달이 열릴 때: 10초 카운트다운 + 결과 폴링 시작 ─────────────────────
   useEffect(() => {
-    // 투표 모달이 열린 순간
     if (voteModalVisible) {
       // (1) 10초 후 자동 투표 처리
       voteTimeoutRef.current = setTimeout(() => {
         if (!hasVoted) {
           console.log('자동 투표 처리: A팀으로 투표 처리합니다.');
-          handleVote('A'); // 기본으로 A팀 자동 투표 (원한다면 B로 바꾸거나 랜덤으로 처리)
+          handleVote('A'); // 기본 A팀 자동 투표
         }
       }, VOTE_TIMEOUT);
 
-      // (2) 모든 사용자에게 결과 모달을 띄우기 위한 결과 폴링
+      // (2) 투표 이후 결과를 기다리며, 결과가 준비되면 모달 표시
       const pollResult = async () => {
         try {
           const result = await BattleRoomApi.getBattleResult(
             parseInt(roomId, 10)
           );
-          // result가 null이 아니고, voteCount가 들어있다면 “최종 결과가 계산됨”으로 간주
-          if (result && result.voteCount !== undefined && !resultModalVisible) {
+          if (result && result.voteCount !== undefined) {
+            // 결과 도착 시
             setBattleResult(result);
-            setResultModalVisible(true);
+            // 투표 모달 닫고 결과 모달 열기
             setVoteModalVisible(false);
+            setResultModalVisible(true);
           }
         } catch (e) {
           console.error('결과 조회 중 오류:', e);
@@ -309,11 +308,11 @@ const BattleDetail: React.FC = () => {
 
       // 바로 한 번 호출
       pollResult();
-      // 2초마다 한 번씩 폴링
+      // 2초마다 폴링
       resultPollingRef.current = setInterval(pollResult, 2000);
     }
 
-    // 투표 모달이 닫히면, 타이머와 폴링을 모두 정리
+    // 투표 모달이 닫히면 타이머와 폴링 정리
     return () => {
       if (voteTimeoutRef.current) {
         clearTimeout(voteTimeoutRef.current);
@@ -324,18 +323,50 @@ const BattleDetail: React.FC = () => {
         resultPollingRef.current = null;
       }
     };
-    // hasVoted, voteModalVisible, resultModalVisible 변경 시마다 재실행
-  }, [voteModalVisible, hasVoted, resultModalVisible, roomId]);
+  }, [voteModalVisible, hasVoted, roomId]);
 
-  // ─── 이전 isBattleStarted 값 비교하여, true → false 전환 시 투표 모달 오픈 ─────────────────────
+  // ─── 배틀이 끝났을 때 결과 모달 띄우기 (Spinner → 결과) ─────────────────────
   useEffect(() => {
     if (prevIsBattleStarted.current && !isBattleStarted) {
-      // 방이 PLAYING → FINISHED(또는 WAITING)으로 바뀌면
-      setVoteModalVisible(true);
-      setHasVoted(false); // 새로 투표 시작
+      // PLAYING → FINISHED(또는 WAITING) 전환 시
+      // 결과 모달 열기, 아직 battleResult는 null 상태로 Spinner 표시
+      setBattleResult(null);
+      setResultModalVisible(true);
+      // 결과 폴링 시작
+      pollResultForModal();
     }
     prevIsBattleStarted.current = isBattleStarted;
   }, [isBattleStarted]);
+
+  // ─── 결과 모달이 열릴 때(데이터가 없으면 폴링), 데이터가 채워지면 폴링 정리 ─────────────────────
+  const pollResultForModal = () => {
+    // 이미 폴링 중이면 초기화
+    if (resultPollingRef.current) {
+      clearInterval(resultPollingRef.current);
+      resultPollingRef.current = null;
+    }
+    const poll = async () => {
+      try {
+        const result = await BattleRoomApi.getBattleResult(
+          parseInt(roomId!, 10)
+        );
+        if (result && result.voteCount !== undefined) {
+          setBattleResult(result);
+          // 결과가 채워졌으면 폴링 중지
+          if (resultPollingRef.current) {
+            clearInterval(resultPollingRef.current);
+            resultPollingRef.current = null;
+          }
+        }
+      } catch (e) {
+        console.error('결과 조회 중 오류:', e);
+      }
+    };
+    // 즉시 호출
+    poll();
+    // 2초마다 폴링
+    resultPollingRef.current = setInterval(poll, 2000);
+  };
 
   // ─── 채팅 스크롤 자동 최하단 유지 ─────────────────────
   useEffect(() => {
@@ -350,10 +381,8 @@ const BattleDetail: React.FC = () => {
     e.preventDefault();
     if (!chatInput.trim()) return;
 
-    // A팀 / B팀 구분
     const side = ownerData?.team === 'blue' ? 'A' : 'B';
 
-    // 1) REST API로 메시지 저장(필터링)
     const payload: PostChatMessageRequest = {
       side,
       message: chatInput.trim(),
@@ -364,7 +393,7 @@ const BattleDetail: React.FC = () => {
       console.error('채팅 저장 실패:', err);
     }
 
-    // 2) 저장 직후 채팅 내역을 즉시 한 번 더 불러오기
+    // 저장 직후 바로 불러오기
     try {
       const res: GetChatMessagesResponse =
         await BattleChatApi.getChatMessages(roomId);
@@ -385,24 +414,32 @@ const BattleDetail: React.FC = () => {
 
   // ─── 투표 처리 (A 또는 B) ─────────────────────
   const handleVote = async (choice: 'A' | 'B') => {
-    if (hasVoted) return; // 이미 투표했다면 무시
+    if (hasVoted) return;
     try {
       const payload: CreateVoteRequest = { vote: choice };
       await VoteApi.createVote(roomId, payload);
       setHasVoted(true);
       setVoteModalVisible(false);
-
-      // 투표가 끝나면, 즉시 결과 한 번 조회 시도
+      // 투표 후 결과 즉시 조회 시도
       try {
         const result = await BattleRoomApi.getBattleResult(
           parseInt(roomId, 10)
         );
-        if (result && result.voteCount !== undefined && !resultModalVisible) {
+        if (result && result.voteCount !== undefined) {
           setBattleResult(result);
           setResultModalVisible(true);
+        } else {
+          // 결과 아직 준비 안 됐으면 Polling이 이미 돌아가므로 Spinner 상태로 대기
+          setBattleResult(null);
+          setResultModalVisible(true);
+          pollResultForModal();
         }
       } catch (e) {
         console.error('투표 후 결과 조회 실패:', e);
+        // Spinner 상태로 결과 모달 띄우고 폴링
+        setBattleResult(null);
+        setResultModalVisible(true);
+        pollResultForModal();
       }
     } catch (err: any) {
       console.error('투표 중 오류:', err);
@@ -434,6 +471,7 @@ const BattleDetail: React.FC = () => {
           if (prev <= 1) {
             clearInterval(timerRef.current!);
             setTimer(0);
+            // 타이머 종료 시 투표 모달 띄우기
             setVoteModalVisible(true);
             setHasVoted(false);
             return 0;
@@ -479,7 +517,7 @@ const BattleDetail: React.FC = () => {
     }
   };
 
-  // ─── 최종 결과 조회 함수 ─────────────────────
+  // ─── 최종 결과 조회 함수 (단발) ─────────────────────
   const fetchBattleResult = async () => {
     try {
       const result = await BattleRoomApi.getBattleResult(parseInt(roomId, 10));
@@ -493,7 +531,10 @@ const BattleDetail: React.FC = () => {
   // ─── 투표 모달 취소 시 ─────────────────────
   const handleVoteCancel = () => {
     setVoteModalVisible(false);
-    fetchBattleResult();
+    // 취소 시에도 결과 조회 시도
+    setBattleResult(null);
+    setResultModalVisible(true);
+    pollResultForModal();
   };
 
   // ─── 플레이어 강퇴 ─────────────────────
@@ -564,7 +605,6 @@ const BattleDetail: React.FC = () => {
       }
     } catch (err) {
       console.error('랜덤 토론 주제 생성 오류:', err);
-      // 키워드 풀 없이 fallback 메시지
       setSubject('랜덤 주제 생성 실패');
       setSideAOption('');
       setSideBOption('');
@@ -728,11 +768,17 @@ const BattleDetail: React.FC = () => {
   const ChatBubble: React.FC<{ msg: ChatMessage }> = ({ msg }) => {
     const isNotice = msg.message.startsWith('[공지]');
     return (
-      <ChatBubbleContainer side={msg.side} isNotice={isNotice}>
+      <ChatBubbleContainer
+        side={msg.side}
+        isNotice={isNotice}
+        $warning={msg.warning}
+      >
         <ChatBubbleText isNotice={isNotice}>
           {isNotice
             ? msg.message
             : `[${msg.side}] 유저${msg.userId}: ${msg.message}`}
+          {/* 감정 라벨 */}
+          <EmotionTag>{msg.emotion}</EmotionTag>
         </ChatBubbleText>
       </ChatBubbleContainer>
     );
@@ -841,10 +887,18 @@ const BattleDetail: React.FC = () => {
       />
 
       {/* ─── 최종 결과 모달 ───────────────────────────── */}
+      {/* visible은 battleResult 여부와 무관하게 resultModalVisible만으로 제어 */}
       <ResultModal
-        visible={resultModalVisible && battleResult !== null}
+        visible={resultModalVisible}
         data={battleResult}
-        onClose={() => setResultModalVisible(false)}
+        onClose={() => {
+          setResultModalVisible(false);
+          // 모달 닫을 때 폴링 정리
+          if (resultPollingRef.current) {
+            clearInterval(resultPollingRef.current);
+            resultPollingRef.current = null;
+          }
+        }}
       />
 
       {/* ─── 게임 시작 오버레이 ───────────────────────────── */}
@@ -1140,16 +1194,6 @@ const OwnerBadge = styled.div`
   border-bottom-left-radius: 4px;
 `;
 
-const ReadyBadge = styled.div`
-  background-color: #ff9800;
-  color: #fff;
-  font-size: 0.8rem;
-  font-weight: bold;
-  width: 100%;
-  border-bottom-right-radius: 4px;
-  border-bottom-left-radius: 4px;
-`;
-
 const SpectatorImage = styled.img`
   width: 100%;
   height: 60px;
@@ -1157,20 +1201,22 @@ const SpectatorImage = styled.img`
   border-radius: 4px;
 `;
 
-const ChatBubbleContainer = styled.div<{
+interface ChatBubbleContainerProps {
   side: 'A' | 'B';
   isNotice: boolean;
-}>`
+  $warning: boolean;
+}
+
+const ChatBubbleContainer = styled.div<ChatBubbleContainerProps>`
   max-width: 70%;
   padding: 8px 12px;
-  border-radius: 16px;
   margin: 4px 0;
+  border-radius: 16px;
   background-color: ${({ side, isNotice }) =>
     isNotice ? '#ffe6e6' : side === 'A' ? '#fff' : '#dcf8c6'};
-  /* sideA는 왼쪽, sideB는 오른쪽 */
   align-self: ${({ side }) => (side === 'A' ? 'flex-start' : 'flex-end')};
   box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
-  word-break: break-word;
+  border: ${({ $warning }) => ($warning ? '2px solid red' : 'none')};
 `;
 
 const ChatBubbleText = styled.p<{ isNotice: boolean }>`
@@ -1247,4 +1293,9 @@ const TimerDisplay = styled.div`
   padding: 0.5rem 1rem;
   border-radius: 6px;
   z-index: 500;
+`;
+const EmotionTag = styled.span`
+  margin-left: 0.5rem;
+  font-size: 0.75rem;
+  color: #555;
 `;
