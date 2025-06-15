@@ -66,7 +66,7 @@ export type PlayerData = {
   avatarUrl?: string;
   isReady?: boolean;
   team?: 'blue' | 'red';
-  role: 'participant' | 'spectator';
+  role: Role;
   tier: Tier;
 };
 
