@@ -95,19 +95,58 @@ export const login = async (
 
 /**
  * 사용자 정보 조회
+ *
+ * API 스펙에 맞춰 필드를 확장:
+ * {
+ *   id: "1",
+ *   email: "user@example.com",
+ *   nickname: "nickname",
+ *   name: "John Doe",
+ *   profileImageUrl: null,
+ *   gender: "M",
+ *   birth: "1992-07-15T00:00:00.000Z",
+ *   phoneNumber: "010-1234-5678",
+ *   point: 3300,
+ *   tier: "Gold",
+ *   rank: 123,
+ *   createdAt: "2025-05-25T19:42:11.304Z",
+ *   updatedAt: "2025-06-14T20:03:16.935Z"
+ * }
  */
 export interface UserInfoResult {
   id: string;
   email: string;
   nickname: string;
   name: string;
-  status: string;
   profileImageUrl: string | null;
-  createdAt: string; // YYYY-MM-DD
-  updatedAt: string; // YYYY-MM-DD
+  gender: string;
+  birth: string; // ISO 문자열 또는 YYYY-MM-DD 등
+  phoneNumber: string;
+  point: number;
+  tier: string;
+  rank: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export const getUserInfo = async (): Promise<ApiResponse<UserInfoResult>> => {
+  // Axios 인스턴스에 이미 Authorization 헤더가 설정되어 있지 않다면,
+  // 아래와 같이 직접 헤더를 추가해야 합니다:
+  //
+  // const token = localStorage.getItem('accessToken');
+  // const response = await Axios.get<ApiResponse<UserInfoResult>>(
+  //   '/users/info',
+  //   {
+  //     headers: {
+  //       Authorization: token ? `Bearer ${token}` : '',
+  //       Accept: 'application/json',
+  //     }
+  //   }
+  // );
+  //
+  // 하지만 Axios 인스턴스에 interceptor로 이미 헤더 지정이 되어 있으면
+  // 단순히 아래처럼 호출하면 됩니다.
+
   const response = await Axios.get<ApiResponse<UserInfoResult>>('/users/info');
   return response.data;
 };

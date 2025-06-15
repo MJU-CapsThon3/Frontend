@@ -14,22 +14,24 @@ import {
   FaSignOutAlt,
 } from 'react-icons/fa';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { getUserInfo } from '../api/user/userApi'; // 추가
 
 const Header: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Axios 인터셉터에서 'accessToken' 키로 저장하고 있으므로, 여기서도 'accessToken'으로 체크
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(
     !!localStorage.getItem('accessToken')
   );
 
+  // 포인트 상태
+  const [points, setPoints] = useState<number | null>(null);
+  const [loadingPoint, setLoadingPoint] = useState<boolean>(false);
+
   useEffect(() => {
-    // 라우트가 바뀔 때마다 (로그인 완료 후 리다이렉트 시) 상태 재확인
     setIsLoggedIn(!!localStorage.getItem('accessToken'));
   }, [location]);
 
-  // 다른 탭에서 accessToken이 바뀔 때에도 반영
   useEffect(() => {
     const handleStorage = (e: StorageEvent) => {
       if (e.key === 'accessToken') {
@@ -42,17 +44,65 @@ const Header: React.FC = () => {
     };
   }, []);
 
+  // 로그인 상태 변경 시 사용자 정보(포인트) 조회
+  useEffect(() => {
+    const fetchPoint = async () => {
+      const token = localStorage.getItem('accessToken');
+      if (!token) {
+        setPoints(null);
+        return;
+      }
+      setLoadingPoint(true);
+      try {
+        const res = await getUserInfo();
+        if (res.isSuccess && res.result) {
+          setPoints(res.result.point);
+        } else {
+          // 실패 응답 처리: 토큰 오류 등인 경우 로그아웃 처리
+          console.warn('유저 정보 조회 실패:', res.message);
+          if (res.code === 401 || res.code === 'TOKEN_FORMAT_INCORRECT') {
+            localStorage.removeItem('accessToken');
+            setIsLoggedIn(false);
+            navigate('/login');
+          }
+          setPoints(null);
+        }
+      } catch (err: any) {
+        console.error('유저 정보 조회 중 오류:', err);
+        // 네트워크/권한 오류 시 로그아웃 처리
+        if (
+          err.response &&
+          (err.response.status === 401 || err.response.status === 403)
+        ) {
+          localStorage.removeItem('accessToken');
+          setIsLoggedIn(false);
+          navigate('/login');
+        }
+        setPoints(null);
+      } finally {
+        setLoadingPoint(false);
+      }
+    };
+
+    if (isLoggedIn) {
+      fetchPoint();
+    } else {
+      setPoints(null);
+    }
+  }, [isLoggedIn, navigate]);
+
   const handleLogout = () => {
     localStorage.removeItem('accessToken');
     setIsLoggedIn(false);
-    navigate('/'); // SPA 내에서 홈으로 이동
+    setPoints(null);
+    navigate('/');
   };
 
   const handleLogin = () => {
-    navigate('/login'); // SPA 내에서 로그인 페이지로 이동
+    navigate('/login');
   };
   const handleSignUp = () => {
-    navigate('/sign-up'); // SPA 내에서 회원가입 페이지로 이동
+    navigate('/sign-up');
   };
 
   const handleLogoClick = () => {
@@ -111,7 +161,9 @@ const Header: React.FC = () => {
               <PointsIcon>
                 <FaCoins />
               </PointsIcon>
-              <span>1000냥</span>
+              <span>
+                {loadingPoint ? '...' : `${points?.toLocaleString() ?? 0}냥`}
+              </span>
             </PointsDisplay>
           )}
           {isLoggedIn ? (
