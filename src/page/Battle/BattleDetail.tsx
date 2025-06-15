@@ -105,7 +105,6 @@ const BattleDetail: React.FC = () => {
   );
   const [players, setPlayers] = useState<PlayerData[]>([]);
   const [chatInput, setChatInput] = useState('');
-  // 과거 메시지 + 폴링으로 갱신된 모든 메시지를 저장
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
 
   const [subject, setSubject] = useState<string>('');
@@ -183,7 +182,6 @@ const BattleDetail: React.FC = () => {
 
       const fetchedPlayers: PlayerData[] = [];
 
-      // A팀 참가자
       data.participantA.forEach((u) => {
         fetchedPlayers.push({
           id: Number(u.userId),
@@ -199,7 +197,6 @@ const BattleDetail: React.FC = () => {
         }
       });
 
-      // B팀 참가자
       data.participantB.forEach((u) => {
         fetchedPlayers.push({
           id: Number(u.userId),
@@ -215,7 +212,6 @@ const BattleDetail: React.FC = () => {
         }
       });
 
-      // 관전자
       data.spectators.forEach((u, idx) => {
         fetchedPlayers.push({
           id: Number(u.userId),
@@ -244,7 +240,6 @@ const BattleDetail: React.FC = () => {
         const res: GetChatMessagesResponse =
           await BattleChatApi.getChatMessages(roomId);
 
-        // sideA, sideB 배열을 합쳐서 하나의 리스트로 만든 뒤, createdAt 기준으로 정렬
         const combined: ChatMessage[] = [
           ...res.result.sideA,
           ...res.result.sideB,
@@ -259,10 +254,7 @@ const BattleDetail: React.FC = () => {
       }
     };
 
-    // 처음 마운트 시 한 번 불러오기
     fetchChatMessages();
-
-    // 채팅 폴링 주기 설정
     pollingHandle = setInterval(fetchChatMessages, CHAT_POLL_INTERVAL);
 
     return () => {
@@ -280,24 +272,22 @@ const BattleDetail: React.FC = () => {
   // ─── 투표 모달이 열릴 때: 10초 카운트다운 + 결과 폴링 시작 ─────────────────────
   useEffect(() => {
     if (voteModalVisible) {
-      // (1) 10초 후 자동 투표 처리
+      // 자동 투표 타이머
       voteTimeoutRef.current = setTimeout(() => {
         if (!hasVoted) {
           console.log('자동 투표 처리: A팀으로 투표 처리합니다.');
-          handleVote('A'); // 기본 A팀 자동 투표
+          handleVote('A');
         }
       }, VOTE_TIMEOUT);
 
-      // (2) 투표 이후 결과를 기다리며, 결과가 준비되면 모달 표시
+      // 결과 준비 폴링
       const pollResult = async () => {
         try {
           const result = await BattleRoomApi.getBattleResult(
             parseInt(roomId, 10)
           );
           if (result && result.voteCount !== undefined) {
-            // 결과 도착 시
             setBattleResult(result);
-            // 투표 모달 닫고 결과 모달 열기
             setVoteModalVisible(false);
             setResultModalVisible(true);
           }
@@ -306,13 +296,10 @@ const BattleDetail: React.FC = () => {
         }
       };
 
-      // 바로 한 번 호출
       pollResult();
-      // 2초마다 폴링
       resultPollingRef.current = setInterval(pollResult, 2000);
     }
 
-    // 투표 모달이 닫히면 타이머와 폴링 정리
     return () => {
       if (voteTimeoutRef.current) {
         clearTimeout(voteTimeoutRef.current);
@@ -325,22 +312,20 @@ const BattleDetail: React.FC = () => {
     };
   }, [voteModalVisible, hasVoted, roomId]);
 
-  // ─── 배틀이 끝났을 때 결과 모달 띄우기 (Spinner → 결과) ─────────────────────
+  // ─── 배틀이 끝났을 때 투표 모달 열기 + 결과 폴링 ─────────────────────
   useEffect(() => {
     if (prevIsBattleStarted.current && !isBattleStarted) {
-      // PLAYING → FINISHED(또는 WAITING) 전환 시
-      // 결과 모달 열기, 아직 battleResult는 null 상태로 Spinner 표시
+      // PLAYING → FINISHED 전환 시
       setBattleResult(null);
-      setResultModalVisible(true);
-      // 결과 폴링 시작
+      setVoteModalVisible(true);
+      setHasVoted(false);
       pollResultForModal();
     }
     prevIsBattleStarted.current = isBattleStarted;
   }, [isBattleStarted]);
 
-  // ─── 결과 모달이 열릴 때(데이터가 없으면 폴링), 데이터가 채워지면 폴링 정리 ─────────────────────
+  // ─── 결과 모달이 열릴 때 폴링 (Spinner → 결과) ─────────────────────
   const pollResultForModal = () => {
-    // 이미 폴링 중이면 초기화
     if (resultPollingRef.current) {
       clearInterval(resultPollingRef.current);
       resultPollingRef.current = null;
@@ -352,7 +337,6 @@ const BattleDetail: React.FC = () => {
         );
         if (result && result.voteCount !== undefined) {
           setBattleResult(result);
-          // 결과가 채워졌으면 폴링 중지
           if (resultPollingRef.current) {
             clearInterval(resultPollingRef.current);
             resultPollingRef.current = null;
@@ -362,9 +346,7 @@ const BattleDetail: React.FC = () => {
         console.error('결과 조회 중 오류:', e);
       }
     };
-    // 즉시 호출
     poll();
-    // 2초마다 폴링
     resultPollingRef.current = setInterval(poll, 2000);
   };
 
@@ -380,9 +362,7 @@ const BattleDetail: React.FC = () => {
   const handleChatSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
-
     const side = ownerData?.team === 'blue' ? 'A' : 'B';
-
     const payload: PostChatMessageRequest = {
       side,
       message: chatInput.trim(),
@@ -392,8 +372,6 @@ const BattleDetail: React.FC = () => {
     } catch (err) {
       console.error('채팅 저장 실패:', err);
     }
-
-    // 저장 직후 바로 불러오기
     try {
       const res: GetChatMessagesResponse =
         await BattleChatApi.getChatMessages(roomId);
@@ -408,39 +386,21 @@ const BattleDetail: React.FC = () => {
     } catch (e) {
       console.error('채팅 전송 후 조회 실패:', e);
     }
-
     setChatInput('');
   };
 
   // ─── 투표 처리 (A 또는 B) ─────────────────────
   const handleVote = async (choice: 'A' | 'B') => {
     if (hasVoted) return;
+    setHasVoted(true);
     try {
       const payload: CreateVoteRequest = { vote: choice };
       await VoteApi.createVote(roomId, payload);
-      setHasVoted(true);
+      // 모달 닫고 결과 모달로 전환
       setVoteModalVisible(false);
-      // 투표 후 결과 즉시 조회 시도
-      try {
-        const result = await BattleRoomApi.getBattleResult(
-          parseInt(roomId, 10)
-        );
-        if (result && result.voteCount !== undefined) {
-          setBattleResult(result);
-          setResultModalVisible(true);
-        } else {
-          // 결과 아직 준비 안 됐으면 Polling이 이미 돌아가므로 Spinner 상태로 대기
-          setBattleResult(null);
-          setResultModalVisible(true);
-          pollResultForModal();
-        }
-      } catch (e) {
-        console.error('투표 후 결과 조회 실패:', e);
-        // Spinner 상태로 결과 모달 띄우고 폴링
-        setBattleResult(null);
-        setResultModalVisible(true);
-        pollResultForModal();
-      }
+      setResultModalVisible(true);
+      setBattleResult(null);
+      pollResultForModal();
     } catch (err: any) {
       console.error('투표 중 오류:', err);
       alert('투표 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
@@ -471,7 +431,6 @@ const BattleDetail: React.FC = () => {
           if (prev <= 1) {
             clearInterval(timerRef.current!);
             setTimer(0);
-            // 타이머 종료 시 투표 모달 띄우기
             setVoteModalVisible(true);
             setHasVoted(false);
             return 0;
@@ -531,7 +490,6 @@ const BattleDetail: React.FC = () => {
   // ─── 투표 모달 취소 시 ─────────────────────
   const handleVoteCancel = () => {
     setVoteModalVisible(false);
-    // 취소 시에도 결과 조회 시도
     setBattleResult(null);
     setResultModalVisible(true);
     pollResultForModal();
@@ -777,7 +735,6 @@ const BattleDetail: React.FC = () => {
           {isNotice
             ? msg.message
             : `[${msg.side}] 유저${msg.userId}: ${msg.message}`}
-          {/* 감정 라벨 */}
           <EmotionTag>{msg.emotion}</EmotionTag>
         </ChatBubbleText>
       </ChatBubbleContainer>
@@ -880,20 +837,18 @@ const BattleDetail: React.FC = () => {
 
       {/* ─── 투표 모달 ───────────────────────────── */}
       <VoteModal
-        visible={voteModalVisible && !hasVoted}
+        visible={voteModalVisible}
         onVoteA={() => handleVote('A')}
         onVoteB={() => handleVote('B')}
         onCancel={handleVoteCancel}
       />
 
       {/* ─── 최종 결과 모달 ───────────────────────────── */}
-      {/* visible은 battleResult 여부와 무관하게 resultModalVisible만으로 제어 */}
       <ResultModal
         visible={resultModalVisible}
         data={battleResult}
         onClose={() => {
           setResultModalVisible(false);
-          // 모달 닫을 때 폴링 정리
           if (resultPollingRef.current) {
             clearInterval(resultPollingRef.current);
             resultPollingRef.current = null;
@@ -922,6 +877,8 @@ export default BattleDetail;
 /* ==========================
    Styled Components 정의
 ========================== */
+
+/* (styled-components 정의는 기존 코드와 동일하게 유지) */
 
 const Container = styled.div`
   width: 1000px;
