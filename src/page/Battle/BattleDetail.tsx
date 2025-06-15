@@ -94,6 +94,8 @@ const tierIcons: { [key in Tier]: string } = {
 };
 
 const BattleDetail: React.FC = () => {
+  const [adminId, setAdminId] = useState<number | null>(null);
+
   const navigate = useNavigate();
   const { roomId } = useParams<{ roomId: string }>();
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -170,7 +172,7 @@ const BattleDetail: React.FC = () => {
       const data: RoomDetailFull = await BattleRoomApi.getRoomDetailFull(
         parseInt(roomId, 10)
       );
-
+      setAdminId(Number(data.adminId));
       setIsBattleStarted(data.status === 'PLAYING');
       setSpectatorCount(data.spectators.length);
 
@@ -562,20 +564,10 @@ const BattleDetail: React.FC = () => {
       }
     } catch (err) {
       console.error('랜덤 토론 주제 생성 오류:', err);
-      const keywordPool = [
-        '기린',
-        '코끼리',
-        '호랑이',
-        '사자',
-        '펭귄',
-        '코알라',
-        '토끼',
-        '거북이',
-      ];
-      const shuffled = [...keywordPool].sort(() => Math.random() - 0.5);
-      setSubject(`${shuffled[0]} vs ${shuffled[1]}`);
-      setSideAOption(shuffled[0]);
-      setSideBOption(shuffled[1]);
+      // 키워드 풀 없이 fallback 메시지
+      setSubject('랜덤 주제 생성 실패');
+      setSideAOption('');
+      setSideBOption('');
     }
   };
 
@@ -623,12 +615,14 @@ const BattleDetail: React.FC = () => {
     isOwner?: boolean;
     isSpectator?: boolean;
   }> = ({ player, isOwner = false, isSpectator = false }) => {
+    const isAdmin = adminId !== null && player.id === adminId;
     const bgColor =
       player.team === 'blue'
         ? '#33bfff'
         : player.team === 'red'
           ? '#ff6b6b'
           : '#fff';
+
     return (
       <StyledPlayerCard $bgColor={bgColor}>
         <Nickname>
@@ -646,13 +640,7 @@ const BattleDetail: React.FC = () => {
             <FaUserAlt style={{ fontSize: '2rem', color: '#888' }} />
           </DefaultAvatar>
         )}
-        <RankArea>
-          {isOwner ? (
-            <OwnerBadge>방 장</OwnerBadge>
-          ) : player.isReady ? (
-            <ReadyBadge>준비완료</ReadyBadge>
-          ) : null}
-        </RankArea>
+        <RankArea>{isAdmin ? <OwnerBadge>방 장</OwnerBadge> : null}</RankArea>
       </StyledPlayerCard>
     );
   };
