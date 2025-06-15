@@ -1,5 +1,3 @@
-// src/api/battle/BattleRoom.ts
-
 import { Axios } from '../Axios';
 import { AxiosInstance } from 'axios';
 
@@ -410,6 +408,41 @@ export interface GetBattleResultResponse {
 }
 
 /**
+ * 복수전(리매치) 응답 타입
+ * POST /battle/rooms/{roomId}/rematch
+ *
+ * 예시 응답:
+ * {
+ *   "isSuccess": true,
+ *   "code": 200,
+ *   "message": "리매치 방이 생성되었습니다.",
+ *   "result": {
+ *     "roomId": "2",
+ *     "adminId": "1",
+ *     "question": "원본 주제",
+ *     "topicA": "A 선택지",
+ *     "topicB": "B 선택지",
+ *     "status": "WAITING",
+ *     "createdAt": "2025-06-15T12:00:00.000Z"
+ *   }
+ * }
+ */
+export interface RematchResponse {
+  isSuccess: boolean;
+  code: number | string;
+  message: string;
+  result: {
+    roomId: string;
+    adminId: string;
+    question: string;
+    topicA: string;
+    topicB: string;
+    status: 'WAITING' | 'FULL' | 'PLAYING' | 'FINISHED' | 'ENDED';
+    createdAt: string; // ISO 날짜 문자열
+  } | null;
+}
+
+/**
  * BattleRoomApi 객체: 배틀방 관련 API 호출 함수들
  */
 export const BattleRoomApi = {
@@ -816,6 +849,33 @@ export const BattleRoomApi = {
     } catch (error) {
       console.error(
         `[BattleRoomApi.getBattleResult] 방 ID ${roomId} 결과 조회 중 오류:`,
+        error
+      );
+      throw error;
+    }
+  },
+
+  /**
+   * 리매치 방 생성 (관리자 전용)
+   * POST /battle/rooms/{roomId}/rematch
+   */
+  async rematchRoom(
+    roomId: number | string,
+    axiosInstance: AxiosInstance = Axios
+  ): Promise<RematchResponse['result']> {
+    try {
+      const response = await axiosInstance.post<RematchResponse>(
+        `/battle/rooms/${roomId}/rematch`
+      );
+      const data = response.data;
+      if (data.isSuccess && data.result) {
+        return data.result;
+      } else {
+        throw new Error(data.message || '리매치 방 생성 실패');
+      }
+    } catch (error) {
+      console.error(
+        `[BattleRoomApi.rematchRoom] 방 ID ${roomId} 리매치 중 오류:`,
         error
       );
       throw error;

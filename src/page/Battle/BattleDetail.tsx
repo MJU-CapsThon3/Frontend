@@ -147,6 +147,9 @@ const BattleDetail: React.FC = () => {
   const [isBattleStarted, setIsBattleStarted] = useState(false);
   const prevIsBattleStarted = useRef<boolean>(false);
 
+  // ─── 리매치 가능 여부 ─────────────────────
+  const [rematchAvailable, setRematchAvailable] = useState(false);
+
   // ─── 타이머 (남은 초) 상태 ─────────────────────
   const [timer, setTimer] = useState<number>(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -207,6 +210,11 @@ const BattleDetail: React.FC = () => {
       setAdminId(Number(data.adminId));
       setIsBattleStarted(data.status === 'PLAYING');
       setSpectatorCount(data.spectators.length);
+
+      // FINISHED 상태면 리매치 가능
+      setRematchAvailable(
+        data.status === 'FINISHED' || data.status === 'ENDED'
+      );
 
       if (data.question) {
         setSubject(data.question);
@@ -554,27 +562,46 @@ const BattleDetail: React.FC = () => {
     };
   }, [isBattleStarted]);
 
-  // ─── “시작/종료” 버튼 클릭 ─────────────────────
+  // ─── “시작/종료/리매치” 버튼 클릭 ─────────────────────
   const handleToggleBattle = async () => {
-    if (!isBattleStarted) {
-      try {
-        await BattleRoomApi.startBattle(parseInt(roomId, 10));
-        setShowStartOverlay(true);
-        setTimeout(() => setShowStartOverlay(false), 3000);
-      } catch (err) {
-        console.error('배틀 시작 오류:', err);
-        alert('배틀 시작 중 오류가 발생했습니다.');
-      }
-    } else {
+    if (isBattleStarted) {
+      // PLAYING → 종료
       try {
         await BattleRoomApi.endBattle(parseInt(roomId, 10));
         setShowEndOverlay(true);
-        setTimeout(() => {
-          setShowEndOverlay(false);
-        }, 3000);
+        setTimeout(() => setShowEndOverlay(false), 3000);
+        setIsBattleStarted(false);
+        setRematchAvailable(true);
+        // rematchAvailable는 fetchRoomDetail 폴링에서 FINISHED일 때 true로 설정됨
       } catch (err) {
         console.error('배틀 종료 오류:', err);
         alert('배틀 종료 중 오류가 발생했습니다.');
+      }
+    } else {
+      if (rematchAvailable) {
+        // 리매치 요청
+        try {
+          const res = await BattleRoomApi.rematchRoom(parseInt(roomId, 10));
+          if (res && res.roomId) {
+            navigate(`/battle/${res.roomId}`);
+          } else {
+            throw new Error('리매치 응답이 올바르지 않습니다.');
+          }
+        } catch (err) {
+          console.error('리매치 요청 오류:', err);
+          alert('리매치 생성 중 오류가 발생했습니다.');
+        }
+      } else {
+        // 아직 시작 전 → 시작
+        try {
+          await BattleRoomApi.startBattle(parseInt(roomId, 10));
+          setShowStartOverlay(true);
+          setTimeout(() => setShowStartOverlay(false), 3000);
+          setIsBattleStarted(true);
+        } catch (err) {
+          console.error('배틀 시작 오류:', err);
+          alert('배틀 시작 중 오류가 발생했습니다.');
+        }
       }
     }
   };
@@ -910,7 +937,7 @@ const BattleDetail: React.FC = () => {
               {isSpectatorsCollapsed ? '관전자 보기' : '관전자 숨김'}
             </ToggleButton>
             <StartButton onClick={handleToggleBattle}>
-              {isBattleStarted ? '종료' : '시작'}
+              {isBattleStarted ? '종료' : rematchAvailable ? '리매치' : '시작'}
             </StartButton>
           </RightButtonGroup>
         </SpectatorsHeader>
