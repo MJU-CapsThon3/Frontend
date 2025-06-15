@@ -29,6 +29,7 @@ import BattleChatApi, {
   ChatMessage as RestChatMessage,
   GetChatMessagesResponse,
   PostChatMessageRequest,
+  GetChatMessageEmotionResponse,
 } from '../../api/chat/chatApi';
 
 import VoteApi, { CreateVoteRequest } from '../../api/vote/voteApi'; // 투표 API
@@ -47,6 +48,27 @@ import ChallengerIcon from '../../assets/Challenger.svg';
 import DirectSubjectModal from '../../components/BattleDetail/DirectSubjectModal';
 import VoteModal from '../../components/BattleDetail/VoteModal';
 import ResultModal from '../../components/BattleDetail/ResultModal';
+
+// ─── 경고 모달 컴포넌트 ─────────────────────────
+const WarningModal: React.FC<{
+  visible: boolean;
+  onClose: () => void;
+  msgPreview: string;
+}> = ({ visible, onClose, msgPreview }) => {
+  if (!visible) return null;
+  return (
+    <WarningOverlay>
+      <WarningContent>
+        <WarningTitle>감정 분석 경고</WarningTitle>
+        <WarningBody>
+          다음 메시지에서 부정적인 감정 또는 위험 가능성이 감지되었습니다:
+        </WarningBody>
+        <WarningMessagePreview>{msgPreview}</WarningMessagePreview>
+        <WarningButton onClick={onClose}>확인</WarningButton>
+      </WarningContent>
+    </WarningOverlay>
+  );
+};
 
 // ───── 타입 정의 ──────────────────────────────
 type Tier =
@@ -71,7 +93,11 @@ export type PlayerData = {
 };
 
 // REST로 조회해서 받아오는 메시지 타입 (battle/chat.ts 참조)
-export type ChatMessage = RestChatMessage;
+export type ChatMessage = RestChatMessage & {
+  // RestChatMessage에 이미 emotion, warning, probabilities 필드가 정의되어 있으면 중복 선언 불필요
+  // 단, 초기 GET /chat/messages 에서 emotion/warning 정보가 없다면 빈값 혹은 기본값을 채워두고,
+  // 이후 별도 호출로 업데이트합니다.
+};
 
 const OWNER_ID = 1; // (예시) 현재 로그인된 사용자 ID
 const TOTAL_SLOTS = 8;
@@ -147,9 +173,17 @@ const BattleDetail: React.FC = () => {
     pointsAwarded: number;
   } | null>(null);
 
+  // ─── 감정 경고 모달 상태 ─────────────────────
+  const [warningModalVisible, setWarningModalVisible] =
+    useState<boolean>(false);
+  const [warningMsgPreview, setWarningMsgPreview] = useState<string>('');
+
   // 투표 타이머(10초) 및 결과 폴링 핸들러
   const voteTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const resultPollingRef = useRef<NodeJS.Timeout | null>(null);
+
+  // 이미 감정분석 호출을 마친 메시지 ID 추적용
+  const processedEmotion = useRef<Set<string>>(new Set());
 
   if (!roomId) {
     return <div>유효하지 않은 방 ID입니다.</div>;
@@ -240,6 +274,7 @@ const BattleDetail: React.FC = () => {
         const res: GetChatMessagesResponse =
           await BattleChatApi.getChatMessages(roomId);
 
+        // sideA, sideB 배열 합치고 시간 순 정렬
         const combined: ChatMessage[] = [
           ...res.result.sideA,
           ...res.result.sideB,
@@ -249,6 +284,41 @@ const BattleDetail: React.FC = () => {
         );
 
         setChatMessages(combined);
+
+        // 감정분석 API 호출: 아직 처리되지 않은 메시지에 대해
+        combined.forEach(async (msg) => {
+          if (!processedEmotion.current.has(msg.id)) {
+            processedEmotion.current.add(msg.id);
+            try {
+              const emoRes: GetChatMessageEmotionResponse =
+                await BattleChatApi.getChatMessageEmotion(roomId, msg.id);
+              if (emoRes.isSuccess) {
+                const { emotion, warning, probabilities } = emoRes.result;
+                // 상태 업데이트: 해당 메시지에 emotion, warning, probabilities 반영
+                setChatMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === msg.id
+                      ? {
+                          ...m,
+                          emotion,
+                          warning,
+                          probabilities,
+                        }
+                      : m
+                  )
+                );
+                // warning이 true면 모달 띄우기
+                if (warning) {
+                  const preview = `[${emoRes.result.side}] 유저${emoRes.result.userId}: ${msg.message}`;
+                  setWarningMsgPreview(preview);
+                  setWarningModalVisible(true);
+                }
+              }
+            } catch (e) {
+              console.error('감정분석 조회 실패:', e);
+            }
+          }
+        });
       } catch (e) {
         console.error('과거 채팅 조회 실패:', e);
       }
@@ -383,6 +453,39 @@ const BattleDetail: React.FC = () => {
           new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
       );
       setChatMessages(combined);
+
+      // 전송 후 새로운 메시지에 대해 감정분석 호출
+      combined.forEach(async (msg) => {
+        if (!processedEmotion.current.has(msg.id)) {
+          processedEmotion.current.add(msg.id);
+          try {
+            const emoRes: GetChatMessageEmotionResponse =
+              await BattleChatApi.getChatMessageEmotion(roomId, msg.id);
+            if (emoRes.isSuccess) {
+              const { emotion, warning, probabilities } = emoRes.result;
+              setChatMessages((prev) =>
+                prev.map((m) =>
+                  m.id === msg.id
+                    ? {
+                        ...m,
+                        emotion,
+                        warning,
+                        probabilities,
+                      }
+                    : m
+                )
+              );
+              if (warning) {
+                const preview = `[${emoRes.result.side}] 유저${emoRes.result.userId}: ${msg.message}`;
+                setWarningMsgPreview(preview);
+                setWarningModalVisible(true);
+              }
+            }
+          } catch (e) {
+            console.error('감정분석 조회 실패:', e);
+          }
+        }
+      });
     } catch (e) {
       console.error('채팅 전송 후 조회 실패:', e);
     }
@@ -735,6 +838,7 @@ const BattleDetail: React.FC = () => {
           {isNotice
             ? msg.message
             : `[${msg.side}] 유저${msg.userId}: ${msg.message}`}
+          {/* 감정 레이블 표시 */}
           <EmotionTag>{msg.emotion}</EmotionTag>
         </ChatBubbleText>
       </ChatBubbleContainer>
@@ -778,7 +882,7 @@ const BattleDetail: React.FC = () => {
               type='text'
               placeholder='메시지 입력...'
               value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
+              onChange={(e) => setChatInput(e.currentTarget.value)}
             />
           </ChatForm>
         </ChatSection>
@@ -868,6 +972,13 @@ const BattleDetail: React.FC = () => {
           <OverlayText>게임 종료</OverlayText>
         </OverlayCenter>
       )}
+
+      {/* ─── 감정분석 경고 모달 ───────────────────────────── */}
+      <WarningModal
+        visible={warningModalVisible}
+        msgPreview={warningMsgPreview}
+        onClose={() => setWarningModalVisible(false)}
+      />
     </Container>
   );
 };
@@ -877,8 +988,6 @@ export default BattleDetail;
 /* ==========================
    Styled Components 정의
 ========================== */
-
-/* (styled-components 정의는 기존 코드와 동일하게 유지) */
 
 const Container = styled.div`
   width: 1000px;
@@ -1251,8 +1360,62 @@ const TimerDisplay = styled.div`
   border-radius: 6px;
   z-index: 500;
 `;
+
 const EmotionTag = styled.span`
   margin-left: 0.5rem;
   font-size: 0.75rem;
   color: #555;
+`;
+
+// ─── 경고 모달 styled ─────────────────────────
+const WarningOverlay = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+`;
+const WarningContent = styled.div`
+  background-color: #fff;
+  border: 2px solid #d32f2f;
+  border-radius: 8px;
+  padding: 1rem 1.5rem;
+  width: 400px;
+  text-align: center;
+`;
+const WarningTitle = styled.h2`
+  margin: 0;
+  margin-bottom: 0.5rem;
+  color: #d32f2f;
+`;
+const WarningBody = styled.p`
+  margin: 0.5rem 0;
+  font-size: 0.9rem;
+`;
+const WarningMessagePreview = styled.div`
+  margin: 0.5rem 0;
+  padding: 0.5rem;
+  background-color: #fce4ec;
+  border: 1px solid #f8bbd0;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  word-break: break-word;
+`;
+const WarningButton = styled.button`
+  margin-top: 0.5rem;
+  background-color: #d32f2f;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 0.4rem 0.8rem;
+  cursor: pointer;
+  font-weight: bold;
+  &:hover {
+    background-color: #b71c1c;
+  }
 `;

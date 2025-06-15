@@ -1,5 +1,3 @@
-// src/api/chat/chatApi.ts
-
 import { Axios } from '../Axios'; // Axios 인스턴스를 위 경로에서 불러옵니다.
 
 /**
@@ -54,6 +52,29 @@ export interface PostChatMessageResponse {
 }
 
 /**
+ * GET /battle/rooms/{roomId}/chat/messages/{messageId}/emotion 응답 타입
+ */
+export interface GetChatMessageEmotionResponse {
+  isSuccess: true;
+  code: '200';
+  message: 'success!';
+  result: {
+    messageId: string;
+    roomId: string;
+    userId: string;
+    side: 'A' | 'B';
+    createdAt: string; // ISO 8601 형식
+    emotion: string; // 분석된 감정 레이블
+    probabilities: {
+      긍정: number;
+      부정: number;
+      중립: number;
+    };
+    warning: boolean;
+  };
+}
+
+/**
  * 공통 에러 응답 타입
  */
 export interface ErrorResponse {
@@ -92,6 +113,21 @@ const BattleChatApi = {
       url,
       payload
     );
+    return response.data;
+  },
+
+  /**
+   * 특정 채팅 메시지의 감정 분석 결과를 조회합니다.
+   * GET /battle/rooms/{roomId}/chat/messages/{messageId}/emotion
+   */
+  async getChatMessageEmotion(
+    roomId: string,
+    messageId: string
+  ): Promise<GetChatMessageEmotionResponse | ErrorResponse> {
+    const url = `/battle/rooms/${roomId}/chat/messages/${messageId}/emotion`;
+    const response = await Axios.get<
+      GetChatMessageEmotionResponse | ErrorResponse
+    >(url);
     return response.data;
   },
 };
