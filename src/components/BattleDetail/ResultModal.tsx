@@ -18,43 +18,10 @@ interface ResultModalProps {
   onClose: () => void;
 }
 
-/**
- * data 내부의 주요 필드가 유효한지 검사.
- * 필요에 따라 검사 로직을 조정하세요.
- */
-const isDataComplete = (data: ResultData | null): data is ResultData => {
-  if (!data) return false;
-  // voteCount, voteWinner, aiWinner, judgementReason, aiAnalysis, pointsAwarded 모두 유효한지 확인
-  if (
-    data.voteCount == null ||
-    typeof data.voteCount.A !== 'number' ||
-    typeof data.voteCount.B !== 'number'
-  ) {
-    return false;
-  }
-  if (!data.voteWinner || !data.aiWinner) {
-    return false;
-  }
-  if (
-    typeof data.judgementReason !== 'string' ||
-    data.judgementReason.trim() === ''
-  ) {
-    return false;
-  }
-  if (typeof data.aiAnalysis !== 'string' || data.aiAnalysis.trim() === '') {
-    return false;
-  }
-  if (typeof data.pointsAwarded !== 'number') {
-    return false;
-  }
-  return true;
-};
-
 const ResultModal: FC<ResultModalProps> = ({ visible, data, onClose }) => {
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      // ESC로 닫기: 로딩 중이 아닐 때만 허용
-      if (e.key === 'Escape' && visible && isDataComplete(data)) {
+      if (e.key === 'Escape' && visible && data) {
         onClose();
       }
     };
@@ -66,12 +33,10 @@ const ResultModal: FC<ResultModalProps> = ({ visible, data, onClose }) => {
 
   if (!visible) return null;
 
-  const loading = !isDataComplete(data);
-
   return (
     <Overlay>
       <Container>
-        {loading ? (
+        {!data ? (
           <LoadingWrapper>
             <Spinner />
             <LoadingText>결과를 불러오는 중...</LoadingText>
@@ -80,7 +45,6 @@ const ResultModal: FC<ResultModalProps> = ({ visible, data, onClose }) => {
           <>
             <Header>
               <Title>토론 최종 결과 및 포인트</Title>
-              {/* 로딩이 끝난 뒤에만 닫기 가능 */}
               <CloseButton onClick={onClose} aria-label='닫기'>
                 &times;
               </CloseButton>
@@ -93,30 +57,30 @@ const ResultModal: FC<ResultModalProps> = ({ visible, data, onClose }) => {
                   <CardLabel>투표 집계</CardLabel>
                   <CardValues>
                     <ValueLine>
-                      <Strong>A:</Strong> {data!.voteCount.A}표
+                      <Strong>A:</Strong> {data.voteCount.A}표
                     </ValueLine>
                     <ValueLine>
-                      <Strong>B:</Strong> {data!.voteCount.B}표
+                      <Strong>B:</Strong> {data.voteCount.B}표
                     </ValueLine>
                   </CardValues>
                 </SummaryCard>
                 <SummaryCard>
                   <CardLabel>투표 승자</CardLabel>
                   <BadgeWrapper>
-                    <Badge type='voteWinner'>{data!.voteWinner}</Badge>
+                    <Badge type='voteWinner'>{data.voteWinner}</Badge>
                   </BadgeWrapper>
                 </SummaryCard>
                 <SummaryCard>
                   <CardLabel>AI 분석 승자</CardLabel>
                   <BadgeWrapper>
-                    <Badge type='aiWinner'>{data!.aiWinner}</Badge>
+                    <Badge type='aiWinner'>{data.aiWinner}</Badge>
                   </BadgeWrapper>
                 </SummaryCard>
                 <SummaryCard>
                   <CardLabel>획득 포인트</CardLabel>
                   <CardValues>
                     <ValueLine>
-                      <Strong>{data!.pointsAwarded.toLocaleString()} P</Strong>
+                      <Strong>{data.pointsAwarded.toLocaleString()} P</Strong>
                     </ValueLine>
                   </CardValues>
                 </SummaryCard>
@@ -126,14 +90,14 @@ const ResultModal: FC<ResultModalProps> = ({ visible, data, onClose }) => {
 
               <DetailSection>
                 <DetailTitle>판정 이유</DetailTitle>
-                <DetailText>{data!.judgementReason}</DetailText>
+                <DetailText>{data.judgementReason}</DetailText>
               </DetailSection>
 
               <Divider />
 
               <DetailSection>
                 <DetailTitle>AI 상세 분석</DetailTitle>
-                <DetailText>{data!.aiAnalysis}</DetailText>
+                <DetailText>{data.aiAnalysis}</DetailText>
               </DetailSection>
             </Content>
 
@@ -265,19 +229,22 @@ const SummaryCard = styled.div`
   display: flex;
   flex-direction: column;
   gap: ${GAP_SMALL};
-  text-align: left;
+  text-align: left; /* 카드 내부 왼쪽 정렬 */
+  align-items: center;
 `;
 
 const CardLabel = styled.span`
   font-size: 0.95rem;
   font-weight: 600;
   color: #555;
+  text-align: left;
 `;
 
 const CardValues = styled.div`
   display: flex;
   flex-direction: column;
   gap: ${GAP_SMALL};
+  text-align: left;
 `;
 
 const ValueLine = styled.span`
@@ -292,7 +259,7 @@ const Strong = styled.span`
 
 const BadgeWrapper = styled.div`
   display: flex;
-  justify-content: flex-start;
+  justify-content: flex-start; /* 배지 왼쪽 정렬 */
 `;
 
 const Badge = styled.span<{ type: 'voteWinner' | 'aiWinner' }>`
@@ -323,6 +290,7 @@ const DetailTitle = styled.h4`
   font-size: 1.1rem;
   font-weight: bold;
   color: #333;
+  align-items: center;
 `;
 
 const DetailText = styled.p`
@@ -331,7 +299,7 @@ const DetailText = styled.p`
   color: #555;
   line-height: 1.5;
   white-space: pre-wrap;
-  text-align: left;
+  text-align: left; /* 본문 왼쪽 정렬 */
 `;
 
 const Footer = styled.div`
