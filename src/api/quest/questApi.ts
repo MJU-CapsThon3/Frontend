@@ -5,24 +5,52 @@ import { AxiosInstance } from 'axios';
 
 /**
  * 퀘스트 객체 타입 정의
+ * 스펙 예시 응답을 보면, 일일 퀘스트 항목(result 배열의 객체)에 포함된 필드는 다음과 같습니다:
+ * - id: number
+ * - name: string
+ * - description: string
+ * - rewardPts: number
+ * - goal: number
+ * - progress: number
+ * - status: string
+ * - createdAt: string (ISO 날짜 문자열)
+ * - rewardClaimed: boolean
+ * - isCompleted: boolean
+ *
+ * 스펙 예시에는 `type` 필드가 없으므로, API에서 따로 제공하지 않는다면 삭제하거나 optional로만 두고 사용합니다.
  */
 export interface Quest {
   id: number;
   name: string;
   description: string;
-  type: 'daily' | string;
   rewardPts: number;
-  createdAt: string; // ISO 날짜 문자열
+  goal: number;
+  progress: number;
+  status: string;
+  createdAt: string; // ISO 날짜 문자열, 예: "2025-05-31T00:00:00.000Z"
+  rewardClaimed: boolean;
+  isCompleted: boolean;
+  // 만약 서버에서 type 필드를 제공한다면 아래와 같이 추가할 수 있습니다.
+  // type?: 'daily' | string;
 }
 
 /**
  * GET /quests/list 응답 타입
+ * 스펙 예시:
+ * {
+ *   "isSuccess": true,
+ *   "code": 200,
+ *   "message": "성공",
+ *   "result": [ { ...Quest fields... } ]
+ * }
+ * 그러나 에러 예시에서는 code가 문자열인 경우도 있으므로,
+ * code는 number | string 으로 정의합니다.
  */
 export interface GetQuestListResponse {
   isSuccess: boolean;
-  code: number;
+  code: number | string;
   message: string;
-  result: Quest[];
+  result: Quest[] | null;
 }
 
 /**
@@ -38,11 +66,19 @@ export interface CompleteQuestResult {
 
 /**
  * POST /quests/status/{questId} 응답 타입
+ * 스펙 예시:
+ * {
+ *   "isSuccess": true,
+ *   "code": 200,
+ *   "message": "퀘스트를 성공했습니다.",
+ *   "result": { ... }
+ * }
+ * 그러나 혹시 success 필드를 따로 줄 수 있으므로 기존 예시처럼 isSuccess 또는 success 가능성을 반영합니다.
  */
 export interface CompleteQuestResponse {
   isSuccess?: boolean;
   success?: boolean;
-  code?: number;
+  code?: number | string;
   message: string;
   result: CompleteQuestResult | null;
 }
@@ -67,7 +103,7 @@ export interface QuestRewardResult {
  */
 export interface QuestRewardResponse {
   isSuccess: boolean;
-  code: number;
+  code: number | string;
   message: string;
   result: QuestRewardResult | null;
 }
@@ -77,7 +113,7 @@ export interface QuestRewardResponse {
  */
 export interface ResetDailyResponse {
   isSuccess: boolean;
-  code: number;
+  code: number | string;
   message: string;
   result: null;
 }
@@ -95,9 +131,10 @@ export const QuestApi = {
       const response =
         await axiosInstance.get<GetQuestListResponse>('/quests/list');
       const data = response.data;
-      if (data.isSuccess) {
+      if (data.isSuccess && Array.isArray(data.result)) {
         return data.result;
       } else {
+        // result가 null이거나 isSuccess가 false인 경우
         throw new Error(`퀘스트 목록 조회 실패: ${data.message}`);
       }
     } catch (error) {
@@ -135,16 +172,15 @@ export const QuestApi = {
       );
       const data = response.data;
 
-      // 정상 처리 여부 검사
+      // 정상 처리 여부 검사: isSuccess나 success 중 하나라도 true이고 result가 존재하면 반환
       if ((data.isSuccess === true || data.success === true) && data.result) {
         return data.result;
       }
-
-      // 만약 결과 객체만 존재하면 그대로 반환
+      // 만약 result만 존재하면 그대로 반환
       if (data.result) {
         return data.result;
       }
-
+      // 실패 케이스
       throw new Error(data.message || '퀘스트 완료 처리 실패');
     } catch (error) {
       console.error(
@@ -204,10 +240,11 @@ export const QuestApi = {
       const response = await axiosInstance.post<ResetDailyResponse>(
         '/quests/reset-daily'
       );
-      if (response.data.isSuccess) {
+      const data = response.data;
+      if (data.isSuccess) {
         return;
       } else {
-        throw new Error(response.data.message || '일일 퀘스트 초기화 실패');
+        throw new Error(data.message || '일일 퀘스트 초기화 실패');
       }
     } catch (error) {
       console.error(
