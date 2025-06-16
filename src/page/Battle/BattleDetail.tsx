@@ -14,17 +14,6 @@ import {
   FaSignOutAlt,
   FaRandom,
   FaEdit,
-  FaUserFriends,
-  FaUserTie,
-  FaBaby,
-  FaSmile,
-  FaLaugh,
-  FaSurprise,
-  FaGhost,
-  FaDragon,
-  FaCrow,
-  FaCat,
-  FaBorderStyle,
 } from 'react-icons/fa';
 import { useNavigate, useParams } from 'react-router-dom';
 
