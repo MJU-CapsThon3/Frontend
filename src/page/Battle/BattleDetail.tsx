@@ -81,7 +81,6 @@ import ResultModal from '../../components/BattleDetail/ResultModal';
 
 // ─── 경고 모달 컴포넌트 ─────────────────────────
 // 감정 분석 경고용 모달 (기존)
-// 필요시 재사용
 const WarningModal: React.FC<{
   visible: boolean;
   onClose: () => void;
@@ -96,24 +95,6 @@ const WarningModal: React.FC<{
           다음 메시지에서 부정적인 감정 또는 위험 가능성이 감지되었습니다:
         </WarningBody>
         <WarningMessagePreview>{msgPreview}</WarningMessagePreview>
-        <WarningButton onClick={onClose}>확인</WarningButton>
-      </WarningContent>
-    </WarningOverlay>
-  );
-};
-
-// 방장 권한 경고 모달
-const AdminWarningModal: React.FC<{
-  visible: boolean;
-  onClose: () => void;
-  message: string;
-}> = ({ visible, onClose, message }) => {
-  if (!visible) return null;
-  return (
-    <WarningOverlay>
-      <WarningContent>
-        <WarningTitle>권한 없음</WarningTitle>
-        <WarningBody>{message}</WarningBody>
         <WarningButton onClick={onClose}>확인</WarningButton>
       </WarningContent>
     </WarningOverlay>
@@ -229,10 +210,6 @@ const BattleDetail: React.FC = () => {
     useState<boolean>(false);
   const [warningMsgPreview, setWarningMsgPreview] = useState<string>('');
 
-  // ─── 방장 권한 경고 모달 상태 ─────────────────────
-  const [adminWarningVisible, setAdminWarningVisible] =
-    useState<boolean>(false);
-
   // 투표 타이머(10초) 및 결과 폴링 핸들러
   const voteTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const resultPollingRef = useRef<NodeJS.Timeout | null>(null);
@@ -241,13 +218,10 @@ const BattleDetail: React.FC = () => {
   const processedEmotion = useRef<Set<string>>(new Set());
 
   // ─── 유저별 랜덤 샵 아이콘 매핑 ─────────────────
-  // avatarMap: 유저 ID별로 ReactNode(icon)을 저장
   const [avatarMap, setAvatarMap] = useState<Record<number, React.ReactNode>>(
     {}
   );
-  // 샵의 사용 가능한 아이콘들을 모아둡니다.
   const availableAvatarIcons: React.ReactNode[] = [
-    // 팀 아이콘 SVG들
     <img
       key='team1'
       src={TeamIcon1}
@@ -352,7 +326,6 @@ const BattleDetail: React.FC = () => {
     />,
   ];
 
-  // 주어진 id에 대해서 avatarMap에 없으면 랜덤 할당
   const ensureAvatarForId = (id: number) => {
     setAvatarMap((prev) => {
       if (prev[id]) {
@@ -402,7 +375,6 @@ const BattleDetail: React.FC = () => {
 
       const fetchedPlayers: PlayerData[] = [];
 
-      // helper to map API tier (string) to our Tier; default bronze if unmapped
       const mapTier = (apiTier: string | undefined): Tier => {
         if (!apiTier) return 'bronze';
         const lower = apiTier.toLowerCase();
@@ -420,19 +392,17 @@ const BattleDetail: React.FC = () => {
         return 'bronze';
       };
 
-      // participantA
       (data as any).participantA.forEach((u: any) => {
         const idNum = Number(u.userId);
         const nickname =
           u.nickname && String(u.nickname).trim()
             ? String(u.nickname)
             : `유저${u.userId}`;
-        const tierStr = u.tier;
-        const tier = mapTier(tierStr);
+        const tier = mapTier(u.tier);
         fetchedPlayers.push({
           id: idNum,
           nickname,
-          avatarUrl: '', // API URL 대신 랜덤 매핑 사용
+          avatarUrl: '',
           isReady: true,
           team: 'blue',
           role: 'participant',
@@ -442,16 +412,13 @@ const BattleDetail: React.FC = () => {
           setOwnerSpectatorSlot(null);
         }
       });
-
-      // participantB
       (data as any).participantB.forEach((u: any) => {
         const idNum = Number(u.userId);
         const nickname =
           u.nickname && String(u.nickname).trim()
             ? String(u.nickname)
             : `유저${u.userId}`;
-        const tierStr = u.tier;
-        const tier = mapTier(tierStr);
+        const tier = mapTier(u.tier);
         fetchedPlayers.push({
           id: idNum,
           nickname,
@@ -465,16 +432,13 @@ const BattleDetail: React.FC = () => {
           setOwnerSpectatorSlot(null);
         }
       });
-
-      // spectators
       (data as any).spectators.forEach((u: any, idx: number) => {
         const idNum = Number(u.userId);
         const nickname =
           u.nickname && String(u.nickname).trim()
             ? String(u.nickname)
             : `유저${u.userId}`;
-        const tierStr = u.tier;
-        const tier = mapTier(tierStr);
+        const tier = mapTier(u.tier);
         fetchedPlayers.push({
           id: idNum,
           nickname,
@@ -489,8 +453,6 @@ const BattleDetail: React.FC = () => {
 
       setPlayers(fetchedPlayers);
 
-      // players 상태가 업데이트된 직후에 avatarMap에 아이콘 할당
-      // (setPlayers 비동기이므로 바로 ensure 호출해도 무관)
       fetchedPlayers.forEach((p) => {
         ensureAvatarForId(p.id);
       });
@@ -508,7 +470,6 @@ const BattleDetail: React.FC = () => {
         const res: GetChatMessagesResponse =
           await BattleChatApi.getChatMessages(roomId);
 
-        // sideA, sideB 배열 합치고 시간 순 정렬
         const combined: ChatMessage[] = [
           ...res.result.sideA,
           ...res.result.sideB,
@@ -517,7 +478,6 @@ const BattleDetail: React.FC = () => {
             new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
         );
 
-        // nickname 병합
         const combinedWithNickname = combined.map((msg) => {
           if ((msg as any).nickname) {
             return msg;
@@ -534,7 +494,6 @@ const BattleDetail: React.FC = () => {
 
         setChatMessages(combinedWithNickname);
 
-        // 감정분석 API 호출: 아직 처리되지 않은 메시지에 대해
         combinedWithNickname.forEach(async (msg) => {
           if (!processedEmotion.current.has(msg.id)) {
             processedEmotion.current.add(msg.id);
@@ -824,48 +783,10 @@ const BattleDetail: React.FC = () => {
     };
   }, [isBattleStarted]);
 
-  // ─── “시작/종료/리매치” 버튼 클릭 ─────────────────────
-  const handleToggleBattle = async () => {
-    // 실제 토글 로직: 방장만 호출해야 함. 호출 전에는 방장 체크를 호출부에서 이미 했으므로 여기서는 방장인 경우만 진입.
-    if (isBattleStarted) {
-      // PLAYING → 종료
-      try {
-        await BattleRoomApi.endBattle(parseInt(roomId, 10));
-        setShowEndOverlay(true);
-        setTimeout(() => setShowEndOverlay(false), 3000);
-        setIsBattleStarted(false);
-        setRematchAvailable(true);
-      } catch (err) {
-        console.error('배틀 종료 오류:', err);
-        alert('배틀 종료 중 오류가 발생했습니다.');
-      }
-    } else {
-      if (rematchAvailable) {
-        // 리매치 요청 (방장이면 가능)
-        try {
-          const res = await BattleRoomApi.rematchRoom(parseInt(roomId, 10));
-          if (res && res.roomId) {
-            navigate(`/battle/${res.roomId}`);
-          } else {
-            throw new Error('리매치 응답이 올바르지 않습니다.');
-          }
-        } catch (err) {
-          console.error('리매치 요청 오류:', err);
-          alert('리매치 생성 중 오류가 발생했습니다.');
-        }
-      } else {
-        // 아직 시작 전 → 시작
-        try {
-          await BattleRoomApi.startBattle(parseInt(roomId, 10));
-          setShowStartOverlay(true);
-          setTimeout(() => setShowStartOverlay(false), 3000);
-          setIsBattleStarted(true);
-        } catch (err) {
-          console.error('배틀 시작 오류:', err);
-          alert('배틀 시작 중 오류가 발생했습니다.');
-        }
-      }
-    }
+  // ─── “시작/종료/리매치” 버튼 클릭 핸들러:
+  // 이제 비관리자는 버튼이 disabled 되어 클릭되지 않으므로, 단순히 handleToggleBattle만 호출
+  const handleStartButtonClick = () => {
+    handleToggleBattle();
   };
 
   // ─── 최종 결과 조회 함수 (단발) ─────────────────────
@@ -1013,7 +934,6 @@ const BattleDetail: React.FC = () => {
           ? '#ff6b6b'
           : '#fff';
 
-    // avatarMap에 매핑된 아이콘 우선 사용, 없으면 DefaultAvatar
     const avatarNode = avatarMap[player.id];
 
     return (
@@ -1155,15 +1075,46 @@ const BattleDetail: React.FC = () => {
     return `${m}:${s}`;
   };
 
-  // ─── Start/End/Rematch 버튼 클릭 핸들러 래핑
-  const handleStartButtonClick = () => {
-    // 방장(adminId)인지 확인
-    if (adminId === null || OWNER_ID !== adminId) {
-      // 방장이 아니면 경고 모달 띄우기
-      setAdminWarningVisible(true);
+  // ─── 배틀 시작/종료 로직 함수 ─────────────────────
+  const handleToggleBattle = async () => {
+    if (isBattleStarted) {
+      // PLAYING → 종료
+      try {
+        await BattleRoomApi.endBattle(parseInt(roomId, 10));
+        setShowEndOverlay(true);
+        setTimeout(() => setShowEndOverlay(false), 3000);
+        setIsBattleStarted(false);
+        setRematchAvailable(true);
+      } catch (err) {
+        console.error('배틀 종료 오류:', err);
+        alert('배틀 종료 중 오류가 발생했습니다.');
+      }
     } else {
-      // 방장이면 실제 토글 로직 실행
-      handleToggleBattle();
+      if (rematchAvailable) {
+        // 리매치 요청 (방장이면 버튼 활성화 상태에서만 클릭)
+        try {
+          const res = await BattleRoomApi.rematchRoom(parseInt(roomId, 10));
+          if (res && res.roomId) {
+            navigate(`/battle/${res.roomId}`);
+          } else {
+            throw new Error('리매치 응답이 올바르지 않습니다.');
+          }
+        } catch (err) {
+          console.error('리매치 요청 오류:', err);
+          alert('리매치 생성 중 오류가 발생했습니다.');
+        }
+      } else {
+        // 아직 시작 전 → 시작
+        try {
+          await BattleRoomApi.startBattle(parseInt(roomId, 10));
+          setShowStartOverlay(true);
+          setTimeout(() => setShowStartOverlay(false), 3000);
+          setIsBattleStarted(true);
+        } catch (err) {
+          console.error('배틀 시작 오류:', err);
+          alert('배틀 시작 중 오류가 발생했습니다.');
+        }
+      }
     }
   };
 
@@ -1222,6 +1173,7 @@ const BattleDetail: React.FC = () => {
             >
               {isSpectatorsCollapsed ? '관전자 보기' : '관전자 숨김'}
             </ToggleButton>
+            {/* disabled 제거: 모두가 버튼 클릭 가능 */}
             <StartButton onClick={handleStartButtonClick}>
               {isBattleStarted ? '종료' : rematchAvailable ? '리매치' : '시작'}
             </StartButton>
@@ -1293,12 +1245,7 @@ const BattleDetail: React.FC = () => {
         onClose={() => setWarningModalVisible(false)}
       />
 
-      {/* ─── 방장 권한 경고 모달 ───────────────────────────── */}
-      <AdminWarningModal
-        visible={adminWarningVisible}
-        message='방장만 시작/종료(또는 리매치)할 수 있습니다.'
-        onClose={() => setAdminWarningVisible(false)}
-      />
+      {/* Note: AdminWarningModal 및 관련 state, 호출부는 제거되어 있습니다 */}
     </Container>
   );
 };
@@ -1461,6 +1408,12 @@ const StartButton = styled.button`
   &:hover {
     transform: translateY(-2px);
   }
+  &:disabled {
+    background-color: #ccc;
+    border-color: #999;
+    cursor: not-allowed;
+    transform: none;
+  }
 `;
 
 const SpectatorsGrid = styled.div`
@@ -1515,7 +1468,6 @@ const StyledPlayerCard = styled(CommonCard)<{ $bgColor: string }>`
   cursor: default;
 `;
 
-// PlayerCard에서 렌더링할 때 사용
 const PlayerAvatarContainer = styled.div`
   width: 100%;
   height: 100%;
@@ -1531,7 +1483,6 @@ const PlayerAvatarContainer = styled.div`
   }
 `;
 const SpectatorAvatarContainer = styled(PlayerAvatarContainer)`
-  /* 관전자용: 높이 제한 등 필요 시 조정 */
   & > img,
   & > svg {
     width: 100% !important;
@@ -1712,7 +1663,7 @@ const EmotionTag = styled.span`
   color: #555;
 `;
 
-// ─── 경고 모달 styled (감정분석 및 방장 경고 공통으로 사용) ─────────────────────────
+// ─── 경고 모달 styled (감정분석용) ─────────────────────────
 const WarningOverlay = styled.div`
   position: absolute;
   top: 0;
