@@ -50,6 +50,8 @@ import VoteModal from '../../components/BattleDetail/VoteModal';
 import ResultModal from '../../components/BattleDetail/ResultModal';
 
 // ─── 경고 모달 컴포넌트 ─────────────────────────
+// 감정 분석 경고용 모달 (기존)
+// 필요시 재사용
 const WarningModal: React.FC<{
   visible: boolean;
   onClose: () => void;
@@ -64,6 +66,24 @@ const WarningModal: React.FC<{
           다음 메시지에서 부정적인 감정 또는 위험 가능성이 감지되었습니다:
         </WarningBody>
         <WarningMessagePreview>{msgPreview}</WarningMessagePreview>
+        <WarningButton onClick={onClose}>확인</WarningButton>
+      </WarningContent>
+    </WarningOverlay>
+  );
+};
+
+// 방장 권한 경고 모달
+const AdminWarningModal: React.FC<{
+  visible: boolean;
+  onClose: () => void;
+  message: string;
+}> = ({ visible, onClose, message }) => {
+  if (!visible) return null;
+  return (
+    <WarningOverlay>
+      <WarningContent>
+        <WarningTitle>권한 없음</WarningTitle>
+        <WarningBody>{message}</WarningBody>
         <WarningButton onClick={onClose}>확인</WarningButton>
       </WarningContent>
     </WarningOverlay>
@@ -94,12 +114,10 @@ export type PlayerData = {
 
 // REST로 조회해서 받아오는 메시지 타입
 export type ChatMessage = RestChatMessage & {
-  // RestChatMessage에는 기본적으로 id, userId, side, message, createdAt, emotion?, warning? 등이 있음
-  // 별도의 nickname 필드가 API에서 제공되면 사용; 아니면 front에서 players 배열을 참조해 매핑
   nickname?: string;
 };
 
-const OWNER_ID = 1; // (예시) 현재 로그인된 사용자 ID
+const OWNER_ID = 1; // 예시: 현재 로그인된 사용자 ID. 실제로는 auth context 등에서 받아올 것.
 const TOTAL_SLOTS = 8;
 const BOX_SIZE = '150px';
 const POLL_INTERVAL = 2000; // 2초마다 방 상태 폴링
@@ -181,6 +199,10 @@ const BattleDetail: React.FC = () => {
     useState<boolean>(false);
   const [warningMsgPreview, setWarningMsgPreview] = useState<string>('');
 
+  // ─── 방장 권한 경고 모달 상태 ─────────────────────
+  const [adminWarningVisible, setAdminWarningVisible] =
+    useState<boolean>(false);
+
   // 투표 타이머(10초) 및 결과 폴링 핸들러
   const voteTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const resultPollingRef = useRef<NodeJS.Timeout | null>(null);
@@ -245,7 +267,6 @@ const BattleDetail: React.FC = () => {
       // participantA
       data.participantA.forEach((u) => {
         const idNum = Number(u.userId);
-        // API에서 nickname이 제공되면 사용, 없으면 fallback
         const nickname =
           (u as any).nickname && String((u as any).nickname).trim()
             ? String((u as any).nickname)
@@ -255,7 +276,7 @@ const BattleDetail: React.FC = () => {
         fetchedPlayers.push({
           id: idNum,
           nickname,
-          avatarUrl: '', // API 제공시 설정 가능
+          avatarUrl: '',
           isReady: true,
           team: 'blue',
           role: 'participant',
@@ -334,13 +355,11 @@ const BattleDetail: React.FC = () => {
             new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
         );
 
-        // 만약 API 응답 ChatMessage에 nickname이 포함되어 있다면 이를 우선 사용하도록 병합
+        // nickname 병합
         const combinedWithNickname = combined.map((msg) => {
           if ((msg as any).nickname) {
-            // 이미 nickname 필드 존재
             return msg;
           }
-          // 없으면 players 상태에서 찾아서 할당
           const found = players.find((p) => p.id === msg.userId);
           if (found) {
             return {
@@ -362,7 +381,6 @@ const BattleDetail: React.FC = () => {
                 await BattleChatApi.getChatMessageEmotion(roomId, msg.id);
               if (emoRes.isSuccess) {
                 const { emotion, warning, probabilities } = emoRes.result;
-                // 상태 업데이트: 해당 메시지에 emotion, warning, probabilities 반영
                 setChatMessages((prev) =>
                   prev.map((m) =>
                     m.id === msg.id
@@ -375,9 +393,7 @@ const BattleDetail: React.FC = () => {
                       : m
                   )
                 );
-                // warning이 true면 모달 띄우기
                 if (warning) {
-                  // players 상태에서 nickname 찾기
                   const p = players.find((p) => p.id === emoRes.result.userId);
                   const nameForPreview = p
                     ? p.nickname
@@ -417,7 +433,6 @@ const BattleDetail: React.FC = () => {
   // ─── 투표 모달이 열릴 때: 10초 카운트다운 + 결과 폴링 시작 ─────────────────────
   useEffect(() => {
     if (voteModalVisible) {
-      // 자동 투표 타이머
       voteTimeoutRef.current = setTimeout(() => {
         if (!hasVoted) {
           console.log('자동 투표 처리: A팀으로 투표 처리합니다.');
@@ -425,7 +440,6 @@ const BattleDetail: React.FC = () => {
         }
       }, VOTE_TIMEOUT);
 
-      // 결과 준비 폴링
       const pollResult = async () => {
         try {
           const result = await BattleRoomApi.getBattleResult(
@@ -460,7 +474,6 @@ const BattleDetail: React.FC = () => {
   // ─── 배틀이 끝났을 때 투표 모달 열기 + 결과 폴링 ─────────────────────
   useEffect(() => {
     if (prevIsBattleStarted.current && !isBattleStarted) {
-      // PLAYING → FINISHED 전환 시
       setBattleResult(null);
       setVoteModalVisible(true);
       setHasVoted(false);
@@ -595,7 +608,6 @@ const BattleDetail: React.FC = () => {
     try {
       const payload: CreateVoteRequest = { vote: choice };
       await VoteApi.createVote(roomId, payload);
-      // 모달 닫고 결과 모달로 전환
       setVoteModalVisible(false);
       setResultModalVisible(true);
       setBattleResult(null);
@@ -652,6 +664,7 @@ const BattleDetail: React.FC = () => {
 
   // ─── “시작/종료/리매치” 버튼 클릭 ─────────────────────
   const handleToggleBattle = async () => {
+    // 실제 토글 로직: 방장만 호출해야 함. 호출 전에는 방장 체크를 호출부에서 이미 했으므로 여기서는 방장인 경우만 진입.
     if (isBattleStarted) {
       // PLAYING → 종료
       try {
@@ -660,14 +673,13 @@ const BattleDetail: React.FC = () => {
         setTimeout(() => setShowEndOverlay(false), 3000);
         setIsBattleStarted(false);
         setRematchAvailable(true);
-        // rematchAvailable는 fetchRoomDetail 폴링에서 FINISHED일 때 true로 설정됨
       } catch (err) {
         console.error('배틀 종료 오류:', err);
         alert('배틀 종료 중 오류가 발생했습니다.');
       }
     } else {
       if (rematchAvailable) {
-        // 리매치 요청
+        // 리매치 요청 (방장이면 가능)
         try {
           const res = await BattleRoomApi.rematchRoom(parseInt(roomId, 10));
           if (res && res.roomId) {
@@ -943,7 +955,6 @@ const BattleDetail: React.FC = () => {
   // ─── 채팅 버블 ─────────────────────
   const ChatBubble: React.FC<{ msg: ChatMessage }> = ({ msg }) => {
     const isNotice = msg.message.startsWith('[공지]');
-    // 우선 msg.nickname 필드가 있으면 사용, 없으면 players 배열에서 찾아 사용
     const displayName =
       msg.nickname ??
       players.find((p) => p.id === msg.userId)?.nickname ??
@@ -958,7 +969,6 @@ const BattleDetail: React.FC = () => {
           {isNotice
             ? msg.message
             : `[${msg.side}] ${displayName}: ${msg.message}`}
-          {/* 감정 레이블 표시 */}
           <EmotionTag>{msg.emotion}</EmotionTag>
         </ChatBubbleText>
       </ChatBubbleContainer>
@@ -972,6 +982,18 @@ const BattleDetail: React.FC = () => {
       .padStart(2, '0');
     const s = (sec % 60).toString().padStart(2, '0');
     return `${m}:${s}`;
+  };
+
+  // ─── Start/End/Rematch 버튼 클릭 핸들러 래핑
+  const handleStartButtonClick = () => {
+    // 방장(adminId)인지 확인
+    if (adminId === null || OWNER_ID !== adminId) {
+      // 방장이 아니면 경고 모달 띄우기
+      setAdminWarningVisible(true);
+    } else {
+      // 방장이면 실제 토글 로직 실행
+      handleToggleBattle();
+    }
   };
 
   return (
@@ -1029,7 +1051,7 @@ const BattleDetail: React.FC = () => {
             >
               {isSpectatorsCollapsed ? '관전자 보기' : '관전자 숨김'}
             </ToggleButton>
-            <StartButton onClick={handleToggleBattle}>
+            <StartButton onClick={handleStartButtonClick}>
               {isBattleStarted ? '종료' : rematchAvailable ? '리매치' : '시작'}
             </StartButton>
           </RightButtonGroup>
@@ -1098,6 +1120,13 @@ const BattleDetail: React.FC = () => {
         visible={warningModalVisible}
         msgPreview={warningMsgPreview}
         onClose={() => setWarningModalVisible(false)}
+      />
+
+      {/* ─── 방장 권한 경고 모달 ───────────────────────────── */}
+      <AdminWarningModal
+        visible={adminWarningVisible}
+        message='방장만 시작/종료(또는 리매치)할 수 있습니다.'
+        onClose={() => setAdminWarningVisible(false)}
       />
     </Container>
   );
@@ -1487,7 +1516,7 @@ const EmotionTag = styled.span`
   color: #555;
 `;
 
-// ─── 경고 모달 styled ─────────────────────────
+// ─── 경고 모달 styled (감정분석 및 방장 경고 공통으로 사용) ─────────────────────────
 const WarningOverlay = styled.div`
   position: absolute;
   top: 0;
