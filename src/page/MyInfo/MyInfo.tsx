@@ -1,6 +1,12 @@
 // src/pages/MyInfo/MyInfo.tsx
 
-import React, { useState, useMemo, useCallback, FormEvent } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  FormEvent,
+} from 'react';
 import styled, { keyframes } from 'styled-components';
 import { FaUserAlt, FaBorderStyle, FaCoins } from 'react-icons/fa';
 
@@ -13,6 +19,8 @@ import DiamondIcon from '../../assets/Diamond.svg';
 import MasterIcon from '../../assets/Master.svg';
 import GrandMasterIcon from '../../assets/GrandMaster.svg';
 import ChallengerIcon from '../../assets/Challenger.svg';
+
+import { getUserInfo, UserInfoResult } from '../../api/user/userApi'; // API 호출 및 타입
 
 type ShopItem = {
   id: number;
@@ -31,6 +39,8 @@ interface MyBoxState {
 }
 
 const MAX_PLAYERS = 40;
+// 랭크 기반 티어 계산 함수: 전체 플레이어 수가 고정이라면 MAX_PLAYERS로 사용.
+// 필요 시, 백엔드에서 전체 유저 수를 받아올 수 있다면 그 값으로 대체 가능합니다.
 const getTierByRank = (
   rank: number,
   totalPlayers: number = MAX_PLAYERS
@@ -95,27 +105,27 @@ const tierMapping: {
 };
 
 const MyInfo: React.FC = () => {
-  const userInfo = {
-    username: '홍길동',
-    email: 'qwer1234@naver.com',
-    rank: 5,
-    totalPlayers: 40,
-  };
+  // API로부터 받아올 유저 정보 상태
+  const [userInfo, setUserInfo] = useState<UserInfoResult | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string>('');
 
-  const userTierKey = useMemo(
-    () => getTierByRank(userInfo.rank, userInfo.totalPlayers),
-    [userInfo.rank, userInfo.totalPlayers]
-  );
-  const userTier = tierMapping[userTierKey];
-
+  // MyBox preview 상태 (닉네임 등)
   const [myBox, setMyBox] = useState<MyBoxState>({
-    nickname: '내 닉네임',
+    nickname: '',
     isReady: false,
     appliedTeamIcon: null,
     appliedBorder: null,
     avatarUrl: '',
   });
 
+  // 비밀번호 변경 폼 상태
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [pwError, setPwError] = useState('');
+
+  // 아이템 목록 예시
   const [myItems] = useState<ShopItem[]>([
     {
       id: 1,
@@ -168,6 +178,51 @@ const MyInfo: React.FC = () => {
     },
   ]);
 
+  // 유저 정보 가져오기
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      try {
+        const response = await getUserInfo();
+        if (response.isSuccess && response.result) {
+          setUserInfo(response.result);
+
+          // MyBox 닉네임 초기값 설정
+          setMyBox((prev) => ({
+            ...prev,
+            nickname: response.result.nickname || '',
+            avatarUrl: response.result.profileImageUrl || '',
+          }));
+        } else {
+          setError('유저 정보를 불러오는 데 실패했습니다.');
+          console.error('[MyInfo] getUserInfo 실패', response);
+        }
+      } catch (err) {
+        console.error('[MyInfo] getUserInfo 예외', err);
+        setError('서버 통신 중 오류가 발생했습니다.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserInfo();
+  }, []);
+
+  // 티어 계산: userInfo가 있을 때만
+  const userTierKey = useMemo(() => {
+    if (userInfo) {
+      // rank가 string일 경우 Number 변환 필요시 처리
+      const rankNum =
+        typeof userInfo.rank === 'number'
+          ? userInfo.rank
+          : parseInt(String(userInfo.rank), 10);
+      return getTierByRank(rankNum, MAX_PLAYERS);
+    }
+    return 'bronze';
+  }, [userInfo]);
+
+  const userTier = tierMapping[userTierKey] || tierMapping['bronze'];
+
+  // Preview 아이템 핸들러
   const handlePreviewItem = (item: ShopItem) => {
     if (item.category === '팀 아이콘') {
       setMyBox((prev) => ({ ...prev, appliedTeamIcon: item }));
@@ -180,11 +235,11 @@ const MyInfo: React.FC = () => {
 
   const handleResetPreview = () => {
     setMyBox({
-      nickname: '내 닉네임',
+      nickname: userInfo?.nickname || '',
       isReady: false,
       appliedTeamIcon: null,
       appliedBorder: null,
-      avatarUrl: '',
+      avatarUrl: userInfo?.profileImageUrl || '',
     });
   };
 
@@ -196,10 +251,6 @@ const MyInfo: React.FC = () => {
     return '2px solid #0095f4';
   };
 
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [pwError, setPwError] = useState('');
   const handlePasswordChange = useCallback(
     (e: FormEvent<HTMLFormElement>) => {
       e.preventDefault();
@@ -208,6 +259,7 @@ const MyInfo: React.FC = () => {
         return;
       }
       setPwError('');
+      // 실제 API 연동이 필요하다면 여기에서 호출
       alert('비밀번호가 성공적으로 변경되었습니다.');
       setCurrentPassword('');
       setNewPassword('');
@@ -216,6 +268,31 @@ const MyInfo: React.FC = () => {
     [newPassword, confirmPassword]
   );
 
+  if (loading) {
+    return (
+      <LoadingContainer>
+        <LoadingText>로딩 중...</LoadingText>
+      </LoadingContainer>
+    );
+  }
+
+  if (error) {
+    return (
+      <ErrorContainer>
+        <ErrorTextStyled>{error}</ErrorTextStyled>
+      </ErrorContainer>
+    );
+  }
+
+  if (!userInfo) {
+    return (
+      <ErrorContainer>
+        <ErrorTextStyled>유저 정보를 불러올 수 없습니다.</ErrorTextStyled>
+      </ErrorContainer>
+    );
+  }
+
+  // userInfo가 준비된 이후 렌더링
   return (
     <Container>
       <LeftColumn>
@@ -224,7 +301,7 @@ const MyInfo: React.FC = () => {
           <SectionHeader>내 정보</SectionHeader>
           <InfoRow>
             <InfoLabel>닉네임:</InfoLabel>
-            <InfoValue>{userInfo.username}</InfoValue>
+            <InfoValue>{userInfo.nickname}</InfoValue>
           </InfoRow>
           <InfoRow>
             <InfoLabel>이메일:</InfoLabel>
@@ -294,7 +371,7 @@ const MyInfo: React.FC = () => {
             <PointsIcon>
               <FaCoins size={18} />
             </PointsIcon>
-            <PointsValue>1000냥</PointsValue>
+            <PointsValue>{userInfo.point}냥</PointsValue>
           </PointsDisplay>
         </CardSection>
 
@@ -364,6 +441,28 @@ const Container = styled.div`
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
   overflow-y: auto;
+`;
+
+const LoadingContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+`;
+const LoadingText = styled.span`
+  font-size: 1rem;
+  color: #004a66;
+`;
+
+const ErrorContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+`;
+const ErrorTextStyled = styled.span`
+  color: #f44336;
+  font-size: 1rem;
 `;
 
 const LeftColumn = styled.div`
@@ -540,8 +639,7 @@ const BattleBox = styled.div<{ customBorder?: string }>`
   width: 140px;
   height: 120px;
   border-radius: 4px;
-  border: 2px solid #000000;
-
+  border: ${(props) => props.customBorder || '2px solid #000000'};
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 `;
 
