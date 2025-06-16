@@ -1,10 +1,10 @@
 // src/pages/Home.tsx
 import React from 'react';
-import styled from 'styled-components';
+import styled, { keyframes } from 'styled-components';
+import { motion, Variants } from 'framer-motion';
 
 /* =========================================
    최상위 Container: 투명 배경, 흰색 텍스트, 스크롤 스냅 적용
-   + 스크롤바 숨김 추가
 ============================================ */
 const Container = styled.div`
   margin: 0;
@@ -12,31 +12,81 @@ const Container = styled.div`
   background: transparent;
   color: #ffffff;
   font-family: 'Malgun Gothic', 'Arial', sans-serif;
-
   max-width: 1000px;
   overflow-y: auto;
-
-  /* 스크롤바 숨김 (WebKit 기반 브라우저) */
   &::-webkit-scrollbar {
     display: none;
   }
-  /* IE, Edge */
   -ms-overflow-style: none;
-  /* Firefox */
   scrollbar-width: none;
-
   scroll-snap-type: y mandatory;
   -webkit-overflow-scrolling: touch;
 `;
 
 /* =========================================
-   AnimatedSection 컴포넌트
-   - 애니메이션 제거: 상시 표시만 함
+   framer-motion Variants: 섹션별 다채로운 효과
+============================================ */
+// 1) 스케일 + 페이드인
+const scaleFadeVariants: Variants = {
+  hidden: { opacity: 0, scale: 0.8 },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    transition: { duration: 0.6, ease: 'easeOut' },
+  },
+};
+// 2) 회전 + 슬라이드
+const rotateSlideVariants: Variants = {
+  hidden: { opacity: 0, rotate: -15, x: -50 },
+  visible: {
+    opacity: 1,
+    rotate: 0,
+    x: 0,
+    transition: { duration: 0.7, ease: 'easeOut' },
+  },
+};
+// 3) 기울기(skew) + 페이드
+const skewVariants: Variants = {
+  hidden: { opacity: 0, skewY: 10, y: 30 },
+  visible: {
+    opacity: 1,
+    skewY: 0,
+    y: 0,
+    transition: { duration: 0.6, ease: 'easeOut' },
+  },
+};
+// 4) 배경 그라디언트 애니메이션 (keyframes 활용)
+const gradientKeyframes = keyframes`
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+`;
+const GradientBackgroundSection = styled(motion.section)`
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 2rem;
+  box-sizing: border-box;
+  scroll-snap-align: start;
+  background: linear-gradient(
+    270deg,
+    rgba(255, 255, 255, 0.1),
+    rgba(255, 255, 255, 0.05)
+  );
+  background-size: 200% 200%;
+  animation: ${gradientKeyframes} 10s ease infinite;
+`;
+
+/* =========================================
+   AnimatedSection 컴포넌트: 스타일 섹션 래퍼
+   - as={motion.section}을 사용, Variants는 섹션마다 다르게 지정
 ============================================ */
 interface AnimatedSectionProps {
   children: React.ReactNode;
+  variants: Variants;
+  // optional custom delay or threshold
+  delayChildren?: number;
 }
-
 const SectionWrapper = styled.section`
   display: flex;
   flex-direction: column;
@@ -44,22 +94,52 @@ const SectionWrapper = styled.section`
   padding: 2rem;
   box-sizing: border-box;
   scroll-snap-align: start;
-  opacity: 1; /* 항상 표시 */
 `;
+const AnimatedSection: React.FC<AnimatedSectionProps> = ({
+  children,
+  variants,
+  delayChildren,
+}) => {
+  // delayChildren가 있으면 stagger 처리 가능
+  const containerVariants: Variants = delayChildren
+    ? {
+        hidden: {},
+        visible: {
+          transition: { staggerChildren: 0.2, delayChildren },
+        },
+      }
+    : { hidden: {}, visible: {} };
 
-const AnimatedSection: React.FC<AnimatedSectionProps> = ({ children }) => {
-  return <SectionWrapper>{children}</SectionWrapper>;
+  return (
+    <SectionWrapper
+      as={motion.section}
+      variants={containerVariants}
+      initial='hidden'
+      whileInView='visible'
+      viewport={{ once: true, amount: 0.2 }}
+    >
+      {/* 내부 요소들은 각자 variants를 props로 받아 적용 */}
+      {React.Children.map(children, (child) => {
+        // children이 motion 요소로 wrapping 되어 있다면 variants prop 전달
+        if (React.isValidElement(child)) {
+          return React.cloneElement(child as React.ReactElement<any>, {
+            variants,
+          });
+        }
+        return child;
+      })}
+    </SectionWrapper>
+  );
 };
 
 /* =========================================
-   공통 스타일 정의
+   공통 styled-components (motion 태그 혼합)
 ============================================ */
 const HeaderSection = styled.div`
   text-align: center;
   margin-bottom: 2rem;
 `;
-
-const MainTitle = styled.h1`
+const MainTitle = styled(motion.h1)`
   font-family: 'Inter', sans-serif;
   font-weight: 700;
   font-size: 3rem;
@@ -67,36 +147,37 @@ const MainTitle = styled.h1`
   margin: 0 auto 0.7rem;
   max-width: 90%;
 `;
-
-const Underline = styled.div`
-  width: 60%;
+const Underline = styled(motion.div)`
   height: 4px;
   background: rgba(255, 255, 255, 0.4);
   margin: 0 auto 1.5rem;
 `;
-
-const SectionTitle = styled.h2`
+const SectionTitle = styled(motion.h2)`
   font-family: 'Inter', sans-serif;
   font-weight: 700;
   font-size: 2.5rem;
   margin-bottom: 1rem;
 `;
-
-const Paragraph = styled.p`
+const Paragraph = styled(motion.p)`
   font-size: 1.4rem;
   line-height: 2rem;
   margin-bottom: 1rem;
 `;
-
 const BulletList = styled.ul`
   list-style: none;
   padding-left: 0;
-
   li {
     margin-bottom: 0.8rem;
     font-size: 1.3rem;
     line-height: 2rem;
     padding-left: 0.7rem;
+    position: relative;
+  }
+  li::before {
+    content: '•';
+    position: absolute;
+    left: 0;
+    color: #ffffff;
   }
 `;
 
@@ -107,10 +188,6 @@ const DesignList = styled(BulletList)`
   display: flex;
   flex-direction: column;
   align-items: center;
-
-  li {
-    color: #ffffff;
-  }
 `;
 
 /* =========================================
@@ -122,8 +199,7 @@ const SolutionFeatures = styled.div`
   flex-wrap: wrap;
   margin-top: 1rem;
 `;
-
-const FeatureBox = styled.div`
+const FeatureBox = styled(motion.div)`
   flex: 1 1 calc(50% - 1rem);
   background: rgba(255, 255, 255, 0.15);
   border: 1px solid rgba(255, 255, 255, 0.5);
@@ -132,6 +208,11 @@ const FeatureBox = styled.div`
   text-align: center;
   font-weight: 600;
   font-size: 1.2rem;
+  cursor: pointer;
+  &:hover {
+    transform: translateY(-5px) scale(1.03);
+    transition: transform 0.3s ease;
+  }
 `;
 
 /* =========================================
@@ -142,16 +223,18 @@ const ServiceCards = styled.div`
   flex-direction: column;
   gap: 2rem;
 `;
-
-const ServiceCard = styled.div`
+const ServiceCard = styled(motion.div)`
   display: flex;
   background: rgba(255, 255, 255, 0.15);
   border-radius: 10px;
   overflow: hidden;
   box-shadow: 0 0 15px rgba(255, 255, 255, 0.15);
   min-height: 180px;
+  cursor: pointer;
+  &:hover {
+    box-shadow: 0 0 25px rgba(255, 255, 255, 0.3);
+  }
 `;
-
 const ServicePlaceholder = styled.div`
   flex: 0 0 180px;
   background: rgba(255, 255, 255, 0.07);
@@ -163,29 +246,25 @@ const ServicePlaceholder = styled.div`
   font-weight: 600;
   padding: 0.5rem;
 `;
-
 const ServiceInfo = styled.div`
   padding: 1.2rem;
   flex: 1;
   display: flex;
   flex-direction: column;
 `;
-
-const ServiceSubtitle = styled.h3`
+const ServiceSubtitle = styled(motion.h3)`
   font-family: 'Inter', sans-serif;
   font-weight: 700;
   font-size: 1.8rem;
   margin: 0 0 0.5rem;
 `;
-
-const ServiceDesc = styled.p`
+const ServiceDesc = styled(motion.p)`
   flex: 1;
   font-size: 1.3rem;
   line-height: 2rem;
   margin: 0 0 1rem;
 `;
-
-const ServiceTags = styled.div`
+const ServiceTags = styled(motion.div)`
   font-size: 1rem;
   font-weight: 600;
   color: rgba(255, 255, 255, 0.8);
@@ -200,8 +279,7 @@ const GameCards = styled.div`
   gap: 1.2rem;
   justify-content: space-between;
 `;
-
-const GameCard = styled.div`
+const GameCard = styled(motion.div)`
   background: rgba(255, 255, 255, 0.15);
   border-radius: 10px;
   box-shadow: 0 0 15px rgba(255, 255, 255, 0.15);
@@ -210,27 +288,27 @@ const GameCard = styled.div`
   display: flex;
   overflow: hidden;
   margin-bottom: 1.2rem;
+  cursor: pointer;
+  &:hover {
+    box-shadow: 0 0 25px rgba(255, 255, 255, 0.3);
+  }
 `;
-
 const GamePlaceholder = styled(ServicePlaceholder)`
   flex: 0 0 120px;
 `;
-
 const GameInfo = styled.div`
   padding: 1.2rem;
   flex: 1;
   display: flex;
   flex-direction: column;
 `;
-
-const GameSubtitle = styled.h4`
+const GameSubtitle = styled(motion.h4)`
   font-family: 'Inter', sans-serif;
   font-weight: 700;
   font-size: 1.6rem;
   margin: 0 0 0.5rem;
 `;
-
-const GameDesc = styled.p`
+const GameDesc = styled(motion.p)`
   font-size: 1.3rem;
   line-height: 2rem;
   margin-top: 0.5rem;
@@ -239,7 +317,6 @@ const GameDesc = styled.p`
 /* =========================================
    섹션별 콘텐츠 데이터
 ============================================ */
-// Overview
 const overviewText = `“이거냥 저거냥”은 실시간 AI 토론 플랫폼으로, 누구나 쉽고 재미있게 토론에 참여할 수 있습니다.`;
 const overviewPoints = [
   '실시간 채팅 기반으로 의견 교환이 가능한 토론 공간 제공',
@@ -248,8 +325,6 @@ const overviewPoints = [
   '랭킹·퀘스트·포인트·아이템 등 게임 요소를 도입하여 지속 참여 유도',
   '맞춤형 UI 테마 설정으로 개성 있는 토론 경험 제공',
 ];
-
-// Design Principles
 const designPrinciples = [
   '직관적인 UI로 토론 흐름을 한눈에 파악',
   '부드러운 애니메이션으로 시각적 집중도 상승',
@@ -258,8 +333,6 @@ const designPrinciples = [
   '반투명 카드 디자인으로 우주 배경과 조화',
   '이모지 반응 및 댓글 기능으로 즉각적인 피드백 제공',
 ];
-
-// Solution
 const solutionText = `AI 기술로 실시간 토론 중 발생하는 발언을 자동 요약·정리하여 건설적인 논의를 이끌어냅니다. 또한, 부적절 표현을 필터링하고, 참관인이 투표로 승패를 결정하여 투명한 진행을 돕습니다. 랭킹·퀘스트·포인트·아이템 등 다양한 게임 요소로 사용자 몰입도를 극대화합니다.`;
 const solutionFeatures = [
   '발언 요약·정리',
@@ -267,8 +340,6 @@ const solutionFeatures = [
   '실시간 투표 시스템',
   '랭킹·퀘스트',
 ];
-
-// Main Service
 const mainServices = [
   {
     placeholder: '토론방 리스트 화면',
@@ -283,8 +354,6 @@ const mainServices = [
     tags: '#실시간 채팅 #AI 요약 #투표',
   },
 ];
-
-// Gamification
 const gameFeatures = [
   {
     placeholder: '퀘스트 화면',
@@ -314,69 +383,256 @@ const gameFeatures = [
 const Home: React.FC = () => {
   return (
     <Container>
-      {/* Overview 섹션 */}
-      <AnimatedSection>
+      {/* 1. Overview 섹션: scaleFadeVariants */}
+      <AnimatedSection variants={scaleFadeVariants} delayChildren={0.3}>
         <HeaderSection>
-          <MainTitle>AI 기반 토론 플랫폼 “이거냥 저거냥”</MainTitle>
-          <Underline />
+          <MainTitle
+            initial='hidden'
+            whileInView='visible'
+            variants={scaleFadeVariants}
+            viewport={{ once: true }}
+          >
+            AI 기반 토론 플랫폼 “이거냥 저거냥”
+          </MainTitle>
+          <Underline
+            initial={{ scaleX: 0, opacity: 0 }}
+            whileInView={{ scaleX: 1, opacity: 1 }}
+            transition={{ duration: 0.8, ease: 'easeOut' }}
+            style={{ transformOrigin: 'center' }}
+            viewport={{ once: true }}
+          />
         </HeaderSection>
-        <SectionTitle>Overview</SectionTitle>
-        <Paragraph>{overviewText}</Paragraph>
-        <BulletList>
+        <SectionTitle
+          initial='hidden'
+          whileInView='visible'
+          variants={scaleFadeVariants}
+          viewport={{ once: true }}
+        >
+          Overview
+        </SectionTitle>
+        <Paragraph
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+          viewport={{ once: true }}
+        >
+          {overviewText}
+        </Paragraph>
+        <motion.ul
+          initial='hidden'
+          whileInView='visible'
+          variants={{
+            hidden: {},
+            visible: {
+              transition: { staggerChildren: 0.15, delayChildren: 0.4 },
+            },
+          }}
+          viewport={{ once: true }}
+        >
           {overviewPoints.map((point, idx) => (
-            <li key={idx}>{point}</li>
+            <motion.li
+              key={idx}
+              initial={{ opacity: 0, scale: 0.8 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5 }}
+              style={{
+                listStyle: 'none',
+                position: 'relative',
+                paddingLeft: '1rem',
+                marginBottom: '0.8rem',
+              }}
+              viewport={{ once: true }}
+            >
+              <span style={{ position: 'absolute', left: 0, color: '#fff' }}>
+                •
+              </span>
+              {point}
+            </motion.li>
           ))}
-        </BulletList>
+        </motion.ul>
       </AnimatedSection>
 
-      {/* Design Principles 섹션 */}
-      <AnimatedSection>
-        <SectionTitle>Design Principles</SectionTitle>
-        <DesignList>
+      {/* 2. Design Principles 섹션: rotateSlideVariants */}
+      <AnimatedSection variants={rotateSlideVariants} delayChildren={0.2}>
+        <SectionTitle
+          initial='hidden'
+          whileInView='visible'
+          variants={rotateSlideVariants}
+          viewport={{ once: true }}
+        >
+          Design Principles
+        </SectionTitle>
+        <motion.ul
+          initial='hidden'
+          whileInView='visible'
+          variants={{
+            hidden: {},
+            visible: { transition: { staggerChildren: 0.2 } },
+          }}
+          viewport={{ once: true }}
+          style={{
+            listStyle: 'none',
+            paddingLeft: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+          }}
+        >
           {designPrinciples.map((item, idx) => (
-            <li key={idx}>{item}</li>
+            <motion.li
+              key={idx}
+              initial='hidden'
+              whileInView='visible'
+              variants={rotateSlideVariants}
+              transition={{ duration: 0.6, delay: idx * 0.1 }}
+              style={{
+                position: 'relative',
+                paddingLeft: '1rem',
+                marginBottom: '0.8rem',
+              }}
+              viewport={{ once: true }}
+            >
+              <span style={{ position: 'absolute', left: 0, color: '#fff' }}>
+                •
+              </span>
+              {item}
+            </motion.li>
           ))}
-        </DesignList>
+        </motion.ul>
       </AnimatedSection>
 
-      {/* Solution 섹션 */}
-      <AnimatedSection>
-        <SectionTitle>Solution</SectionTitle>
-        <Paragraph>{solutionText}</Paragraph>
+      {/* 3. Solution 섹션: skewVariants */}
+      <AnimatedSection variants={skewVariants} delayChildren={0.3}>
+        <SectionTitle
+          initial='hidden'
+          whileInView='visible'
+          variants={skewVariants}
+          viewport={{ once: true }}
+        >
+          Solution
+        </SectionTitle>
+        <Paragraph
+          initial='hidden'
+          whileInView='visible'
+          variants={skewVariants}
+          transition={{ duration: 0.6, delay: 0.3 }}
+          viewport={{ once: true }}
+        >
+          {solutionText}
+        </Paragraph>
         <SolutionFeatures>
           {solutionFeatures.map((feat, idx) => (
-            <FeatureBox key={idx}>{feat}</FeatureBox>
+            <FeatureBox
+              key={idx}
+              initial='hidden'
+              whileInView='visible'
+              variants={skewVariants}
+              transition={{ duration: 0.5, delay: idx * 0.2 }}
+              viewport={{ once: true }}
+            >
+              {feat}
+            </FeatureBox>
           ))}
         </SolutionFeatures>
       </AnimatedSection>
 
-      {/* Main Service 섹션 */}
-      <AnimatedSection>
-        <SectionTitle>Main Service</SectionTitle>
+      {/* 4. Main Service 섹션: GradientBackgroundSection + rotateSlideVariants */}
+      <GradientBackgroundSection
+        initial='hidden'
+        whileInView='visible'
+        variants={rotateSlideVariants}
+        viewport={{ once: true, amount: 0.3 }}
+      >
+        <SectionTitle
+          initial='hidden'
+          whileInView='visible'
+          variants={rotateSlideVariants}
+          viewport={{ once: true }}
+        >
+          Main Service
+        </SectionTitle>
         <ServiceCards>
           {mainServices.map((service, idx) => (
-            <ServiceCard key={idx}>
+            <ServiceCard
+              key={idx}
+              initial='hidden'
+              whileInView='visible'
+              variants={rotateSlideVariants}
+              transition={{ duration: 0.6, delay: idx * 0.2 }}
+              viewport={{ once: true }}
+            >
               <ServicePlaceholder>{service.placeholder}</ServicePlaceholder>
               <ServiceInfo>
-                <ServiceSubtitle>{service.title}</ServiceSubtitle>
-                <ServiceDesc>{service.desc}</ServiceDesc>
-                <ServiceTags>{service.tags}</ServiceTags>
+                <ServiceSubtitle
+                  initial='hidden'
+                  whileInView='visible'
+                  variants={rotateSlideVariants}
+                  transition={{ duration: 0.5, delay: 0.3 + idx * 0.1 }}
+                  viewport={{ once: true }}
+                >
+                  {service.title}
+                </ServiceSubtitle>
+                <ServiceDesc
+                  initial='hidden'
+                  whileInView='visible'
+                  variants={rotateSlideVariants}
+                  transition={{ duration: 0.5, delay: 0.4 + idx * 0.1 }}
+                  viewport={{ once: true }}
+                >
+                  {service.desc}
+                </ServiceDesc>
+                <ServiceTags
+                  initial='hidden'
+                  whileInView='visible'
+                  variants={rotateSlideVariants}
+                  transition={{ duration: 0.5, delay: 0.5 + idx * 0.1 }}
+                  viewport={{ once: true }}
+                >
+                  {service.tags}
+                </ServiceTags>
               </ServiceInfo>
             </ServiceCard>
           ))}
         </ServiceCards>
-      </AnimatedSection>
+      </GradientBackgroundSection>
 
-      {/* Gamification 섹션 */}
-      <AnimatedSection>
-        <SectionTitle>Gamification Factor</SectionTitle>
+      {/* 5. Gamification 섹션: scaleFadeVariants + 약간 회전 효과 */}
+      <AnimatedSection variants={scaleFadeVariants} delayChildren={0.2}>
+        <SectionTitle
+          initial={{ opacity: 0, scale: 0.8 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.6 }}
+          viewport={{ once: true }}
+        >
+          Gamification Factor
+        </SectionTitle>
         <GameCards>
           {gameFeatures.map((game, idx) => (
-            <GameCard key={idx}>
+            <GameCard
+              key={idx}
+              initial={{ opacity: 0, rotate: idx % 2 === 0 ? 10 : -10, y: 30 }}
+              whileInView={{ opacity: 1, rotate: 0, y: 0 }}
+              transition={{ duration: 0.6, delay: idx * 0.2 }}
+              viewport={{ once: true }}
+            >
               <GamePlaceholder>{game.placeholder}</GamePlaceholder>
               <GameInfo>
-                <GameSubtitle>{game.title}</GameSubtitle>
-                <GameDesc>{game.desc}</GameDesc>
+                <GameSubtitle
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.3 + idx * 0.1 }}
+                  viewport={{ once: true }}
+                >
+                  {game.title}
+                </GameSubtitle>
+                <GameDesc
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.4 + idx * 0.1 }}
+                  viewport={{ once: true }}
+                >
+                  {game.desc}
+                </GameDesc>
               </GameInfo>
             </GameCard>
           ))}
