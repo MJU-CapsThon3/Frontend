@@ -68,11 +68,7 @@ const GradientBackgroundSection = styled(motion.section)`
   padding: 2rem;
   box-sizing: border-box;
   scroll-snap-align: start;
-  background: linear-gradient(
-    270deg,
-    rgba(255, 255, 255, 0.1),
-    rgba(255, 255, 255, 0.05)
-  );
+
   background-size: 200% 200%;
   animation: ${gradientKeyframes} 10s ease infinite;
 `;
@@ -207,7 +203,7 @@ const FeatureBox = styled(motion.div)`
   padding: 1.2rem;
   text-align: center;
   font-weight: 600;
-  font-size: 1.2rem;
+  font-size: 1.4rem;
   cursor: pointer;
   &:hover {
     transform: translateY(-5px) scale(1.03);
@@ -242,7 +238,7 @@ const ServicePlaceholder = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.2rem;
+  font-size: 1.4rem;
   font-weight: 600;
   padding: 0.5rem;
 `;
@@ -260,7 +256,7 @@ const ServiceSubtitle = styled(motion.h3)`
 `;
 const ServiceDesc = styled(motion.p)`
   flex: 1;
-  font-size: 1.3rem;
+  font-size: 1.2rem;
   line-height: 2rem;
   margin: 0 0 1rem;
 `;
@@ -305,11 +301,11 @@ const GameInfo = styled.div`
 const GameSubtitle = styled(motion.h4)`
   font-family: 'Inter', sans-serif;
   font-weight: 700;
-  font-size: 1.6rem;
+  font-size: 1.4rem;
   margin: 0 0 0.5rem;
 `;
 const GameDesc = styled(motion.p)`
-  font-size: 1.3rem;
+  font-size: 1.2rem;
   line-height: 2rem;
   margin-top: 0.5rem;
 `;
