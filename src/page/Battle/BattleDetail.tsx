@@ -14,6 +14,17 @@ import {
   FaSignOutAlt,
   FaRandom,
   FaEdit,
+  FaUserFriends,
+  FaUserTie,
+  FaBaby,
+  FaSmile,
+  FaLaugh,
+  FaSurprise,
+  FaGhost,
+  FaDragon,
+  FaCrow,
+  FaCat,
+  FaBorderStyle,
 } from 'react-icons/fa';
 import { useNavigate, useParams } from 'react-router-dom';
 
@@ -35,6 +46,7 @@ import BattleChatApi, {
 import VoteApi, { CreateVoteRequest } from '../../api/vote/voteApi'; // 투표 API
 
 // ───── 아이콘 임포트 ──────────────────────────────
+// 티어 아이콘
 import BronzeIcon from '../../assets/Bronze.svg';
 import SilverIcon from '../../assets/Silver.svg';
 import GoldIcon from '../../assets/Gold.svg';
@@ -43,6 +55,24 @@ import DiamondIcon from '../../assets/Diamond.svg';
 import MasterIcon from '../../assets/Master.svg';
 import GrandMasterIcon from '../../assets/GrandMaster.svg';
 import ChallengerIcon from '../../assets/Challenger.svg';
+// 샵 팀 아이콘 예시 (17개)
+import TeamIcon1 from '../../assets/ShopIcon/TeamIcon1.svg';
+import TeamIcon2 from '../../assets/ShopIcon/TeamIcon2.svg';
+import TeamIcon3 from '../../assets/ShopIcon/TeamIcon3.svg';
+import TeamIcon4 from '../../assets/ShopIcon/TeamIcon4.svg';
+import TeamIcon5 from '../../assets/ShopIcon/TeamIcon5.svg';
+import TeamIcon6 from '../../assets/ShopIcon/TeamIcon6.svg';
+import TeamIcon7 from '../../assets/ShopIcon/TeamIcon7.svg';
+import TeamIcon8 from '../../assets/ShopIcon/TeamIcon8.svg';
+import TeamIcon9 from '../../assets/ShopIcon/TeamIcon9.svg';
+import TeamIcon10 from '../../assets/ShopIcon/TeamIcon10.svg';
+import TeamIcon11 from '../../assets/ShopIcon/TeamIcon11.svg';
+import TeamIcon12 from '../../assets/ShopIcon/TeamIcon12.svg';
+import TeamIcon13 from '../../assets/ShopIcon/TeamIcon13.svg';
+import TeamIcon14 from '../../assets/ShopIcon/TeamIcon14.svg';
+import TeamIcon15 from '../../assets/ShopIcon/TeamIcon15.svg';
+import TeamIcon16 from '../../assets/ShopIcon/TeamIcon16.svg';
+import TeamIcon17 from '../../assets/ShopIcon/TeamIcon17.svg';
 
 // ───── 분리된 컴포넌트 import ───────────────────
 import DirectSubjectModal from '../../components/BattleDetail/DirectSubjectModal';
@@ -105,7 +135,7 @@ type Role = 'participant' | 'spectator';
 export type PlayerData = {
   id: number;
   nickname: string;
-  avatarUrl?: string;
+  avatarUrl?: string; // API로 실제 URL이 올 경우 사용 가능하나 우선 랜덤 아이콘 매핑
   isReady?: boolean;
   team?: 'blue' | 'red';
   role: Role;
@@ -210,6 +240,132 @@ const BattleDetail: React.FC = () => {
   // 이미 감정분석 호출을 마친 메시지 ID 추적용
   const processedEmotion = useRef<Set<string>>(new Set());
 
+  // ─── 유저별 랜덤 샵 아이콘 매핑 ─────────────────
+  // avatarMap: 유저 ID별로 ReactNode(icon)을 저장
+  const [avatarMap, setAvatarMap] = useState<Record<number, React.ReactNode>>(
+    {}
+  );
+  // 샵의 사용 가능한 아이콘들을 모아둡니다.
+  const availableAvatarIcons: React.ReactNode[] = [
+    // 팀 아이콘 SVG들
+    <img
+      key='team1'
+      src={TeamIcon1}
+      alt='TeamIcon1'
+      style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+    />,
+    <img
+      key='team2'
+      src={TeamIcon2}
+      alt='TeamIcon2'
+      style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+    />,
+    <img
+      key='team3'
+      src={TeamIcon3}
+      alt='TeamIcon3'
+      style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+    />,
+    <img
+      key='team4'
+      src={TeamIcon4}
+      alt='TeamIcon4'
+      style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+    />,
+    <img
+      key='team5'
+      src={TeamIcon5}
+      alt='TeamIcon5'
+      style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+    />,
+    <img
+      key='team6'
+      src={TeamIcon6}
+      alt='TeamIcon6'
+      style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+    />,
+    <img
+      key='team7'
+      src={TeamIcon7}
+      alt='TeamIcon7'
+      style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+    />,
+    <img
+      key='team8'
+      src={TeamIcon8}
+      alt='TeamIcon8'
+      style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+    />,
+    <img
+      key='team9'
+      src={TeamIcon9}
+      alt='TeamIcon9'
+      style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+    />,
+    <img
+      key='team10'
+      src={TeamIcon10}
+      alt='TeamIcon10'
+      style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+    />,
+    <img
+      key='team11'
+      src={TeamIcon11}
+      alt='TeamIcon11'
+      style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+    />,
+    <img
+      key='team12'
+      src={TeamIcon12}
+      alt='TeamIcon12'
+      style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+    />,
+    <img
+      key='team13'
+      src={TeamIcon13}
+      alt='TeamIcon13'
+      style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+    />,
+    <img
+      key='team14'
+      src={TeamIcon14}
+      alt='TeamIcon14'
+      style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+    />,
+    <img
+      key='team15'
+      src={TeamIcon15}
+      alt='TeamIcon15'
+      style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+    />,
+    <img
+      key='team16'
+      src={TeamIcon16}
+      alt='TeamIcon16'
+      style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+    />,
+    <img
+      key='team17'
+      src={TeamIcon17}
+      alt='TeamIcon17'
+      style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+    />,
+  ];
+
+  // 주어진 id에 대해서 avatarMap에 없으면 랜덤 할당
+  const ensureAvatarForId = (id: number) => {
+    setAvatarMap((prev) => {
+      if (prev[id]) {
+        return prev;
+      }
+      const idx = Math.floor(Math.random() * availableAvatarIcons.length);
+      return {
+        ...prev,
+        [id]: availableAvatarIcons[idx],
+      };
+    });
+  };
+
   if (!roomId) {
     return <div>유효하지 않은 방 ID입니다.</div>;
   }
@@ -231,7 +387,7 @@ const BattleDetail: React.FC = () => {
       );
       setAdminId(Number(data.adminId));
       setIsBattleStarted(data.status === 'PLAYING');
-      setSpectatorCount(data.spectators.length);
+      setSpectatorCount((data as any).spectators.length);
 
       // FINISHED 상태면 리매치 가능
       setRematchAvailable(
@@ -265,18 +421,18 @@ const BattleDetail: React.FC = () => {
       };
 
       // participantA
-      data.participantA.forEach((u) => {
+      (data as any).participantA.forEach((u: any) => {
         const idNum = Number(u.userId);
         const nickname =
-          (u as any).nickname && String((u as any).nickname).trim()
-            ? String((u as any).nickname)
+          u.nickname && String(u.nickname).trim()
+            ? String(u.nickname)
             : `유저${u.userId}`;
-        const tierStr = (u as any).tier;
+        const tierStr = u.tier;
         const tier = mapTier(tierStr);
         fetchedPlayers.push({
           id: idNum,
           nickname,
-          avatarUrl: '',
+          avatarUrl: '', // API URL 대신 랜덤 매핑 사용
           isReady: true,
           team: 'blue',
           role: 'participant',
@@ -288,13 +444,13 @@ const BattleDetail: React.FC = () => {
       });
 
       // participantB
-      data.participantB.forEach((u) => {
+      (data as any).participantB.forEach((u: any) => {
         const idNum = Number(u.userId);
         const nickname =
-          (u as any).nickname && String((u as any).nickname).trim()
-            ? String((u as any).nickname)
+          u.nickname && String(u.nickname).trim()
+            ? String(u.nickname)
             : `유저${u.userId}`;
-        const tierStr = (u as any).tier;
+        const tierStr = u.tier;
         const tier = mapTier(tierStr);
         fetchedPlayers.push({
           id: idNum,
@@ -311,13 +467,13 @@ const BattleDetail: React.FC = () => {
       });
 
       // spectators
-      data.spectators.forEach((u, idx) => {
+      (data as any).spectators.forEach((u: any, idx: number) => {
         const idNum = Number(u.userId);
         const nickname =
-          (u as any).nickname && String((u as any).nickname).trim()
-            ? String((u as any).nickname)
+          u.nickname && String(u.nickname).trim()
+            ? String(u.nickname)
             : `유저${u.userId}`;
-        const tierStr = (u as any).tier;
+        const tierStr = u.tier;
         const tier = mapTier(tierStr);
         fetchedPlayers.push({
           id: idNum,
@@ -332,6 +488,12 @@ const BattleDetail: React.FC = () => {
       });
 
       setPlayers(fetchedPlayers);
+
+      // players 상태가 업데이트된 직후에 avatarMap에 아이콘 할당
+      // (setPlayers 비동기이므로 바로 ensure 호출해도 무관)
+      fetchedPlayers.forEach((p) => {
+        ensureAvatarForId(p.id);
+      });
     } catch (err) {
       console.error('배틀방 상세 조회 오류:', err);
     }
@@ -851,13 +1013,22 @@ const BattleDetail: React.FC = () => {
           ? '#ff6b6b'
           : '#fff';
 
+    // avatarMap에 매핑된 아이콘 우선 사용, 없으면 DefaultAvatar
+    const avatarNode = avatarMap[player.id];
+
     return (
       <StyledPlayerCard $bgColor={bgColor}>
         <Nickname>
           {player.nickname} {isOwner && '(나)'}
         </Nickname>
         <TierIcon src={tierIcons[player.tier]} alt={player.tier} />
-        {player.avatarUrl && player.avatarUrl.trim() !== '' ? (
+        {avatarNode ? (
+          isSpectator ? (
+            <SpectatorAvatarContainer>{avatarNode}</SpectatorAvatarContainer>
+          ) : (
+            <PlayerAvatarContainer>{avatarNode}</PlayerAvatarContainer>
+          )
+        ) : player.avatarUrl && player.avatarUrl.trim() !== '' ? (
           isSpectator ? (
             <SpectatorImage src={player.avatarUrl} alt='avatar' />
           ) : (
@@ -1344,6 +1515,31 @@ const StyledPlayerCard = styled(CommonCard)<{ $bgColor: string }>`
   cursor: default;
 `;
 
+// PlayerCard에서 렌더링할 때 사용
+const PlayerAvatarContainer = styled.div`
+  width: 100%;
+  height: 100%;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  & > img,
+  & > svg {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain;
+  }
+`;
+const SpectatorAvatarContainer = styled(PlayerAvatarContainer)`
+  /* 관전자용: 높이 제한 등 필요 시 조정 */
+  & > img,
+  & > svg {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain;
+  }
+`;
+
 const PlayerImage = styled.img`
   width: 100%;
   height: 100%;
@@ -1411,7 +1607,7 @@ const OwnerBadge = styled.div`
 
 const SpectatorImage = styled.img`
   width: 100%;
-  height: 60px;
+  height: 100%;
   object-fit: cover;
   border-radius: 4px;
 `;
