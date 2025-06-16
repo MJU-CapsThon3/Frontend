@@ -96,7 +96,6 @@ const AnimatedSection: React.FC<AnimatedSectionProps> = ({
   variants,
   delayChildren,
 }) => {
-  // delayChildren가 있으면 stagger 처리 가능
   const containerVariants: Variants = delayChildren
     ? {
         hidden: {},
@@ -114,9 +113,7 @@ const AnimatedSection: React.FC<AnimatedSectionProps> = ({
       whileInView='visible'
       viewport={{ once: true, amount: 0.2 }}
     >
-      {/* 내부 요소들은 각자 variants를 props로 받아 적용 */}
       {React.Children.map(children, (child) => {
-        // children이 motion 요소로 wrapping 되어 있다면 variants prop 전달
         if (React.isValidElement(child)) {
           return React.cloneElement(child as React.ReactElement<any>, {
             variants,
@@ -133,7 +130,6 @@ const AnimatedSection: React.FC<AnimatedSectionProps> = ({
 ============================================ */
 const HeaderSection = styled.div`
   text-align: center;
-  margin-bottom: 2rem;
 `;
 const MainTitle = styled(motion.h1)`
   font-family: 'Inter', sans-serif;
@@ -155,32 +151,27 @@ const SectionTitle = styled(motion.h2)`
   margin-bottom: 1rem;
 `;
 const Paragraph = styled(motion.p)`
-  font-size: 1.4rem;
-  line-height: 2rem;
-  margin-bottom: 1rem;
+  font-size: 1.5rem; /* 기존 1.4rem -> 1.6rem으로 키움 */
+  line-height: 2.2rem; /* 줄간격도 약간 키움 */
+  margin-bottom: 3rem;
 `;
-const BulletList = styled.ul`
+
+/* 리스트 아이템용 styled */
+const List = styled(motion.ul)`
   list-style: none;
   padding-left: 0;
-  li {
-    margin-bottom: 0.8rem;
-    font-size: 1.3rem;
-    line-height: 2rem;
-    padding-left: 0.7rem;
-    position: relative;
-  }
-  li::before {
-    content: '•';
-    position: absolute;
-    left: 0;
-    color: #ffffff;
-  }
+  margin: 0;
+`;
+const ListItem = styled(motion.li)`
+  margin-bottom: 0.8rem;
+  font-size: 1.5rem; /* 기존 1.3~ 스타일보다 키운 값 */
+  line-height: 2rem;
 `;
 
 /* =========================================
    Design Principles 섹션 전용 스타일
 ============================================ */
-const DesignList = styled(BulletList)`
+const DesignList = styled(List)`
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -414,7 +405,7 @@ const Home: React.FC = () => {
         >
           {overviewText}
         </Paragraph>
-        <motion.ul
+        <List
           initial='hidden'
           whileInView='visible'
           variants={{
@@ -426,26 +417,17 @@ const Home: React.FC = () => {
           viewport={{ once: true }}
         >
           {overviewPoints.map((point, idx) => (
-            <motion.li
+            <ListItem
               key={idx}
               initial={{ opacity: 0, scale: 0.8 }}
               whileInView={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.5 }}
-              style={{
-                listStyle: 'none',
-                position: 'relative',
-                paddingLeft: '1rem',
-                marginBottom: '0.8rem',
-              }}
               viewport={{ once: true }}
             >
-              <span style={{ position: 'absolute', left: 0, color: '#fff' }}>
-                •
-              </span>
               {point}
-            </motion.li>
+            </ListItem>
           ))}
-        </motion.ul>
+        </List>
       </AnimatedSection>
 
       {/* 2. Design Principles 섹션: rotateSlideVariants */}
@@ -458,7 +440,7 @@ const Home: React.FC = () => {
         >
           Design Principles
         </SectionTitle>
-        <motion.ul
+        <DesignList
           initial='hidden'
           whileInView='visible'
           variants={{
@@ -466,35 +448,20 @@ const Home: React.FC = () => {
             visible: { transition: { staggerChildren: 0.2 } },
           }}
           viewport={{ once: true }}
-          style={{
-            listStyle: 'none',
-            paddingLeft: 0,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-          }}
         >
           {designPrinciples.map((item, idx) => (
-            <motion.li
+            <ListItem
               key={idx}
               initial='hidden'
               whileInView='visible'
               variants={rotateSlideVariants}
               transition={{ duration: 0.6, delay: idx * 0.1 }}
-              style={{
-                position: 'relative',
-                paddingLeft: '1rem',
-                marginBottom: '0.8rem',
-              }}
               viewport={{ once: true }}
             >
-              <span style={{ position: 'absolute', left: 0, color: '#fff' }}>
-                •
-              </span>
               {item}
-            </motion.li>
+            </ListItem>
           ))}
-        </motion.ul>
+        </DesignList>
       </AnimatedSection>
 
       {/* 3. Solution 섹션: skewVariants */}
