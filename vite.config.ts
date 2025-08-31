@@ -40,10 +40,4 @@ export default defineConfig({
       },
     },
   },
-  preview: {
-    headers: {
-      '/**/*.js': ['Content-Type: application/javascript'],
-      '/**/*.ts': ['Content-Type: application/javascript'],
-    },
-  },
 });
