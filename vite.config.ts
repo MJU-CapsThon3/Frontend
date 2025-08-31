@@ -34,10 +34,15 @@ export default defineConfig({
     minify: 'esbuild',
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom'],
-        },
+        manualChunks: undefined, // 코드 스플리팅 완전 비활성화
+        entryFileNames: 'assets/[name].js',
+        chunkFileNames: 'assets/[name].js',
+        assetFileNames: 'assets/[name].[ext]',
+        // 단일 번들 강제
+        inlineDynamicImports: true,
       },
     },
+    // 청크 크기 경고 비활성화
+    chunkSizeWarningLimit: Infinity,
   },
 });

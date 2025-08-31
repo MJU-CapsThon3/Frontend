@@ -17,8 +17,22 @@ import {
 } from 'react-icons/fa';
 import { useNavigate, useParams } from 'react-router-dom';
 
-// ───── 더미 데이터 import ──────────────────────────────
-import { dummyBattleDetail } from '../../data/dummyData';
+// ───── API import ──────────────────────────────
+import {
+  BattleRoomApi,
+  RoomDetailFull,
+  GenerateAITopicsResponse,
+  SetTopicsRequest,
+} from '../../api/battle/battleRoomApi';
+
+import BattleChatApi, {
+  ChatMessage as RestChatMessage,
+  GetChatMessagesResponse,
+  PostChatMessageRequest,
+  GetChatMessageEmotionResponse,
+} from '../../api/chat/chatApi';
+
+import VoteApi, { CreateVoteRequest } from '../../api/vote/voteApi'; // 투표 API
 
 // ───── 아이콘 임포트 ──────────────────────────────
 // 티어 아이콘
@@ -98,20 +112,9 @@ export type PlayerData = {
   tier: Tier;
 };
 
-// 더미 데이터용 메시지 타입
-export type ChatMessage = {
-  id: number;
-  userId: number;
-  username: string;
-  content: string;
-  timestamp: string;
-  team?: 'pros' | 'cons';
-  type?: string;
+// REST로 조회해서 받아오는 메시지 타입
+export type ChatMessage = RestChatMessage & {
   nickname?: string;
-  side?: 'A' | 'B';
-  message?: string;
-  warning?: boolean;
-  emotion?: string;
 };
 
 const OWNER_ID = 1; // 예시: 현재 로그인된 사용자 ID. 실제로는 auth context 등에서 받아올 것.
@@ -119,7 +122,7 @@ const TOTAL_SLOTS = 8;
 const BOX_SIZE = '150px';
 const POLL_INTERVAL = 2000; // 2초마다 방 상태 폴링
 const INITIAL_TIMER = 180; // 3분 = 180초
-// 더미 데이터 사용으로 폴링 불필요
+const CHAT_POLL_INTERVAL = 2000; // 2초마다 채팅 내역 폴링
 const VOTE_TIMEOUT = 10000; // 10초 후 자동 투표 (ms)
 
 const tierIcons: { [key in Tier]: string } = {
@@ -154,6 +157,7 @@ const BattleDetail: React.FC = () => {
   const [modalVisible, setModalVisible] = useState<boolean>(false);
   const [subjectAInput, setSubjectAInput] = useState<string>('');
   const [subjectBInput, setSubjectBInput] = useState<string>('');
+  const [kickModalVisible, setKickModalVisible] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerData | null>(null);
   const [isSpectatorsCollapsed, setIsSpectatorsCollapsed] = useState(false);
 
@@ -168,7 +172,8 @@ const BattleDetail: React.FC = () => {
   const [timer, setTimer] = useState<number>(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // 더미 데이터 사용으로 관전자 수는 고정
+  // ─── 관전자 수 ─────────────────────
+  const [spectatorCount, setSpectatorCount] = useState<number>(0);
 
   // ─── 게임 시작/종료 오버레이 상태 ─────────────────────
   const [showStartOverlay, setShowStartOverlay] = useState(false);
@@ -336,88 +341,197 @@ const BattleDetail: React.FC = () => {
     (p) => p.role === 'spectator' && p.id !== OWNER_ID
   );
 
-  // ─── 더미 데이터 사용 ─────────────────────
+  // ─── A/B/P 팀 정보 API 호출 ─────────────────────
   const fetchRoomDetail = useCallback(async () => {
-    // 더미 데이터 사용
-    const data = dummyBattleDetail;
-    setAdminId(1); // 첫 번째 참가자를 방장으로 설정
-    setIsBattleStarted(data.status === 'active');
-    // 더미 데이터 사용으로 관전자 수는 고정
+    try {
+      const data: RoomDetailFull = await BattleRoomApi.getRoomDetailFull(
+        parseInt(roomId, 10)
+      );
+      setAdminId(Number(data.adminId));
+      setIsBattleStarted(data.status === 'PLAYING');
+      setSpectatorCount((data as any).spectators.length);
 
-    // active 상태면 리매치 불가
-    setRematchAvailable(false);
+      // FINISHED 상태면 리매치 가능
+      setRematchAvailable(
+        data.status === 'FINISHED' || data.status === 'ENDED'
+      );
 
-    if (data.title) {
-      setSubject(data.title);
-      setSideAOption('찬성');
-      setSideBOption('반대');
+      if (data.question) {
+        setSubject(data.question);
+        setSideAOption(data.topicA);
+        setSideBOption(data.topicB);
+      }
+
+      const fetchedPlayers: PlayerData[] = [];
+
+      const mapTier = (apiTier: string | undefined): Tier => {
+        if (!apiTier) return 'bronze';
+        const lower = apiTier.toLowerCase();
+        if (lower.includes('bronze')) return 'bronze';
+        if (lower.includes('silver')) return 'silver';
+        if (lower.includes('gold')) return 'gold';
+        if (lower.includes('platinum')) return 'platinum';
+        if (lower.includes('diamond')) return 'diamond';
+        if (lower.includes('master')) {
+          if (lower.includes('grand')) return 'grandmaster';
+          return 'master';
+        }
+        if (lower.includes('grandmaster')) return 'grandmaster';
+        if (lower.includes('challenger')) return 'challenger';
+        return 'bronze';
+      };
+
+      (data as any).participantA.forEach((u: any) => {
+        const idNum = Number(u.userId);
+        const nickname =
+          u.nickname && String(u.nickname).trim()
+            ? String(u.nickname)
+            : `유저${u.userId}`;
+        const tier = mapTier(u.tier);
+        fetchedPlayers.push({
+          id: idNum,
+          nickname,
+          avatarUrl: '',
+          isReady: true,
+          team: 'blue',
+          role: 'participant',
+          tier,
+        });
+        if (idNum === OWNER_ID) {
+          setOwnerSpectatorSlot(null);
+        }
+      });
+      (data as any).participantB.forEach((u: any) => {
+        const idNum = Number(u.userId);
+        const nickname =
+          u.nickname && String(u.nickname).trim()
+            ? String(u.nickname)
+            : `유저${u.userId}`;
+        const tier = mapTier(u.tier);
+        fetchedPlayers.push({
+          id: idNum,
+          nickname,
+          avatarUrl: '',
+          isReady: true,
+          team: 'red',
+          role: 'participant',
+          tier,
+        });
+        if (idNum === OWNER_ID) {
+          setOwnerSpectatorSlot(null);
+        }
+      });
+      (data as any).spectators.forEach((u: any, idx: number) => {
+        const idNum = Number(u.userId);
+        const nickname =
+          u.nickname && String(u.nickname).trim()
+            ? String(u.nickname)
+            : `유저${u.userId}`;
+        const tier = mapTier(u.tier);
+        fetchedPlayers.push({
+          id: idNum,
+          nickname,
+          avatarUrl: '',
+          role: 'spectator',
+          tier,
+        });
+        if (idNum === OWNER_ID) {
+          setOwnerSpectatorSlot(idx);
+        }
+      });
+
+      setPlayers(fetchedPlayers);
+
+      fetchedPlayers.forEach((p) => {
+        ensureAvatarForId(p.id);
+      });
+    } catch (err) {
+      console.error('배틀방 상세 조회 오류:', err);
     }
-
-    const fetchedPlayers: PlayerData[] = [];
-
-    // 참가자들을 A팀(찬성)과 B팀(반대)으로 분리
-    data.participants.forEach((u, index) => {
-      const idNum = u.id;
-      const nickname = u.username;
-      const tier = 'gold' as Tier; // 기본 티어
-      fetchedPlayers.push({
-        id: idNum,
-        nickname,
-        avatarUrl: '',
-        isReady: true,
-        team: u.team === 'pros' ? 'blue' : 'red',
-        role: 'participant',
-        tier,
-      });
-      if (idNum === OWNER_ID) {
-        setOwnerSpectatorSlot(null);
-      }
-    });
-
-    // 관전자들 추가
-    data.spectators.forEach((u, idx) => {
-      const idNum = u.id;
-      const nickname = u.username;
-      const tier = 'silver' as Tier; // 관전자는 실버 티어
-      fetchedPlayers.push({
-        id: idNum,
-        nickname,
-        avatarUrl: '',
-        role: 'spectator',
-        tier,
-      });
-      if (idNum === OWNER_ID) {
-        setOwnerSpectatorSlot(idx);
-      }
-    });
-
-    setPlayers(fetchedPlayers);
-
-    fetchedPlayers.forEach((p) => {
-      ensureAvatarForId(p.id);
-    });
   }, [roomId]);
 
-  // ─── 더미 데이터로 채팅 내역 설정 ─────────────────────
+  // ─── 과거 채팅 내역(REST) 한 번 조회 & 폴링 시작 ─────────────────────
   useEffect(() => {
-    // 더미 데이터의 메시지를 사용
-    const dummyMessages: ChatMessage[] = dummyBattleDetail.messages.map(
-      (msg) => ({
-        id: msg.id,
-        userId: msg.userId || 1,
-        username: msg.username,
-        content: msg.content,
-        timestamp: msg.timestamp,
-        team: msg.team as 'pros' | 'cons',
-        type: msg.type,
-        nickname: msg.username,
-        side: msg.team === 'pros' ? 'A' : 'B',
-        message: msg.content,
-      })
-    );
+    let pollingHandle: NodeJS.Timeout;
 
-    setChatMessages(dummyMessages);
-  }, []);
+    const fetchChatMessages = async () => {
+      try {
+        const res: GetChatMessagesResponse =
+          await BattleChatApi.getChatMessages(roomId);
+
+        const combined: ChatMessage[] = [
+          ...res.result.sideA,
+          ...res.result.sideB,
+        ].sort(
+          (a, b) =>
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        );
+
+        const combinedWithNickname = combined.map((msg) => {
+          if ((msg as any).nickname) {
+            return msg;
+          }
+          const found = players.find((p) => p.id === msg.userId);
+          if (found) {
+            return {
+              ...msg,
+              nickname: found.nickname,
+            };
+          }
+          return msg;
+        });
+
+        setChatMessages(combinedWithNickname);
+
+        combinedWithNickname.forEach(async (msg) => {
+          if (!processedEmotion.current.has(msg.id)) {
+            processedEmotion.current.add(msg.id);
+            try {
+              const emoRes: GetChatMessageEmotionResponse =
+                await BattleChatApi.getChatMessageEmotion(roomId, msg.id);
+              if (emoRes.isSuccess) {
+                const { emotion, warning, probabilities } = emoRes.result;
+                setChatMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === msg.id
+                      ? {
+                          ...m,
+                          emotion,
+                          warning,
+                          probabilities,
+                        }
+                      : m
+                  )
+                );
+                if (warning) {
+                  const p = players.find((p) => p.id === emoRes.result.userId);
+                  const nameForPreview = p
+                    ? p.nickname
+                    : msg.nickname
+                      ? msg.nickname
+                      : `유저${emoRes.result.userId}`;
+                  const preview = `[${emoRes.result.side}] ${nameForPreview}: ${msg.message}`;
+                  setWarningMsgPreview(preview);
+                  setWarningModalVisible(true);
+                }
+              }
+            } catch (e) {
+              console.error('감정분석 조회 실패:', e);
+            }
+          }
+        });
+      } catch (e) {
+        console.error('과거 채팅 조회 실패:', e);
+      }
+    };
+
+    fetchChatMessages();
+    pollingHandle = setInterval(fetchChatMessages, CHAT_POLL_INTERVAL);
+
+    return () => {
+      clearInterval(pollingHandle);
+    };
+  }, [roomId, players]);
 
   // ─── 기존 방 상태/타이머 폴링 ─────────────────────
   useEffect(() => {
@@ -426,7 +540,7 @@ const BattleDetail: React.FC = () => {
     return () => clearInterval(interval);
   }, [fetchRoomDetail]);
 
-  // ─── 투표 모달이 열릴 때: 10초 카운트다운 + 더미 결과 설정 ─────────────────────
+  // ─── 투표 모달이 열릴 때: 10초 카운트다운 + 결과 폴링 시작 ─────────────────────
   useEffect(() => {
     if (voteModalVisible) {
       voteTimeoutRef.current = setTimeout(() => {
@@ -436,20 +550,23 @@ const BattleDetail: React.FC = () => {
         }
       }, VOTE_TIMEOUT);
 
-      // 더미 데이터 사용 - 투표 결과 설정
-      const dummyResult = {
-        voteCount: { A: 12, B: 8 },
-        voteWinner: 'A' as const,
-        aiWinner: 'A' as const,
-        judgementReason:
-          'AI 분석 결과 A팀이 더 설득력 있는 논리를 제시했습니다.',
-        aiAnalysis: 'A팀의 논리가 더 체계적이고 근거가 명확합니다.',
-        pointsAwarded: 150,
+      const pollResult = async () => {
+        try {
+          const result = await BattleRoomApi.getBattleResult(
+            parseInt(roomId, 10)
+          );
+          if (result && result.voteCount !== undefined) {
+            setBattleResult(result);
+            setVoteModalVisible(false);
+            setResultModalVisible(true);
+          }
+        } catch (e) {
+          console.error('결과 조회 중 오류:', e);
+        }
       };
 
-      setBattleResult(dummyResult);
-      setVoteModalVisible(false);
-      setResultModalVisible(true);
+      pollResult();
+      resultPollingRef.current = setInterval(pollResult, 2000);
     }
 
     return () => {
@@ -462,21 +579,43 @@ const BattleDetail: React.FC = () => {
         resultPollingRef.current = null;
       }
     };
-  }, [voteModalVisible, hasVoted]);
+  }, [voteModalVisible, hasVoted, roomId]);
 
-  // ─── 배틀이 끝났을 때 투표 모달 열기 (더미 데이터) ─────────────────────
+  // ─── 배틀이 끝났을 때 투표 모달 열기 + 결과 폴링 ─────────────────────
   useEffect(() => {
     if (prevIsBattleStarted.current && !isBattleStarted) {
       setBattleResult(null);
       setVoteModalVisible(true);
       setHasVoted(false);
+      pollResultForModal();
     }
     prevIsBattleStarted.current = isBattleStarted;
   }, [isBattleStarted]);
 
-  // ─── 결과 모달이 열릴 때 (더미 데이터) ─────────────────────
+  // ─── 결과 모달이 열릴 때 폴링 (Spinner → 결과) ─────────────────────
   const pollResultForModal = () => {
-    // 더미 데이터 사용 - 폴링 불필요
+    if (resultPollingRef.current) {
+      clearInterval(resultPollingRef.current);
+      resultPollingRef.current = null;
+    }
+    const poll = async () => {
+      try {
+        const result = await BattleRoomApi.getBattleResult(
+          parseInt(roomId!, 10)
+        );
+        if (result && result.voteCount !== undefined) {
+          setBattleResult(result);
+          if (resultPollingRef.current) {
+            clearInterval(resultPollingRef.current);
+            resultPollingRef.current = null;
+          }
+        }
+      } catch (e) {
+        console.error('결과 조회 중 오류:', e);
+      }
+    };
+    poll();
+    resultPollingRef.current = setInterval(poll, 2000);
   };
 
   // ─── 채팅 스크롤 자동 최하단 유지 ─────────────────────
@@ -572,24 +711,22 @@ const BattleDetail: React.FC = () => {
     setChatInput('');
   };
 
-  // ─── 투표 처리 (더미 데이터) ─────────────────────
+  // ─── 투표 처리 (A 또는 B) ─────────────────────
   const handleVote = async (choice: 'A' | 'B') => {
     if (hasVoted) return;
     setHasVoted(true);
-
-    // 더미 데이터 사용 - 투표 결과 설정
-    const dummyResult = {
-      voteCount: choice === 'A' ? { A: 13, B: 8 } : { A: 12, B: 9 },
-      voteWinner: choice as 'A' | 'B',
-      aiWinner: choice as 'A' | 'B',
-      judgementReason: `AI 분석 결과 ${choice}팀이 더 설득력 있는 논리를 제시했습니다.`,
-      aiAnalysis: `${choice}팀의 논리가 더 체계적이고 근거가 명확합니다.`,
-      pointsAwarded: 150,
-    };
-
-    setBattleResult(dummyResult);
-    setVoteModalVisible(false);
-    setResultModalVisible(true);
+    try {
+      const payload: CreateVoteRequest = { vote: choice };
+      await VoteApi.createVote(roomId, payload);
+      setVoteModalVisible(false);
+      setResultModalVisible(true);
+      setBattleResult(null);
+      pollResultForModal();
+    } catch (err: any) {
+      console.error('투표 중 오류:', err);
+      alert('투표 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+      setVoteModalVisible(false);
+    }
   };
 
   // ─── “방 나가기” 버튼 ─────────────────────
