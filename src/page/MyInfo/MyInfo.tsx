@@ -20,7 +20,7 @@ import MasterIcon from '../../assets/Master.svg';
 import GrandMasterIcon from '../../assets/GrandMaster.svg';
 import ChallengerIcon from '../../assets/Challenger.svg';
 
-import { getUserInfo, UserInfoResult } from '../../api/user/userApi'; // API 호출 및 타입
+import { dummyUser } from '../../data/dummyData';
 
 type ShopItem = {
   id: number;
@@ -105,9 +105,9 @@ const tierMapping: {
 };
 
 const MyInfo: React.FC = () => {
-  // API로부터 받아올 유저 정보 상태
-  const [userInfo, setUserInfo] = useState<UserInfoResult | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  // 더미 데이터 사용
+  const [userInfo, setUserInfo] = useState(dummyUser);
+  const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
 
   // MyBox preview 상태 (닉네임 등)
@@ -178,47 +178,25 @@ const MyInfo: React.FC = () => {
     },
   ]);
 
-  // 유저 정보 가져오기
+  // 더미 데이터 사용
   useEffect(() => {
-    const fetchUserInfo = async () => {
-      try {
-        const response = await getUserInfo();
-        if (response.isSuccess && response.result) {
-          setUserInfo(response.result);
-
-          // MyBox 닉네임 초기값 설정
-          setMyBox((prev) => ({
-            ...prev,
-            nickname: response.result.nickname || '',
-            avatarUrl: response.result.profileImageUrl || '',
-          }));
-        } else {
-          setError('유저 정보를 불러오는 데 실패했습니다.');
-          console.error('[MyInfo] getUserInfo 실패', response);
-        }
-      } catch (err) {
-        console.error('[MyInfo] getUserInfo 예외', err);
-        setError('서버 통신 중 오류가 발생했습니다.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchUserInfo();
+    // MyBox 닉네임 초기값 설정
+    setMyBox((prev) => ({
+      ...prev,
+      nickname: dummyUser.nickname || '',
+      avatarUrl: dummyUser.avatar || '',
+    }));
   }, []);
 
-  // 티어 계산: userInfo가 있을 때만
+  // 티어 계산: 더미 데이터 사용
   const userTierKey = useMemo(() => {
-    if (userInfo) {
-      // rank가 string일 경우 Number 변환 필요시 처리
-      const rankNum =
-        typeof userInfo.rank === 'number'
-          ? userInfo.rank
-          : parseInt(String(userInfo.rank), 10);
-      return getTierByRank(rankNum, MAX_PLAYERS);
-    }
-    return 'bronze';
-  }, [userInfo]);
+    // 더미 데이터의 rank를 사용하여 티어 계산
+    const rankNum =
+      typeof userInfo.rank === 'number'
+        ? userInfo.rank
+        : parseInt(String(userInfo.rank), 10);
+    return getTierByRank(rankNum, MAX_PLAYERS);
+  }, [userInfo.rank]);
 
   const userTier = tierMapping[userTierKey] || tierMapping['bronze'];
 
@@ -284,13 +262,7 @@ const MyInfo: React.FC = () => {
     );
   }
 
-  if (!userInfo) {
-    return (
-      <ErrorContainer>
-        <ErrorTextStyled>유저 정보를 불러올 수 없습니다.</ErrorTextStyled>
-      </ErrorContainer>
-    );
-  }
+  // 더미 데이터를 사용하므로 항상 userInfo가 존재함
 
   // userInfo가 준비된 이후 렌더링
   return (

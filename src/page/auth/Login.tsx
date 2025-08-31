@@ -24,8 +24,8 @@ import {
   buttonStyle as loginButtonStyle,
 } from '../../components/Auth/styles';
 
-// login 함수 import: ApiResponse<string> 반환
-import { login, LoginRequest } from '../../api/user/userApi';
+// 더미 데이터 사용
+import { dummyUser } from '../../data/dummyData';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -35,12 +35,11 @@ const Login: React.FC = () => {
     [responsiveWidth]
   );
 
-  // savedEmail이 있으면 초기값에 세팅
-  const [email, setEmail] = useState(localStorage.getItem('savedEmail') || '');
-  const [password, setPassword] = useState('');
-  const [saveEmail, setSaveEmail] = useState(
-    !!localStorage.getItem('savedEmail')
-  );
+  // 데모용: 유효한 이메일 형식으로 초기값 설정
+  const [email, setEmail] = useState('test1234@demo.com');
+  const [password, setPassword] = useState('test1234');
+  // 데모용: 이메일 저장 기본 체크
+  const [saveEmail, setSaveEmail] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
@@ -61,7 +60,7 @@ const Login: React.FC = () => {
     validateForm();
   }, [email, password, validate]);
 
-  // 폼 제출 핸들러
+  // 폼 제출 핸들러 (데모용)
   const handleSubmit = useCallback(
     async (e: FormEvent<HTMLFormElement>) => {
       e.preventDefault();
@@ -75,31 +74,33 @@ const Login: React.FC = () => {
         return;
       }
 
+      // 데모용: 아무 이메일/비밀번호나 입력하면 로그인 성공
       try {
-        const reqData: LoginRequest = { email, password };
-        // login()이 ApiResponse<string>을 반환
-        const res = await login(reqData);
-        console.log('login response →', res);
-
-        if (res.isSuccess && res.result) {
-          // 이메일 저장 여부 처리
-          if (saveEmail) {
-            localStorage.setItem('savedEmail', email);
-          } else {
-            localStorage.removeItem('savedEmail');
-          }
-
-          // userApi.login() 안에서 이미 accessToken을 저장했으므로
-          // 여기서는 중복 저장하지 않아도 됩니다.
-          // localStorage.setItem('accessToken', res.result);
-
-          navigate('/home');
+        // 이메일 저장 여부 처리
+        if (saveEmail) {
+          localStorage.setItem('savedEmail', email);
         } else {
-          alert(`로그인 실패: ${res.message}`);
+          localStorage.removeItem('savedEmail');
         }
-      } catch (err: any) {
+
+        // 데모용 액세스 토큰 생성 (더미 사용자 정보 포함)
+        const demoToken = btoa(
+          JSON.stringify({
+            userId: dummyUser.id,
+            username: dummyUser.username,
+            email: dummyUser.email,
+            timestamp: Date.now(),
+          })
+        );
+
+        localStorage.setItem('accessToken', demoToken);
+        localStorage.setItem('userInfo', JSON.stringify(dummyUser));
+
+        console.log('데모 로그인 성공:', dummyUser);
+        navigate('/home');
+      } catch (err: unknown) {
         console.error(err);
-        alert('서버 오류가 발생했습니다. 다시 시도해주세요.');
+        alert('데모 로그인 중 오류가 발생했습니다.');
       }
     },
     [email, password, saveEmail, validate, navigate]

@@ -38,8 +38,8 @@ import {
 
 import useResponsiveWidth from '../../hooks/useResponsiveWidth';
 
-// API 함수 import
-import { signup, SignupRequest } from '../../api/user/userApi';
+// 더미 데이터 사용
+import { dummyUser } from '../../data/dummyData';
 
 const CustomDateInput = forwardRef<HTMLInputElement, any>(
   ({ value, onClick, onBlur }, ref) => (
@@ -188,27 +188,25 @@ const Signup: React.FC = () => {
       });
       if (Object.keys(validationErrors).length > 0) return;
 
+      // 데모용: 회원가입 성공 처리
       try {
-        const reqData: SignupRequest = {
+        // 더미 사용자 정보로 회원가입 성공 처리
+        const demoUser = {
+          ...dummyUser,
           email,
           name,
           nickname,
-          password,
           gender: gender === 'male' ? 'M' : 'F',
           birth: formattedBirthDate,
           phoneNumber,
         };
-        const res = await signup(reqData);
-        console.log('signup response →', res); // 응답 전체 확인용
-        if (res.isSuccess && res.result) {
-          alert('회원가입이 완료되었습니다!');
-          navigate('/login'); // ← 성공 시 로그인 페이지로 이동
-        } else {
-          alert(`회원가입 실패: ${res.message}`);
-        }
+        
+        console.log('데모 회원가입 성공:', demoUser);
+        alert('회원가입이 완료되었습니다! (데모)');
+        navigate('/login'); // 성공 시 로그인 페이지로 이동
       } catch (err: any) {
         console.error(err);
-        alert('서버 오류가 발생했습니다. 다시 시도해주세요.');
+        alert('데모 회원가입 중 오류가 발생했습니다.');
       }
     },
     [

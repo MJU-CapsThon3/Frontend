@@ -41,7 +41,7 @@ function App() {
       <Routes>
         <Route path='/' element={<Layout />}>
           {/* 인증 불필요 페이지 */}
-          <Route index element={<Navigate to='/login' replace />} />
+          <Route index element={<Navigate to='/home' replace />} />
           <Route path='login' element={<Login />} />
           <Route path='sign-up' element={<Signup />} />
           <Route path='find-id' element={<FindId />} />
@@ -98,8 +98,8 @@ function App() {
             }
           />
 
-          {/* 그 외 경로는 로그인으로 리디렉트 */}
-          <Route path='*' element={<Navigate to='/login' replace />} />
+          {/* 그 외 경로는 홈으로 리디렉트 */}
+          <Route path='*' element={<Navigate to='/home' replace />} />
         </Route>
       </Routes>
     </BrowserRouter>

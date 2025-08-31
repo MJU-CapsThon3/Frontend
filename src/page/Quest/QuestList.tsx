@@ -3,12 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { FaGift, FaClock, FaCoins } from 'react-icons/fa';
-import { QuestApi } from '../../api/quest/questApi'; // 경로를 프로젝트 구조에 맞게 조절하세요.
-import type {
-  Quest as APIQuest,
-  CompleteQuestResult,
-  QuestRewardResult,
-} from '../../api/quest/questApi';
+import { dummyQuests } from '../../data/dummyData';
 
 /**
  * 자정까지 남은 시간을 초 단위로 계산하는 함수
@@ -40,11 +35,12 @@ type QuestItem = {
   description: string;
   reward: string;
   timeLeft: number; // 남은 시간 (초 단위)
-  progress: number; // 서버로부터 받은 현재 진행도
-  goal: number; // 서버로부터 받은 목표치
-  rewardClaimed: boolean; // 서버로부터 받은 보상 수령 여부
-  isCompleted: boolean; // 서버로부터 받은 완료 여부
-  status: string; // 서버로부터 받은 상태 문자열
+  progress: number; // 현재 진행도
+  goal: number; // 목표치
+  rewardClaimed: boolean; // 보상 수령 여부
+  isCompleted: boolean; // 완료 여부
+  status: string; // 상태 문자열
+  type: string; // 퀘스트 타입
 };
 
 const QuestPage: React.FC = () => {
@@ -52,93 +48,41 @@ const QuestPage: React.FC = () => {
   const [modalVisible, setModalVisible] = useState<boolean>(false);
   const [modalContent, setModalContent] = useState<string>('');
 
-  // 1) 최초 렌더링 시 서버에서 퀘스트 목록 가져와서 state 세팅
+  // 1) 최초 렌더링 시 더미 데이터에서 퀘스트 목록 가져와서 state 세팅
   useEffect(() => {
-    (async () => {
-      try {
-        const apiList: APIQuest[] = await QuestApi.getQuestList();
-        const mapped: QuestItem[] = apiList.map((item) => {
-          // 서버가 goal, progress, rewardClaimed, isCompleted, status 필드를 제공한다고 가정
-          return {
-            id: item.id,
-            title: item.name,
-            description: item.description,
-            reward: `${item.rewardPts}냥`,
-            timeLeft: getTimeUntilMidnight(),
-            progress: item.progress,
-            goal: item.goal,
-            rewardClaimed: item.rewardClaimed,
-            isCompleted: item.isCompleted,
-            status: item.status,
-          };
-        });
-        setQuests(mapped);
-      } catch (error) {
-        console.error('[QuestPage] 퀘스트 목록 로딩 오류:', error);
-        setModalContent('퀘스트 목록을 불러오는 중 오류가 발생했습니다.');
-        setModalVisible(true);
-      }
-    })();
+    const mapped: QuestItem[] = dummyQuests.map((item) => {
+      return {
+        id: item.id,
+        title: item.title,
+        description: item.description,
+        reward: `${item.reward}냥`,
+        timeLeft: getTimeUntilMidnight(),
+        progress: item.progress,
+        goal: item.maxProgress,
+        rewardClaimed: item.status === 'completed',
+        isCompleted: item.status === 'completed',
+        status: item.status,
+        type: item.type,
+      };
+    });
+    setQuests(mapped);
   }, []);
 
-  // 2) 매초마다 남은 시간 업데이트, 자정 지나면 서버 및 클라이언트 동시 reset
+  // 2) 매초마다 남은 시간 업데이트
   useEffect(() => {
-    const timer = setInterval(async () => {
+    const timer = setInterval(() => {
       const newTime = getTimeUntilMidnight();
-
-      if (newTime <= 1) {
-        // 자정 지나면: 서버에 reset 요청, 로컬도 초기화
-        try {
-          await QuestApi.resetDailyQuests();
-        } catch (error) {
-          console.error('[QuestPage] 일일 퀘스트 초기화 오류:', error);
-          // 필요시 모달 띄우기
-        }
-        // 로컬 초기화
-        setQuests((prevQuests) =>
-          prevQuests.map((q) => ({
-            ...q,
-            timeLeft: newTime,
-            progress: 0,
-            rewardClaimed: false,
-            isCompleted: false,
-            status: 'reset',
-          }))
-        );
-        // 자정 이후 다시 서버 목록 재조회
-        try {
-          const apiList: APIQuest[] = await QuestApi.getQuestList();
-          const mapped: QuestItem[] = apiList.map((item) => ({
-            id: item.id,
-            title: item.name,
-            description: item.description,
-            reward: `${item.rewardPts}냥`,
-            timeLeft: getTimeUntilMidnight(),
-            progress: item.progress,
-            goal: item.goal,
-            rewardClaimed: item.rewardClaimed,
-            isCompleted: item.isCompleted,
-            status: item.status,
-          }));
-          setQuests(mapped);
-        } catch (err) {
-          console.error('[QuestPage] 자정 이후 퀘스트 목록 재조회 오류:', err);
-        }
-      } else {
-        // 자정 이전엔 남은 시간만 갱신
-        setQuests((prevQuests) =>
-          prevQuests.map((q) => ({ ...q, timeLeft: newTime }))
-        );
-      }
+      // 더미 데이터에서는 자정 reset 없이 시간만 갱신
+      setQuests((prevQuests) =>
+        prevQuests.map((q) => ({ ...q, timeLeft: newTime }))
+      );
     }, 1000);
 
     return () => clearInterval(timer);
   }, []);
 
   /**
-   * 퀘스트 완료 처리
-   * 1) 로컬에서 이미 완료되었거나 목표 달성 상태인지 체크
-   * 2) 서버에 퀘스트 완료 API 호출 → 서버에서 반환하는 progress, isCompleted 사용해 로컬 갱신
+   * 퀘스트 완료 처리 (더미 데이터 사용)
    */
   const handleCompleteQuest = async (questId: number) => {
     const target = quests.find((q) => q.id === questId);
@@ -157,43 +101,25 @@ const QuestPage: React.FC = () => {
       return;
     }
 
-    try {
-      const result: CompleteQuestResult = await QuestApi.completeQuest(questId);
-      console.log(
-        `[QuestPage] 퀘스트 ${result.questId} 완료 처리 응답:`,
-        result
-      );
-      // 서버 반환값으로 로컬 state 갱신
-      setQuests((prevQuests) =>
-        prevQuests.map((q) => {
-          if (q.id === questId) {
-            return {
-              ...q,
-              progress: result.progress,
-              isCompleted: result.isCompleted,
-              status: result.status || q.status,
-            };
-          }
-          return q;
-        })
-      );
-    } catch (error: any) {
-      // 에러 응답 상세 확인
-      console.error(
-        `[QuestPage] 퀘스트 ID ${questId} 완료 처리 중 오류:`,
-        error.response?.data || error.message
-      );
-      setModalContent(
-        '퀘스트 완료 중 서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
-      );
-      setModalVisible(true);
-    }
+    // 더미 데이터에서는 progress를 1씩 증가
+    setQuests((prevQuests) =>
+      prevQuests.map((q) => {
+        if (q.id === questId) {
+          const newProgress = Math.min(q.progress + 1, q.goal);
+          return {
+            ...q,
+            progress: newProgress,
+            isCompleted: newProgress >= q.goal,
+            status: newProgress >= q.goal ? 'completed' : 'in_progress',
+          };
+        }
+        return q;
+      })
+    );
   };
 
   /**
-   * 퀘스트 보상 수령 처리
-   * 1) progress가 goal 이상인지, isCompleted, rewardClaimed 상태 체크
-   * 2) 서버에 보상 수령 API 호출 → 성공 시 rewardClaimed=true 로 로컬 갱신, 모달에 보상액 표시
+   * 퀘스트 보상 수령 처리 (더미 데이터 사용)
    */
   const handleClaimReward = async (questId: number) => {
     const targetQuest = quests.find((q) => q.id === questId);
@@ -215,38 +141,17 @@ const QuestPage: React.FC = () => {
       return;
     }
 
-    try {
-      // TODO: 실제 로그인된 유저 ID를 사용해야 합니다.
-      const loginUserId = /* 로그인 유저 ID 가져오는 로직 */ 1;
-      const rewardResult: QuestRewardResult = await QuestApi.claimQuestReward({
-        userId: loginUserId,
-        questId,
-      });
-      console.log(
-        `[QuestPage] 퀘스트 ${questId} 보상 획득 응답:`,
-        rewardResult
-      );
-      setQuests((prevQuests) =>
-        prevQuests.map((q) =>
-          q.id === questId ? { ...q, rewardClaimed: true } : q
-        )
-      );
-      setModalContent(
-        `축하합니다! ${rewardResult.reward}냥을(를) 획득하셨습니다!`
-      );
-      setModalVisible(true);
-    } catch (claimError: any) {
-      console.error(
-        `[QuestPage] 퀘스트 ${questId} 보상 수령 중 오류:`,
-        claimError.response?.data || claimError.message
-      );
-      const errMsg =
-        claimError instanceof Error && claimError.message
-          ? claimError.message
-          : '보상 수령 중 오류가 발생했습니다.';
-      setModalContent(errMsg);
-      setModalVisible(true);
-    }
+    // 더미 데이터에서는 보상 수령 처리
+    setQuests((prevQuests) =>
+      prevQuests.map((q) =>
+        q.id === questId ? { ...q, rewardClaimed: true } : q
+      )
+    );
+
+    // 보상액 추출 (숫자만)
+    const rewardAmount = targetQuest.reward.replace(/[^0-9]/g, '');
+    setModalContent(`축하합니다! ${rewardAmount}냥을(를) 획득하셨습니다!`);
+    setModalVisible(true);
   };
 
   /**

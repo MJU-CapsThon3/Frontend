@@ -14,7 +14,7 @@ import {
   FaSignOutAlt,
 } from 'react-icons/fa';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { getUserInfo } from '../api/user/userApi'; // 추가
+import { dummyUser } from '../data/dummyData';
 
 const Header: React.FC = () => {
   const navigate = useNavigate();
@@ -46,50 +46,14 @@ const Header: React.FC = () => {
 
   // 로그인 상태 변경 시 사용자 정보(포인트) 조회
   useEffect(() => {
-    const fetchPoint = async () => {
-      const token = localStorage.getItem('accessToken');
-      if (!token) {
-        setPoints(null);
-        return;
-      }
-      setLoadingPoint(true);
-      try {
-        const res = await getUserInfo();
-        if (res.isSuccess && res.result) {
-          setPoints(res.result.point);
-        } else {
-          // 실패 응답 처리: 토큰 오류 등인 경우 로그아웃 처리
-          console.warn('유저 정보 조회 실패:', res.message);
-          if (res.code === 401 || res.code === 'TOKEN_FORMAT_INCORRECT') {
-            localStorage.removeItem('accessToken');
-            setIsLoggedIn(false);
-            navigate('/login');
-          }
-          setPoints(null);
-        }
-      } catch (err: any) {
-        console.error('유저 정보 조회 중 오류:', err);
-        // 네트워크/권한 오류 시 로그아웃 처리
-        if (
-          err.response &&
-          (err.response.status === 401 || err.response.status === 403)
-        ) {
-          localStorage.removeItem('accessToken');
-          setIsLoggedIn(false);
-          navigate('/login');
-        }
-        setPoints(null);
-      } finally {
-        setLoadingPoint(false);
-      }
-    };
-
-    if (isLoggedIn) {
-      fetchPoint();
+    const token = localStorage.getItem('accessToken');
+    if (token) {
+      // 더미 데이터 사용
+      setPoints(dummyUser.point);
     } else {
       setPoints(null);
     }
-  }, [isLoggedIn, navigate]);
+  }, [isLoggedIn]);
 
   const handleLogout = () => {
     localStorage.removeItem('accessToken');

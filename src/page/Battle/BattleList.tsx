@@ -5,15 +5,16 @@ import RoomCard, { RoomData } from '../../components/Battle/RoomCard';
 import Pagination from '../../components/Battle/Pagination';
 import RoomModal from '../../components/Battle/RoomModal';
 import CreateRoomModal from '../../components/Battle/CreateRoomModal';
-import { BattleRoomApi } from '../../api/battle/battleRoomApi';
+import { dummyBattleRooms } from '../../data/dummyData';
 
 const ROOMS_PER_PAGE = 10;
 
 interface RawRoomSummary {
-  roomId: string;
-  roomName: string;
-  status: 'WAITING' | 'FULL' | 'PLAYING' | 'FINISHED' | 'ENDED';
-  spectatorCount: number;
+  id: number;
+  title: string;
+  status: string;
+  participants: number;
+  maxParticipants: number;
 }
 
 const BattleList: React.FC = () => {
@@ -28,31 +29,22 @@ const BattleList: React.FC = () => {
   const hasPrev = page > 1;
   const hasNext = roomsThisPage.length === ROOMS_PER_PAGE;
 
-  // ✅ 실시간 방 목록 polling
+  // 더미 데이터 사용
   useEffect(() => {
-    let intervalId: NodeJS.Timeout;
-
-    const fetchRooms = async () => {
-      try {
-        const roomsFromApi: any[] = await BattleRoomApi.getAllRooms(page);
-        setRoomsThisPage(roomsFromApi as RawRoomSummary[]);
-      } catch (error) {
-        console.error('[BattleList] 전체 방 조회 오류:', error);
-      }
-    };
-
-    fetchRooms(); // 첫 로딩
-    intervalId = setInterval(fetchRooms, 2000); // 2초마다 반복
-
-    return () => clearInterval(intervalId); // 언마운트 시 정리
-  }, [page]);
+    setRoomsThisPage(dummyBattleRooms);
+  }, []);
 
   const roomsToDisplay: RoomData[] = roomsThisPage.map((r) => ({
-    id: Number(r.roomId),
-    name: r.roomName || `[방 ${r.roomId}]`,
-    status: r.status as RoomData['status'],
-    current: r.spectatorCount,
-    max: 8,
+    id: r.id,
+    name: r.title,
+    status:
+      r.status === 'waiting'
+        ? 'WAITING'
+        : r.status === 'active'
+          ? 'PLAYING'
+          : 'FINISHED',
+    current: r.participants,
+    max: r.maxParticipants,
     hasReturningUser: false,
   }));
 
@@ -78,12 +70,8 @@ const BattleList: React.FC = () => {
 
   const handleCardClick = async (roomId: number) => {
     if (roomId === 0) return;
-    try {
-      await BattleRoomApi.joinRoom(roomId);
-      navigate(`/battle/${roomId}`);
-    } catch (error) {
-      console.error(`[BattleList] 방 ${roomId} 참가 오류:`, error);
-    }
+    // 더미 데이터 사용 - 바로 이동
+    navigate(`/battle/${roomId}`);
   };
 
   const handleUserIconClick = (e: React.MouseEvent, room: RoomData) => {
@@ -92,15 +80,11 @@ const BattleList: React.FC = () => {
     setShowRoomModal(true);
   };
 
-  const handleCreateRoom = async (name: string) => {
-    try {
-      const result = await BattleRoomApi.createRoom({ roomName: name });
-      await BattleRoomApi.joinRoom(result.roomId);
-      setShowCreateModal(false);
-      navigate(`/battle/${result.roomId}`);
-    } catch (error) {
-      console.error('[BattleList] 방 생성 오류:', error);
-    }
+  const handleCreateRoom = async (_name: string) => {
+    // 더미 데이터 사용 - 새 방 ID 생성
+    const newRoomId = Math.max(...dummyBattleRooms.map((r) => r.id)) + 1;
+    setShowCreateModal(false);
+    navigate(`/battle/${newRoomId}`);
   };
 
   return (

@@ -1,11 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { FaArrowUp, FaArrowDown, FaQuestionCircle } from 'react-icons/fa';
-import {
-  getTopRankings,
-  ApiResponse,
-  RankingItem,
-} from '../../api/ranking/rankingApi';
+import { dummyRankings } from '../../data/dummyData';
 
 // ─────────────────────────────────────────────
 // 최대 플레이어 수 (예제에서는 40명)
@@ -132,6 +128,9 @@ interface UserRank {
   score: number;
   rank: number;
   previousRank: number | null;
+  level: number;
+  winRate: number;
+  totalBattles: number;
 }
 
 const RankingPage: React.FC = () => {
@@ -143,55 +142,27 @@ const RankingPage: React.FC = () => {
   // 초기 랭킹 데이터 로드 (점수 기준 내림차순 정렬)
   useEffect(() => {
     setLoading(true);
-    getTopRankings()
-      .then((res: ApiResponse<RankingItem[]>) => {
-        if (res.isSuccess && res.result) {
-          const mapped = res.result.map((item: RankingItem) => ({
-            id: Number(item.userId),
-            username: item.nickname,
-            score: item.totalPoints,
-            rank: item.rank,
-            previousRank: item.previousRank,
-          }));
-          // score 기준 내림차순 정렬
-          mapped.sort((a, b) => b.score - a.score);
-          setRankingData(mapped);
-        }
-      })
-      .finally(() => setLoading(false));
+    // 더미 데이터 사용
+    const mapped = dummyRankings.map((item, index) => ({
+      id: index + 1,
+      username: item.username,
+      score: item.points,
+      rank: item.rank,
+      previousRank: null, // 더미 데이터에는 이전 순위 정보가 없음
+      level: item.level,
+      winRate: item.winRate,
+      totalBattles: item.totalBattles,
+    }));
+    // score 기준 내림차순 정렬
+    mapped.sort((a, b) => b.score - a.score);
+    setRankingData(mapped);
+    setLoading(false);
   }, []);
 
-  // 스크롤 페이징 (추가 로드 시에도 내림차순 유지)
+  // 스크롤 페이징 (더미 데이터에서는 추가 로드 없음)
   const handleScroll = useCallback(() => {
-    if (listWrapperRef.current && !loading) {
-      const { scrollTop, clientHeight, scrollHeight } = listWrapperRef.current;
-      if (scrollHeight - (scrollTop + clientHeight) < 100) {
-        setLoading(true);
-        getTopRankings() // TODO: API가 페이지별 지원 시 수정 필요
-          .then((res: ApiResponse<RankingItem[]>) => {
-            if (res.isSuccess && res.result) {
-              const newItems = res.result.map((item: RankingItem) => ({
-                id: Number(item.userId),
-                username: item.nickname,
-                score: item.totalPoints,
-                rank: item.rank,
-                previousRank: item.previousRank,
-              }));
-              // 기존 데이터 + 새로운 데이터 합친 뒤 중복 제거 후 score 기준 내림차순
-              const combined = [...rankingData, ...newItems];
-              const uniqueMap = new Map<number, UserRank>();
-              combined.forEach((u) => {
-                if (!uniqueMap.has(u.id)) uniqueMap.set(u.id, u);
-              });
-              const uniqueArray = Array.from(uniqueMap.values());
-              uniqueArray.sort((a, b) => b.score - a.score);
-              setRankingData(uniqueArray);
-            }
-          })
-          .finally(() => setLoading(false));
-      }
-    }
-  }, [loading, rankingData]);
+    // 더미 데이터에서는 추가 로드가 필요 없음
+  }, []);
 
   useEffect(() => {
     const wrapper = listWrapperRef.current;
